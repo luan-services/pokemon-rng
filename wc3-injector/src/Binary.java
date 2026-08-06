@@ -1,4 +1,7 @@
 
+/* this class has auxiliar methods to deal with binaries in java. java directly doesn't support u16 and u32 integers, so
+we made methods to read/write them. */
+
 final class Binary {
     private Binary() {}
 

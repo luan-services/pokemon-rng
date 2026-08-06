@@ -1,3 +1,5 @@
+/* checksum is a value inside the save file that works as a signature to tell wether the file is corrupted or not, everytime data
+is changed on a file, the checksum must be recalculated and stored in order to make the save 'legit' */
 
 final class SectorChecksum {
     private SectorChecksum() {}

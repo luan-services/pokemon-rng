@@ -4,6 +4,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 
+/* this the program main class, it stores constants relateds to the save file structure. it also include methods for loading / injection
+on the save file. */
+
 public final class FireRedLeafGreenSave {
     private static final int SAVE_SIZE = 0x20000;
     private static final int SECTOR_SIZE = 0x1000;
@@ -64,7 +67,8 @@ public final class FireRedLeafGreenSave {
             data[sectorOffset + WC3_CARD_DESTINATION + i] = wc[i];
         }
 
-        // Match PKHeX's WC3 import behavior.
+        /* not sure why but pkhex sets METADATA_ICONS_SPECIES to 0, the decompiled game always copy the value from the 
+        oldest wonder card */
         data[sectorOffset + WC3_CARD_DESTINATION + METADATA_ICON_SPECIES] = 0;
         data[sectorOffset + WC3_CARD_DESTINATION + METADATA_ICON_SPECIES + 1] = 0;
 
