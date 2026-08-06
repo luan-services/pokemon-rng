@@ -1,0 +1,23 @@
+
+final class Binary {
+    private Binary() {}
+
+    static int u16(byte[] data, int offset) {
+        return Byte.toUnsignedInt(data[offset])
+                | (Byte.toUnsignedInt(data[offset + 1]) << 8);
+    }
+
+    static long u32(byte[] data, int offset) {
+        return Integer.toUnsignedLong(
+                Byte.toUnsignedInt(data[offset])
+                        | (Byte.toUnsignedInt(data[offset + 1]) << 8)
+                        | (Byte.toUnsignedInt(data[offset + 2]) << 16)
+                        | (Byte.toUnsignedInt(data[offset + 3]) << 24)
+        );
+    }
+
+    static void putU16(byte[] data, int offset, int value) {
+        data[offset] = (byte) value;
+        data[offset + 1] = (byte) (value >>> 8);
+    }
+}
