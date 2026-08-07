@@ -113,6 +113,16 @@ public final class FireRedLeafGreenSave {
             }
             data[sectorOffset + WC3_CARD_DESTINATION + i] = wc[i];
         }
+
+        /* this piece of code copies METADATA_ICON_SPECIES from the wc to the user save, as the decompiled game does */
+        int iconSpecies = wc3.iconSpecies();
+        Binary.putU16(
+            data,
+            sectorOffset
+                + WC3_CARD_DESTINATION
+                + METADATA_ICON_SPECIES,
+            iconSpecies
+        ); 
         
         /* copy the wc script to the actual savedata wc script area (the actual code for delivering the gift) */
         int scriptLength = Wc3File.FILE_SIZE - Wc3File.RAM_SCRIPT_SOURCE_OFFSET;
