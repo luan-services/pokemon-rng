@@ -5,6 +5,10 @@ we made methods to read/write them. */
 final class Binary {
     private Binary() {}
 
+    static int u8(byte[] data, int offset) { /* unused for injection */
+        return Byte.toUnsignedInt(data[offset]);
+    }
+
     static int u16(byte[] data, int offset) {
         return Byte.toUnsignedInt(data[offset])
                 | (Byte.toUnsignedInt(data[offset + 1]) << 8);
@@ -22,5 +26,12 @@ final class Binary {
     static void putU16(byte[] data, int offset, int value) {
         data[offset] = (byte) value;
         data[offset + 1] = (byte) (value >>> 8);
+    }
+
+    static void putU32(byte[] data, int offset, long value) { /* unused for injection */
+        data[offset] = (byte) value;
+        data[offset + 1] = (byte) (value >>> 8);
+        data[offset + 2] = (byte) (value >>> 16);
+        data[offset + 3] = (byte) (value >>> 24);
     }
 }

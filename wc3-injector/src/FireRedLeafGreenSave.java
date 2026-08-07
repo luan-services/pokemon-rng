@@ -10,7 +10,7 @@ on the save file. */
 public final class FireRedLeafGreenSave {
     private static final int SAVE_SIZE = 0x20000; /* full save file size, expected to be exactly 131072 bytes (128kb) */
     private static final int SECTOR_SIZE = 0x1000; /* save file is splitted into sectors, each having 4096 bytes */
-    private static final int SECTOR_DATA_SIZE = 0xF80; /* sector mains data section has 3968 bytes, after that comes the section footer (which display important shared data about save file) */
+    /* private static final int SECTOR_DATA_SIZE = 0xF80; sector mains data section has 3968 bytes, after that comes the section footer (which display important shared data about save file) */
     private static final int SECTORS_PER_SLOT = 14; /* sector count per save slot */
     private static final int SLOT_COUNT = 2; /* save is split into to slots (sectors 0-13 are the main sectors, 14-27 are the backup save file) */
 
@@ -31,8 +31,6 @@ public final class FireRedLeafGreenSave {
     /* must set where the questionnaire words data starts and ends to prevent it from being overwritten */
     private static final int QUESTIONNAIRE_START = 0x178;
     private static final int QUESTIONNAIRE_END = 0x180;
-
-    private static final int METADATA_ICON_SPECIES = 0x15A; /* necessary because pkhex clear this data after injection (it is an unused feature from the game) */
 
     private final byte[] data;
 
@@ -104,6 +102,7 @@ public final class FireRedLeafGreenSave {
         int sectorOffset = physicalSector * SECTOR_SIZE; /* stores the wc sector position in an attribute */
 
         byte[] wc = wc3.data();
+        WonderCard card = wc3.wonderCard(); /* gets the WonderCard structure stored inside the wc3 file */
 
         /* first copy the wonder card data to the save file, we preserve the bytes where the save file questionary words are stored, wc data would overwrite if we didn't preserve 
         because of our code nature, the decompiled game versions have functions to write wc without overwriting the questionnaire. */
@@ -115,20 +114,19 @@ public final class FireRedLeafGreenSave {
         }
 
         /* this piece of code copies METADATA_ICON_SPECIES from the wc to the user save, as the decompiled game does */
-        int iconSpecies = wc3.iconSpecies();
         Binary.putU16(
             data,
             sectorOffset
                 + WC3_CARD_DESTINATION
-                + METADATA_ICON_SPECIES,
-            iconSpecies
+                + Wc3File.CARD_METADATA_ICON_SPECIES_OFFSET,
+            card.iconSpecies()
         ); 
         
         /* copy the wc script to the actual savedata wc script area (the actual code for delivering the gift) */
-        int scriptLength = Wc3File.FILE_SIZE - Wc3File.RAM_SCRIPT_SOURCE_OFFSET;
+        int scriptLength = Wc3File.FILE_SIZE - Wc3File.RAM_SCRIPT_OFFSET;
         System.arraycopy(
                 wc,
-                Wc3File.RAM_SCRIPT_SOURCE_OFFSET,
+                Wc3File.RAM_SCRIPT_OFFSET,
                 data,
                 sectorOffset + RAM_SCRIPT_DESTINATION,
                 scriptLength
@@ -148,7 +146,7 @@ public final class FireRedLeafGreenSave {
                 activeSlot.counter(),
                 physicalSector,
                 checksum,
-                wc3.flagId()
+                card.flagId()
         );
     }
 
