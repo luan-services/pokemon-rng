@@ -8,7 +8,15 @@ final class WonderCard {
     static final int TEXT_LENGTH = 40;
     static final int BODY_LINE_COUNT = 4;
 
-    private static final int FLAG_ID_OFFSET = 0x000;
+    /* all these offset attributes are based on the starting point of the wondercard structure, not the actual memory address:
+    
+    Wc3File - starts at 0x000
+    WonderCard design structure - starts at 0x004
+    when you call this class constructor you pass the base offset as 0x004, so for every memory access here the program will call
+    baseOffset + structure_offset (FLAG_ID_OFFSET for example)
+    */
+
+    private static final int FLAG_ID_OFFSET = 0x000; 
     private static final int ICON_SPECIES_OFFSET = 0x002;
     private static final int ID_NUMBER_OFFSET = 0x004;
     private static final int PACKED_FLAGS_OFFSET = 0x008;
@@ -19,13 +27,16 @@ final class WonderCard {
     private static final int FOOTER_1_OFFSET = 0x0FA;
     private static final int FOOTER_2_OFFSET = 0x122;
 
+    /* attributes to store both the full Wc3File bytes and the actual offset where the wonder card details address starts */
     private final byte[] data;
-    private final int baseOffset;
+    private final int baseOffset; 
 
     WonderCard(byte[] data, int baseOffset) {
         this.data = data;
         this.baseOffset = baseOffset;
     }
+
+    /* getters and setters for every wondercard card fields / mechanics */
 
     int flagId() {
         return Binary.u16(data, baseOffset + FLAG_ID_OFFSET);
