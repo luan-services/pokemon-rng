@@ -2,6 +2,7 @@
 it only knows where each WonderCard field is located relative to the start of the WonderCard structure. */
 
 public final class WonderCard {
+    static final int SIZE = 0x14C; /* full WonderCard structure size used by the card CRC */
     private static final int FLAG_ID_OFFSET = 0x000; /* flagId is the first u16 field inside the WonderCard structure */
     private static final int ICON_SPECIES_OFFSET = 0x002; /* iconSpecies comes right after flagId and tells the game which icon should be displayed */
 

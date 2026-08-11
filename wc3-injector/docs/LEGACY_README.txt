@@ -21,6 +21,7 @@ COMO RODAR
 Ainda dentro da pasta src, execute:
 
    java Main "caminho\firered.sav" "caminho\evento.wc3" "caminho\firered_injetado.sav"
+   java -cp out Main ../dummy-saves/firered.sav ../dummy-saves/seed-modifier-c2-final.wc3 ../dummy-saves/firered.sav 
 
 Exemplo, se os três arquivos estiverem dentro de src:
 

@@ -1,2 +1,5 @@
 other-tools
 dummy-saves
+*/out/
+*.class
+archive
