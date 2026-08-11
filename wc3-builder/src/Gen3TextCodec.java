@@ -1,3 +1,4 @@
+import java.io.ByteArrayOutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -111,4 +112,45 @@ final class Gen3TextCodec {
             out++;
         }
     }
+
+    /* variable-length encoder used only by the built-in default deliveryman RamScript.
+    card text fields still use encodeInto() above and remain fixed at 40 bytes. */
+    static byte[] encodeString(String text) {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+
+        for (int i = 0; i < text.length();) {
+            if (text.startsWith("\\n", i)) {
+                output.write(0xFE);
+                i += 2;
+                continue;
+            }
+
+            if (text.startsWith("\\p", i)) {
+                output.write(0xFB);
+                i += 2;
+                continue;
+            }
+
+            if (text.startsWith("\\l", i)) {
+                output.write(0xFA);
+                i += 2;
+                continue;
+            }
+
+            char c = text.charAt(i++);
+            Integer value = ENCODE.get(c);
+            if (value == null) {
+                throw new IllegalArgumentException(
+                        "Unsupported Gen III character: '" + c + "' (U+"
+                                + String.format("%04X", (int) c) + ")"
+                );
+            }
+
+            output.write(value);
+        }
+
+        output.write(EOS);
+        return output.toByteArray();
+    }
+
 }

@@ -12,14 +12,16 @@ public final class Main {
         System.setErr(new PrintStream(System.err, true, StandardCharsets.UTF_8));
 
         try {
-            if (args.length < 2) {
+            if (args.length == 0) {
                 printUsage();
                 return;
             }
 
-            switch (args[0].toLowerCase()) { /* check's wether it is a read or edit instruction to a .wc3 file */
+            switch (args[0].toLowerCase()) { /* check's wether it is a read, create or edit instruction to a .wc3 file */
                 case "inspect" -> inspect(args);
                 case "edit" -> edit(args);
+                case "create" -> create(args);
+                case "help", "--help", "-h" -> printUsage();
                 default -> {
                     System.err.println("Unknown command: " + args[0]);
                     printUsage();
@@ -43,6 +45,32 @@ public final class Main {
         printCard(wc3);
     }
 
+    /* create starts from a new empty 0x58C-byte WC3 instead of requiring an existing card.
+    it then accepts exactly the same design/detail options as edit. */
+    private static void create(String[] args) throws Exception {
+        if (args.length < 2) {
+            throw new IllegalArgumentException(
+                    "create requires output.wc3 and optionally --option value pairs"
+            );
+        }
+
+        Path output = Path.of(args[1]);
+        Map<String, String> options = parseOptions(args, 2);
+
+        Wc3File wc3 = Wc3Factory.createBase();
+        applyOptions(wc3, options);
+
+        wc3.updateCardCrc();
+        wc3.write(output);
+
+        System.out.println("Base WC3 created successfully: " + output.toAbsolutePath());
+        System.out.printf("Card CRC:      0x%04X%n", wc3.storedCardCrc());
+        System.out.printf("RamScript CRC: 0x%04X%n", wc3.storedRamScriptChecksum());
+        System.out.println("Default event: deliveryman informational message only.");
+        System.out.println();
+        printCard(wc3);
+    }
+
     private static void edit(String[] args) throws Exception {
         if (args.length < 4) {
             throw new IllegalArgumentException(
@@ -55,6 +83,17 @@ public final class Main {
         Map<String, String> options = parseOptions(args, 3);
 
         Wc3File wc3 = Wc3File.load(input);
+        applyOptions(wc3, options);
+
+        wc3.updateCardCrc(); /* calls updateCardCrc to ensure the wc keep valid */
+        wc3.write(output); /* write data on the outputfile */
+
+        System.out.println("WC3 written successfully: " + output.toAbsolutePath());
+        System.out.printf("New card CRC: 0x%04X%n%n", wc3.storedCardCrc());
+        printCard(wc3);
+    }
+
+    private static void applyOptions(Wc3File wc3, Map<String, String> options) {
         WonderCard card = wc3.wonderCard();
 
         for (Map.Entry<String, String> option : options.entrySet()) { /* check for all options set and tries to update the wc */
@@ -85,17 +124,14 @@ public final class Main {
                 );
             }
         }
-
-        wc3.updateCardCrc(); /* calls updateCardCrc to ensure the wc keep valid */
-        wc3.write(output); /* write data on the outputfile */
-
-        System.out.println("WC3 written successfully: " + output.toAbsolutePath());
-        System.out.printf("New card CRC: 0x%04X%n%n", wc3.storedCardCrc());
-        printCard(wc3);
     }
 
     private static Map<String, String> parseOptions(String[] args, int start) {
         Map<String, String> result = new LinkedHashMap<>();
+
+        if (((args.length - start) & 1) != 0) {
+            throw new IllegalArgumentException("Options must be provided as --name value pairs");
+        }
 
         for (int i = start; i < args.length; i += 2) {
             if (!args[i].startsWith("--")) {
@@ -152,6 +188,8 @@ public final class Main {
         System.out.printf("Stored CRC:      0x%04X%n", wc3.storedCardCrc());
         System.out.printf("Calculated CRC:  0x%04X%n", wc3.calculatedCardCrc());
         System.out.println("CRC valid:       " + wc3.isCardCrcValid());
+        System.out.printf("RamScript CRC:   0x%04X%n", wc3.storedRamScriptChecksum());
+        System.out.println("RamScript valid: " + wc3.isRamScriptChecksumValid());
         System.out.println();
 
         System.out.println("Flag ID:         " + card.flagId());
@@ -202,6 +240,15 @@ public final class Main {
         System.out.println("Inspect:");
         System.out.println(
                 "  java -cp out Main inspect input\\event.wc3"
+        );
+        System.out.println();
+        System.out.println("Create from zero:");
+        System.out.println(
+                "  java -cp out Main create output\\custom.wc3"
+        );
+        System.out.println(
+                "  java -cp out Main create output\\custom.wc3 "
+                        + "--title \"MY EVENT\" --bg 3 --icon 25"
         );
         System.out.println();
         System.out.println("Edit:");
