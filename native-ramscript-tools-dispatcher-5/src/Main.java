@@ -16,6 +16,7 @@ public final class Main {
                 case "build-dispatcher-candidate-2" -> buildDispatcherCandidate2(args);
                 case "build-dispatcher-candidate-3" -> buildDispatcherCandidate3(args);
                 case "build-dispatcher-candidate-4" -> buildDispatcherCandidate4(args);
+                case "build-dispatcher-candidate-5" -> buildDispatcherCandidate5(args);
                 case "verify" -> verify(args);
                 case "profiles" -> printProfiles();
                 case "effects" -> printEffects();
@@ -34,6 +35,37 @@ public final class Main {
     }
 
 
+
+
+    private static void buildDispatcherCandidate5(String[] args) throws Exception {
+        if (args.length != 3) {
+            throw new IllegalArgumentException(
+                    "Usage: java -cp out Main build-dispatcher-candidate-5 <rom> <output.bin>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        Path output = Path.of(args[2]);
+
+        RamScript ramScript = NormalContextHotkeyCandidate5.build(rom);
+        ramScript.write(output);
+
+        System.out.println("Dispatcher Candidate 5 built successfully.");
+        System.out.println("Status:           EXPERIMENTAL - returned RamScript pointer test");
+        System.out.println("ROM:              " + rom.displayName());
+        System.out.println("Trigger:          hold R, then press SELECT");
+        System.out.println("Action:           GetSavedRamScriptIfValid()");
+        System.out.printf("Function Thumb:   0x%08X%n", NormalContextHotkeyCandidate5.getSavedRamScriptThumb());
+        System.out.printf("Result slot:      0x%08X%n", NormalContextHotkeyCandidate5.resultSlotAddress());
+        System.out.printf("gSaveBlock1Ptr:   0x%08X%n", NormalContextHotkeyCandidate5.gSaveBlock1PtrAddress());
+        System.out.println("Expected result:  *gSaveBlock1Ptr + 0x3624");
+        System.out.printf("Callback wrapper: 0x%08X%n", NormalContextHotkeyCandidate5.hotkeyDetectorThumb());
+        System.out.printf("Checksum:         0x%04X%n", ramScript.storedChecksum());
+        System.out.println("Checksum valid:   " + ramScript.isChecksumValid());
+        System.out.println("Output:           " + output.toAbsolutePath());
+        System.out.println();
+        System.out.println("Do NOT test cable/wireless/link modes with Candidate 5.");
+    }
 
     private static void buildDispatcherCandidate4(String[] args) throws Exception {
         if (args.length != 3) {
@@ -293,6 +325,9 @@ public final class Main {
         );
         System.out.println(
                 "  java -cp out Main build-dispatcher-candidate-4 fr10 output.bin"
+        );
+        System.out.println(
+                "  java -cp out Main build-dispatcher-candidate-5 fr10 output.bin"
         );
         System.out.println(
                 "  java -cp out Main verify output.bin"

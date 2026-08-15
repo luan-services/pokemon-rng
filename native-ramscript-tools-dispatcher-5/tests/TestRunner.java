@@ -363,6 +363,113 @@ public final class TestRunner {
         }
     }
 
+
+    private static void testCandidate5StaticAudit() {
+        RomProfile rom = RomProfile.FIRE_RED_EN_10;
+
+        byte[] supervisor = NormalContextHotkeyCandidate5.supervisorBytesForTest(rom);
+        byte[] detector = NormalContextHotkeyCandidate5.detectorBytesForTest(rom);
+        byte[] trampoline = NormalContextHotkeyCandidate5.trampolineBytesForTest();
+        byte[] tail = NormalContextHotkeyCandidate5.callbackTailBytesForTest();
+        byte[] installer = NormalContextHotkeyCandidate5.installerBytesForTest(rom);
+
+        assertEquals(32, supervisor.length, "C5 supervisor size");
+        assertEquals(16, detector.length, "C5 detector size");
+        assertEquals(20, trampoline.length, "C5 trampoline size");
+        assertEquals(4, tail.length, "C5 tail size");
+        assertEquals(16, installer.length, "C5 installer size");
+
+        // Detector heldKeys LDR remains 03003F94.
+        assertEquals(
+                0x03003F94L,
+                ThumbEncodingChecks.decodeLdrLiteralTarget(
+                        0x03003F70L,
+                        detector[0] & 0xFF,
+                        detector[1] & 0xFF
+                ),
+                "C5 detector heldKeys literal"
+        );
+
+        // Trigger B at 03003F7C must land exactly at 03003F80.
+        assertEquals(
+                0x03003F80L,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x03003F7CL,
+                        detector[12] & 0xFF,
+                        detector[13] & 0xFF
+                ),
+                "C5 trigger branch"
+        );
+
+        // No-trigger B remains the known CB1 tail at 03003EB4.
+        assertEquals(
+                0x03003EB4L,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x03003F7EL,
+                        detector[14] & 0xFF,
+                        detector[15] & 0xFF
+                ),
+                "C5 no-trigger CB1 branch"
+        );
+
+        // Function literal load from 03003F82 -> 03003F9C.
+        assertEquals(
+                0x03003F9CL,
+                ThumbEncodingChecks.decodeLdrLiteralTarget(
+                        0x03003F82L,
+                        trampoline[2] & 0xFF,
+                        trampoline[3] & 0xFF
+                ),
+                "C5 GetSavedRamScript literal target"
+        );
+
+        // ADR at 03003F84 -> continuation 03003F8C.
+        assertEquals(
+                0x03003F8CL,
+                ThumbEncodingChecks.decodeAdrTarget(
+                        0x03003F84L,
+                        trampoline[4] & 0xFF,
+                        trampoline[5] & 0xFF
+                ),
+                "C5 continuation ADR"
+        );
+
+        // ADR at 03003F8C -> result slot 03003FA4.
+        assertEquals(
+                0x03003FA4L,
+                ThumbEncodingChecks.decodeAdrTarget(
+                        0x03003F8CL,
+                        trampoline[12] & 0xFF,
+                        trampoline[13] & 0xFF
+                ),
+                "C5 result-slot ADR"
+        );
+
+        // Exact critical call/return opcodes:
+        assertEquals(0xB500L, ((trampoline[1] & 0xFF) << 8) | (trampoline[0] & 0xFF),
+                "C5 push {lr}");
+        assertEquals(0x4696L, ((trampoline[9] & 0xFF) << 8) | (trampoline[8] & 0xFF),
+                "C5 mov lr,r2");
+        assertEquals(0x4718L, ((trampoline[11] & 0xFF) << 8) | (trampoline[10] & 0xFF),
+                "C5 bx r3");
+        assertEquals(0x6008L, ((trampoline[15] & 0xFF) << 8) | (trampoline[14] & 0xFF),
+                "C5 str r0,[r1]");
+        assertEquals(0xBD00L, ((trampoline[17] & 0xFF) << 8) | (trampoline[16] & 0xFF),
+                "C5 pop {pc}");
+
+        assertEquals(0x08069E49L, NormalContextHotkeyCandidate5.getSavedRamScriptThumb(),
+                "C5 GetSavedRamScriptIfValid Thumb pointer");
+        assertEquals(0x03003FA4L, NormalContextHotkeyCandidate5.resultSlotAddress(),
+                "C5 result slot");
+        assertEquals(0x03005008L, NormalContextHotkeyCandidate5.gSaveBlock1PtrAddress(),
+                "C5 gSaveBlock1Ptr global");
+
+        // Preserve the same VBlank supervisor bytes as Candidate 4.
+        byte[] c4Supervisor = NormalContextHotkeyCandidate4.supervisorBytesForTest(rom);
+        assertTrue(java.util.Arrays.equals(supervisor, c4Supervisor),
+                "C5 must preserve the validated C4 supervisor bytes");
+    }
+
     private static void assertTrue(boolean condition, String message) {
         if (!condition) {
             throw new AssertionError(message);

@@ -317,3 +317,8 @@ Use only Candidate 2d. Candidates 2, 2b, and 2c are rejected. See `docs/DISPATCH
 ## Dispatcher Candidate 4
 
 First external ROM-function proof: persistent R+SELECT dispatcher tail-calls `PlaySE(SE_SELECT)`. See `docs/DISPATCHER_CANDIDATE_4.md`.
+
+
+## Candidate 5
+
+Current experiment: R+SELECT calls `GetSavedRamScriptIfValid()` and stores the returned current RamScript pointer at `03003FA4`. See `docs/DISPATCHER_CANDIDATE_5.md`.
