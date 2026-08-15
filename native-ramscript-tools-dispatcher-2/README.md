@@ -282,3 +282,14 @@ Each build needs its own researched/validated ROM profile and runtime layout.
 The current compact Thumb encoding also depends on relationships between the
 validated FR10 addresses; adding another profile is not merely filling in
 different constants.
+
+## Experimental Dispatcher Candidate 2
+
+Candidate 2 isolates automatic re-arming of a normal-context callback wrapper.
+It intentionally removes the hotkey from the experiment.
+
+```cmd
+java -cp out Main build-dispatcher-candidate-2 fr10 dispatcher-c2.bin
+```
+
+See `docs/DISPATCHER_CANDIDATE_2.md` before testing.

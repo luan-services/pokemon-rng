@@ -16,6 +16,7 @@ public final class TestRunner {
         testRuntimeLayout();
         testCatalog();
         testDispatcherCandidate1();
+        testDispatcherCandidate2();
         System.out.println("All tests passed.");
     }
 
@@ -99,6 +100,18 @@ public final class TestRunner {
         assertEquals(0x030030F0L, NormalContextHotkeyCandidate1.callback1Address(), "callback1 slot");
         assertEquals(0x08056535L, NormalContextHotkeyCandidate1.originalCallbackThumb(), "CB1 thumb");
         assertEquals(0x0201C100L, NormalContextHotkeyCandidate1.debugAddress(), "debug address");
+    }
+
+    private static void testDispatcherCandidate2() {
+        RamScript script = NormalContextHotkeyCandidate2.build(RomProfile.FIRE_RED_EN_10);
+
+        assertTrue(script.isChecksumValid(), "dispatcher candidate 2 checksum");
+        assertEquals(0x030030F0L, NormalContextHotkeyCandidate2.callback1Address(), "candidate2 callback1 slot");
+        assertEquals(0x08056535L, NormalContextHotkeyCandidate2.cb1OverworldThumb(), "candidate2 CB1 thumb");
+        assertEquals(0x080565B5L, NormalContextHotkeyCandidate2.cb2OverworldThumb(), "candidate2 CB2 thumb");
+        assertEquals(0x03003F95L, NormalContextHotkeyCandidate2.callbackWrapperThumb(RomProfile.FIRE_RED_EN_10), "candidate2 wrapper thumb");
+        assertEquals(0x03005311L, NormalContextHotkeyCandidate2.supervisorThumb(RomProfile.FIRE_RED_EN_10), "candidate2 supervisor thumb");
+        assertEquals(0x77L, NormalContextHotkeyCandidate2.debugMarker(), "candidate2 marker");
     }
 
     private static String sha256(byte[] data) throws Exception {
