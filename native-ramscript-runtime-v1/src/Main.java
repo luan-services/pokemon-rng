@@ -24,6 +24,8 @@ public final class Main {
                 case "build-runtime-v1-rc1" -> buildRuntimeV1Rc1(args);
                 case "build-runtime-v1-rc2" -> buildRuntimeV1Rc2(args);
                 case "build-runtime-v1-rc3" -> buildRuntimeV1Rc3(args);
+                case "build-runtime-v1-rc4" -> buildRuntimeV1Rc4(args);
+                case "build-runtime-v1-rc4a" -> buildRuntimeV1Rc4a(args);
                 case "verify" -> verify(args);
                 case "profiles" -> printProfiles();
                 case "effects" -> printEffects();
@@ -50,6 +52,78 @@ public final class Main {
 
 
 
+
+
+
+    private static void buildRuntimeV1Rc4a(String[] args) throws Exception {
+        if (args.length != 3) {
+            throw new IllegalArgumentException(
+                    "Usage: java -cp out Main build-runtime-v1-rc4a <rom> <output.bin>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        Path output = Path.of(args[2]);
+
+        RamScript ramScript = NativeRamScriptRuntimeV1Rc4a.build(rom);
+        ramScript.write(output);
+
+        System.out.println("Native RamScript Runtime v1 RC4a built successfully.");
+        System.out.println("Status:           RELEASE CANDIDATE - corrected format guard");
+        System.out.println("ROM:              " + rom.displayName());
+        System.out.println("Trigger:          hold R, then press SELECT");
+        System.out.println("Safety gate:      RC3 field-control gate preserved");
+        System.out.printf("Format signature: 0x%04X at script+0x%02X%n",
+                NativeRamScriptRuntimeV1Rc4a.runtimeFormatSignature(),
+                NativeRamScriptRuntimeV1Rc4a.signatureOffset());
+        System.out.printf("Format validator: 0x%08X%n",
+                NativeRamScriptRuntimeV1Rc4a.formatValidatorAddress());
+        System.out.printf("Payload offset:   0x%02X%n",
+                NativeRamScriptRuntimeV1Rc4a.payloadOffset());
+        System.out.println("RC4 fix:          corrected LDRH and removed out-of-range conditional branch");
+        System.out.println("Visual payload:   \"Hello from the Wonder Card!\"");
+        System.out.printf("Checksum:         0x%04X%n", ramScript.storedChecksum());
+        System.out.println("Checksum valid:   " + ramScript.isChecksumValid());
+        System.out.println("Output:           " + output.toAbsolutePath());
+        System.out.println();
+        System.out.println("Rejected RC4 must not be used.");
+        System.out.println("Link/wireless behavior is not validated yet.");
+    }
+
+    private static void buildRuntimeV1Rc4(String[] args) throws Exception {
+        if (args.length != 3) {
+            throw new IllegalArgumentException(
+                    "Usage: java -cp out Main build-runtime-v1-rc4 <rom> <output.bin>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        Path output = Path.of(args[2]);
+
+        RamScript ramScript = NativeRamScriptRuntimeV1Rc4.build(rom);
+        ramScript.write(output);
+
+        System.out.println("Native RamScript Runtime v1 RC4 built successfully.");
+        System.out.println("Status:           RELEASE CANDIDATE - install/reinstall semantics");
+        System.out.println("ROM:              " + rom.displayName());
+        System.out.println("Trigger:          hold R, then press SELECT");
+        System.out.println("Safety gate:      RC3 field-control gate preserved");
+        System.out.printf("Format signature: 0x%04X at script+0x%02X%n",
+                NativeRamScriptRuntimeV1Rc4.runtimeFormatSignature(),
+                NativeRamScriptRuntimeV1Rc4.signatureOffset());
+        System.out.printf("Format validator: 0x%08X%n",
+                NativeRamScriptRuntimeV1Rc4.formatValidatorAddress());
+        System.out.printf("Payload offset:   0x%02X%n",
+                NativeRamScriptRuntimeV1Rc4.payloadOffset());
+        System.out.println("Reinstall model:  deterministic/idempotent; never chains old hooks");
+        System.out.println("Visual payload:   \"Hello from the Wonder Card!\"");
+        System.out.printf("Checksum:         0x%04X%n", ramScript.storedChecksum());
+        System.out.println("Checksum valid:   " + ramScript.isChecksumValid());
+        System.out.println("Output:           " + output.toAbsolutePath());
+        System.out.println();
+        System.out.println("A resident RC4 ignores valid RamScripts without the A7 00 runtime signature.");
+        System.out.println("Link/wireless behavior is not validated yet.");
+    }
 
     private static void buildRuntimeV1Rc3(String[] args) throws Exception {
         if (args.length != 3) {
@@ -585,6 +659,12 @@ public final class Main {
         );
         System.out.println(
                 "  java -cp out Main build-runtime-v1-rc3 fr10 output.bin"
+        );
+        System.out.println(
+                "  java -cp out Main build-runtime-v1-rc4 fr10 output.bin"
+        );
+        System.out.println(
+                "  java -cp out Main build-runtime-v1-rc4a fr10 output.bin"
         );
         System.out.println(
                 "  java -cp out Main verify output.bin"

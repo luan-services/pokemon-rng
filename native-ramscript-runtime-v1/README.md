@@ -377,3 +377,25 @@ ignored while the game's field controls are locked, preventing the hotkey from
 replacing active NPC / yes-no / trainer event scripts.
 
 See `docs/RUNTIME_V1_RC3.md`.
+
+
+
+## Runtime v1 RC4
+
+`build-runtime-v1-rc4` formalizes idempotent reinstall behavior and adds an
+`A7 00` RamScript format signature. A resident runtime will not execute an
+unrelated valid RamScript that lacks this signature.
+
+See `docs/RUNTIME_V1_RC4.md`.
+
+
+
+## Runtime v1 RC4a
+
+RC4 is rejected. Its format validator contained a bad `LDRH` encoding and an
+out-of-range Thumb conditional branch.
+
+`build-runtime-v1-rc4a` fixes both issues and also fixes the test harness so the
+runtime RC audits are actually executed.
+
+See `docs/RUNTIME_V1_RC4A.md`.

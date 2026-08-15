@@ -20,6 +20,15 @@ public final class TestRunner {
         testDispatcherCandidate2();
         testDispatcherCandidate3();
         testDispatcherCandidate4();
+
+        // runtime release-candidate audits must actually execute.
+        // older project versions accidentally declared these methods without
+        // invoking them from main(), which allowed RC4 encoding bugs through.
+        testRuntimeV1Rc1StaticAudit();
+        testRuntimeV1Rc2StaticAudit();
+        testRuntimeV1Rc3StaticAudit();
+        testRuntimeV1Rc4aStaticAudit();
+
         System.out.println("All tests passed.");
     }
 
@@ -1260,6 +1269,191 @@ public final class TestRunner {
         // 03005434..3D uses 10 of the known 12-byte padding; do not reach 03005440.
         assertTrue(NativeRamScriptRuntimeV1Rc3.safetyGateAddress() + gate.length <= 0x03005440L,
                 "runtime rc3 gate must stay before gHostRfuGameData");
+    }
+
+
+    private static void testRuntimeV1Rc4StaticAudit() {
+        RomProfile rom = RomProfile.FIRE_RED_EN_10;
+
+        byte[] rc3Supervisor = NativeRamScriptRuntimeV1Rc3.supervisorBytesForTest();
+        byte[] rc4Supervisor = NativeRamScriptRuntimeV1Rc4.supervisorBytesForTest();
+        byte[] rc3Wrapper = NativeRamScriptRuntimeV1Rc3.wrapperBytesForTest(rom);
+        byte[] rc4Wrapper = NativeRamScriptRuntimeV1Rc4.wrapperBytesForTest(rom);
+        byte[] rc3Gate = NativeRamScriptRuntimeV1Rc3.safetyGateBytesForTest();
+        byte[] rc4Gate = NativeRamScriptRuntimeV1Rc4.safetyGateBytesForTest();
+        byte[] stage1 = NativeRamScriptRuntimeV1Rc4.stage1BytesForTest();
+        byte[] stage2 = NativeRamScriptRuntimeV1Rc4.stage2BytesForTest();
+        byte[] validator = NativeRamScriptRuntimeV1Rc4.formatValidatorBytesForTest();
+
+        // RC4 preserves all validated resident trigger/safety code.
+        assertTrue(java.util.Arrays.equals(rc3Supervisor, rc4Supervisor),
+                "runtime rc4 must preserve rc3 supervisor");
+        assertTrue(java.util.Arrays.equals(rc3Wrapper, rc4Wrapper),
+                "runtime rc4 must preserve rc3 wrapper");
+        assertTrue(java.util.Arrays.equals(rc3Gate, rc4Gate),
+                "runtime rc4 must preserve rc3 safety gate");
+
+        assertEquals(0x00A7L, NativeRamScriptRuntimeV1Rc4.runtimeFormatSignature(),
+                "runtime rc4 format signature");
+        assertEquals(0x0AL, NativeRamScriptRuntimeV1Rc4.signatureOffset(),
+                "runtime rc4 signature offset");
+        assertEquals(0x0CL, NativeRamScriptRuntimeV1Rc4.payloadOffset(),
+                "runtime rc4 payload offset");
+
+        // Stage1 now enters validator after NULL check.
+        assertEquals(
+                0x030053A8L,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x0300508CL,
+                        stage1[10] & 0xFF,
+                        stage1[11] & 0xFF
+                ),
+                "runtime rc4 stage1 -> validator"
+        );
+
+        assertEquals(8, validator.length, "runtime rc4 validator size");
+        assertEquals(0x8881L,
+                ((validator[1] & 0xFF) << 8) | (validator[0] & 0xFF),
+                "runtime rc4 ldrh r1,[r0,#10]");
+        assertEquals(0x29A7L,
+                ((validator[3] & 0xFF) << 8) | (validator[2] & 0xFF),
+                "runtime rc4 cmp r1,#A7");
+
+        assertEquals(
+                0x0300508EL,
+                ThumbEncodingChecks.decodeConditionalBranchTarget(
+                        0x030053ACL,
+                        validator[4] & 0xFF,
+                        validator[5] & 0xFF
+                ),
+                "runtime rc4 invalid-format -> pop"
+        );
+
+        assertEquals(
+                0x03005032L,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x030053AEL,
+                        validator[6] & 0xFF,
+                        validator[7] & 0xFF
+                ),
+                "runtime rc4 valid-format -> stage2"
+        );
+
+        assertEquals(0x300CL,
+                ((stage2[1] & 0xFF) << 8) | (stage2[0] & 0xFF),
+                "runtime rc4 stage2 payload +0x0C");
+
+        assertEquals(0x030053A8L, NativeRamScriptRuntimeV1Rc4.formatValidatorAddress(),
+                "runtime rc4 validator address");
+        assertEquals(0x030053B0L,
+                NativeRamScriptRuntimeV1Rc4.formatValidatorAddress() + validator.length,
+                "runtime rc4 validator must exactly end before gRamSaveSectorLocations");
+    }
+
+
+    private static void testRuntimeV1Rc4aStaticAudit() {
+        RomProfile rom = RomProfile.FIRE_RED_EN_10;
+
+        byte[] rc3Supervisor = NativeRamScriptRuntimeV1Rc3.supervisorBytesForTest();
+        byte[] rc4aSupervisor = NativeRamScriptRuntimeV1Rc4a.supervisorBytesForTest();
+        byte[] rc3Wrapper = NativeRamScriptRuntimeV1Rc3.wrapperBytesForTest(rom);
+        byte[] rc4aWrapper = NativeRamScriptRuntimeV1Rc4a.wrapperBytesForTest(rom);
+        byte[] stage1 = NativeRamScriptRuntimeV1Rc4a.stage1BytesForTest();
+        byte[] stage2 = NativeRamScriptRuntimeV1Rc4a.stage2BytesForTest();
+        byte[] gate = NativeRamScriptRuntimeV1Rc4a.safetyGateBytesForTest();
+        byte[] validator = NativeRamScriptRuntimeV1Rc4a.formatValidatorBytesForTest();
+
+        assertTrue(java.util.Arrays.equals(rc3Supervisor, rc4aSupervisor),
+                "runtime rc4a must preserve rc3 supervisor");
+        assertTrue(java.util.Arrays.equals(rc3Wrapper, rc4aWrapper),
+                "runtime rc4a must preserve rc3 wrapper");
+
+        assertEquals(0x00A7L, NativeRamScriptRuntimeV1Rc4a.runtimeFormatSignature(),
+                "runtime rc4a format signature");
+        assertEquals(0x0AL, NativeRamScriptRuntimeV1Rc4a.signatureOffset(),
+                "runtime rc4a signature offset");
+        assertEquals(0x0CL, NativeRamScriptRuntimeV1Rc4a.payloadOffset(),
+                "runtime rc4a payload offset");
+
+        assertEquals(
+                0x030053A8L,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x0300508CL,
+                        stage1[10] & 0xFF,
+                        stage1[11] & 0xFF
+                ),
+                "runtime rc4a stage1 -> validator"
+        );
+
+        assertEquals(8, validator.length, "runtime rc4a validator size");
+
+        // Correct Thumb opcode: LDRH Rd,[Rb,#imm] uses imm5 scaled by 2.
+        // imm=10 => imm5=5, Rb=r0, Rd=r1 => 0x8941.
+        assertEquals(0x8941L,
+                ((validator[1] & 0xFF) << 8) | (validator[0] & 0xFF),
+                "runtime rc4a ldrh r1,[r0,#10]");
+
+        assertEquals(0x29A7L,
+                ((validator[3] & 0xFF) << 8) | (validator[2] & 0xFF),
+                "runtime rc4a cmp r1,#A7");
+
+        // Invalid format uses a NEAR conditional branch to a local pop tail.
+        assertEquals(
+                0x0300543EL,
+                ThumbEncodingChecks.decodeConditionalBranchTarget(
+                        0x030053ACL,
+                        validator[4] & 0xFF,
+                        validator[5] & 0xFF
+                ),
+                "runtime rc4a invalid-format -> local reject tail"
+        );
+
+        // Valid format uses the wider unconditional B range to stage2.
+        assertEquals(
+                0x03005032L,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x030053AEL,
+                        validator[6] & 0xFF,
+                        validator[7] & 0xFF
+                ),
+                "runtime rc4a valid-format -> stage2"
+        );
+
+        assertEquals(12, gate.length, "runtime rc4a safety gate + reject tail size");
+        assertEquals(0xBD10L,
+                ((gate[11] & 0xFF) << 8) | (gate[10] & 0xFF),
+                "runtime rc4a local reject pop {r4,pc}");
+
+        // Existing safety gate branches remain unchanged.
+        assertEquals(
+                0x03005324L,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x0300543AL,
+                        gate[6] & 0xFF,
+                        gate[7] & 0xFF
+                ),
+                "runtime rc4a locked safety path"
+        );
+        assertEquals(
+                0x03005082L,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x0300543CL,
+                        gate[8] & 0xFF,
+                        gate[9] & 0xFF
+                ),
+                "runtime rc4a unlocked safety path"
+        );
+
+        assertEquals(0x300CL,
+                ((stage2[1] & 0xFF) << 8) | (stage2[0] & 0xFF),
+                "runtime rc4a stage2 payload +0x0C");
+
+        assertEquals(0x030053B0L,
+                NativeRamScriptRuntimeV1Rc4a.formatValidatorAddress() + validator.length,
+                "runtime rc4a validator exact boundary");
+        assertEquals(0x03005440L,
+                NativeRamScriptRuntimeV1Rc4a.safetyGateAddress() + gate.length,
+                "runtime rc4a gate exact boundary");
     }
 
     private static void assertTrue(boolean condition, String message) {
