@@ -357,3 +357,13 @@ bridge. It removes `gStringVar4` staging and persistent `gLinkTestBGInfo` use
 while preserving the same R+SELECT -> Field Script marker test.
 
 See `docs/RUNTIME_V1_RC1.md`.
+
+
+
+## Runtime v1 RC2
+
+`build-runtime-v1-rc2` preserves the validated RC1 resident runtime and swaps
+the marker payload for a real visual Field Script that displays
+`Hello from the Wonder Card!`.
+
+See `docs/RUNTIME_V1_RC2.md`.

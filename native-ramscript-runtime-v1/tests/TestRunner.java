@@ -1093,6 +1093,49 @@ public final class TestRunner {
         assertEquals(0x02L, payload[6] & 0xFF, "runtime rc1 test payload end");
     }
 
+
+    private static void testRuntimeV1Rc2StaticAudit() {
+        RomProfile rom = RomProfile.FIRE_RED_EN_10;
+
+        byte[] supervisor = NativeRamScriptRuntimeV1Rc2.supervisorBytesForTest();
+        byte[] wrapper = NativeRamScriptRuntimeV1Rc2.wrapperBytesForTest(rom);
+        byte[] payload = NativeRamScriptRuntimeV1Rc2.payloadBytesForTest();
+
+        assertTrue(
+                java.util.Arrays.equals(
+                        supervisor,
+                        NativeRamScriptRuntimeV1Rc1.supervisorBytesForTest()
+                ),
+                "runtime rc2 must preserve rc1 supervisor"
+        );
+        assertTrue(
+                java.util.Arrays.equals(
+                        wrapper,
+                        NativeRamScriptRuntimeV1Rc1.wrapperBytesForTest(rom)
+                ),
+                "runtime rc2 must preserve rc1 wrapper"
+        );
+
+        assertEquals(0x0AL, NativeRamScriptRuntimeV1Rc2.payloadOffset(),
+                "runtime rc2 hotkey payload entry");
+
+        assertEquals(0xB8L, payload[0] & 0xFF, "runtime rc2 setvaddress");
+        assertEquals(0x08010000L, ThumbEncodingChecks.u32(payload, 1),
+                "runtime rc2 virtual base");
+        assertEquals(0x69L, payload[5] & 0xFF, "runtime rc2 lockall");
+        assertEquals(0xBDL, payload[6] & 0xFF, "runtime rc2 vmessage");
+        assertEquals(0x0801000FL, ThumbEncodingChecks.u32(payload, 7),
+                "runtime rc2 virtual text pointer");
+        assertEquals(0x66L, payload[11] & 0xFF, "runtime rc2 waitmessage");
+        assertEquals(0x6DL, payload[12] & 0xFF, "runtime rc2 waitbuttonpress");
+        assertEquals(0x6BL, payload[13] & 0xFF, "runtime rc2 releaseall");
+        assertEquals(0x02L, payload[14] & 0xFF, "runtime rc2 end");
+
+        assertEquals(0xC2L, payload[0x0F] & 0xFF, "runtime rc2 text H");
+        assertEquals(0xABL, payload[payload.length - 2] & 0xFF, "runtime rc2 text !");
+        assertEquals(0xFFL, payload[payload.length - 1] & 0xFF, "runtime rc2 text EOS");
+    }
+
     private static void assertTrue(boolean condition, String message) {
         if (!condition) {
             throw new AssertionError(message);
