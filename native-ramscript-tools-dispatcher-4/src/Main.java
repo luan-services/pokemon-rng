@@ -15,6 +15,7 @@ public final class Main {
                 case "build-dispatcher-candidate-1" -> buildDispatcherCandidate1(args);
                 case "build-dispatcher-candidate-2" -> buildDispatcherCandidate2(args);
                 case "build-dispatcher-candidate-3" -> buildDispatcherCandidate3(args);
+                case "build-dispatcher-candidate-4" -> buildDispatcherCandidate4(args);
                 case "verify" -> verify(args);
                 case "profiles" -> printProfiles();
                 case "effects" -> printEffects();
@@ -32,6 +33,39 @@ public final class Main {
         }
     }
 
+
+
+    private static void buildDispatcherCandidate4(String[] args) throws Exception {
+        if (args.length != 3) {
+            throw new IllegalArgumentException(
+                    "Usage: java -cp out Main build-dispatcher-candidate-4 <rom> <output.bin>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        Path output = Path.of(args[2]);
+        RamScript ramScript = NormalContextHotkeyCandidate4.build(rom);
+        ramScript.write(output);
+
+        System.out.println("Dispatcher Candidate 4 built successfully.");
+        System.out.println("Status:           EXPERIMENTAL - first external ROM function call");
+        System.out.println("ROM:              " + rom.displayName());
+        System.out.println("Supervisor:       Candidate-3 auto-rearm design (unchanged)");
+        System.out.println("Hotkey:           hold R, then press SELECT");
+        System.out.println("Action:           PlaySE(SE_SELECT)");
+        System.out.printf("PlaySE Thumb:     0x%08X%n", NormalContextHotkeyCandidate4.playSeThumb());
+        System.out.printf("SE_SELECT:        0x%04X%n", NormalContextHotkeyCandidate4.soundEffect());
+        System.out.printf("VBlank slot:      0x%08X -> 0x%08X%n", rom.vblankSlot, NormalContextHotkeyCandidate4.supervisorThumb(rom));
+        System.out.printf("Callback1 slot:   0x%08X%n", NormalContextHotkeyCandidate4.callback1Address());
+        System.out.printf("Callback wrapper: 0x%08X%n", NormalContextHotkeyCandidate4.hotkeyDetectorThumb());
+        System.out.printf("Action literal:   0x%08X -> 0x%08X%n", NormalContextHotkeyCandidate4.actionLiteralAddress(), NormalContextHotkeyCandidate4.playSeThumb());
+        System.out.printf("Checksum:         0x%04X%n", ramScript.storedChecksum());
+        System.out.println("Checksum valid:   " + ramScript.isChecksumValid());
+        System.out.println("Output:           " + output.toAbsolutePath());
+        System.out.println();
+        System.out.println("Trigger-frame behavior: PlaySE is tail-called; CB1_Overworld is skipped for that one frame.");
+        System.out.println("Do NOT test cable/wireless/link modes with Candidate 4.");
+    }
 
     private static void buildDispatcherCandidate3(String[] args) throws Exception {
         if (args.length != 3) {
@@ -256,6 +290,9 @@ public final class Main {
         );
         System.out.println(
                 "  java -cp out Main build-dispatcher-candidate-3 fr10 output.bin"
+        );
+        System.out.println(
+                "  java -cp out Main build-dispatcher-candidate-4 fr10 output.bin"
         );
         System.out.println(
                 "  java -cp out Main verify output.bin"

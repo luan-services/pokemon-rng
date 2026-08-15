@@ -19,6 +19,7 @@ public final class TestRunner {
         testDispatcherCandidate1();
         testDispatcherCandidate2();
         testDispatcherCandidate3();
+        testDispatcherCandidate4();
         System.out.println("All tests passed.");
     }
 
@@ -189,6 +190,53 @@ public final class TestRunner {
                 "c3 installer supervisor literal target");
         assertEquals(0x03003550L, ThumbEncodingChecks.u32(installer,0x08), "c3 VBlank slot literal");
         assertEquals(0x03005311L, ThumbEncodingChecks.u32(installer,0x0C), "c3 supervisor pointer literal");
+    }
+
+
+    private static void testDispatcherCandidate4() {
+        RomProfile rom = RomProfile.FIRE_RED_EN_10;
+        RamScript script = NormalContextHotkeyCandidate4.build(rom);
+        assertTrue(script.isChecksumValid(), "dispatcher candidate 4 checksum");
+
+        byte[] supervisor = NormalContextHotkeyCandidate4.supervisorBytesForTest(rom);
+        byte[] detector = NormalContextHotkeyCandidate4.detectorBytesForTest(rom);
+        byte[] trigger = NormalContextHotkeyCandidate4.triggerBytesForTest();
+        byte[] tail = NormalContextHotkeyCandidate4.callbackTailBytesForTest();
+        byte[] installer = NormalContextHotkeyCandidate4.installerBytesForTest(rom);
+
+        // C4 deliberately keeps the C3 supervisor and detector byte-for-byte.
+        assertTrue(Arrays.equals(supervisor, NormalContextHotkeyCandidate3.supervisorBytesForTest(rom)),
+                "c4 supervisor must equal validated c3 supervisor");
+        assertTrue(Arrays.equals(detector, NormalContextHotkeyCandidate3.detectorBytesForTest(rom)),
+                "c4 detector must equal validated c3 detector");
+        assertTrue(Arrays.equals(installer, NormalContextHotkeyCandidate3.installerBytesForTest(rom)),
+                "c4 installer must equal validated c3 installer");
+
+        // Trigger: movs r0,#5; ldr r3, literal; bx r3; nop.
+        assertEquals(8, trigger.length, "c4 trigger size");
+        assertEquals(0x05, trigger[0] & 0xFF, "c4 SE_SELECT immediate");
+        assertEquals(0x20, trigger[1] & 0xFF, "c4 movs r0 opcode");
+        assertEquals(0x03003FA4L,
+                ThumbEncodingChecks.decodeLdrLiteralTarget(
+                        0x03003F9AL, trigger[2]&0xFF, trigger[3]&0xFF),
+                "c4 PlaySE literal target");
+        assertEquals(0x18, trigger[4] & 0xFF, "c4 bx r3 low byte");
+        assertEquals(0x47, trigger[5] & 0xFF, "c4 bx r3 high byte");
+
+        assertEquals(0x03003FA4L, NormalContextHotkeyCandidate4.actionLiteralAddress(),
+                "c4 action literal address");
+        assertEquals(0x080722CDL, NormalContextHotkeyCandidate4.playSeThumb(),
+                "c4 PlaySE Thumb pointer");
+        assertEquals(0x0005L, NormalContextHotkeyCandidate4.soundEffect(),
+                "c4 SE_SELECT value");
+
+        // No-trigger callback tail remains unchanged and points to CB1 literal.
+        assertTrue(Arrays.equals(tail, NormalContextHotkeyCandidate3.callbackTailBytesForTest()),
+                "c4 no-trigger tail must equal c3 tail");
+        assertEquals(0x03003EC0L,
+                ThumbEncodingChecks.decodeLdrLiteralTarget(
+                        0x03003EB4L, tail[0]&0xFF, tail[1]&0xFF),
+                "c4 no-trigger CB1 literal target");
     }
 
     private static String sha256(byte[] data) throws Exception {

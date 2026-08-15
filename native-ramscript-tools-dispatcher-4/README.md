@@ -312,3 +312,8 @@ See `docs/DISPATCHER_CANDIDATE_2C.md`.
 ## Current dispatcher experiment
 
 Use only Candidate 2d. Candidates 2, 2b, and 2c are rejected. See `docs/DISPATCHER_CANDIDATE_2D.md`.
+
+
+## Dispatcher Candidate 4
+
+First external ROM-function proof: persistent R+SELECT dispatcher tail-calls `PlaySE(SE_SELECT)`. See `docs/DISPATCHER_CANDIDATE_4.md`.
