@@ -664,6 +664,113 @@ public final class TestRunner {
                 "C5b wrapper must be in post-FA0 padding");
     }
 
+
+    private static void testCandidate5cStaticAudit() {
+        RomProfile rom = RomProfile.FIRE_RED_EN_10;
+
+        byte[] supervisor = NormalContextHotkeyCandidate5c.supervisorBytesForTest(rom);
+        byte[] detector = NormalContextHotkeyCandidate5c.detectorBytesForTest(rom);
+        byte[] thunk = NormalContextHotkeyCandidate5c.thunkBytesForTest();
+        byte[] wrapper = NormalContextHotkeyCandidate5c.wrapperBytesForTest();
+
+        assertTrue(
+                java.util.Arrays.equals(
+                        supervisor,
+                        NormalContextHotkeyCandidate5b.supervisorBytesForTest(rom)
+                ),
+                "C5c must preserve C5b supervisor bytes"
+        );
+
+        assertEquals(16, detector.length, "C5c detector size");
+        assertEquals(4, thunk.length, "C5c thunk size");
+        assertEquals(14, wrapper.length, "C5c wrapper size");
+
+        assertEquals(
+                0x03003F94L,
+                ThumbEncodingChecks.decodeLdrLiteralTarget(
+                        0x03003F70L,
+                        detector[0] & 0xFF,
+                        detector[1] & 0xFF
+                ),
+                "C5c heldKeys literal"
+        );
+
+        assertEquals(
+                0x03003FA2L,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x03003F7CL,
+                        detector[12] & 0xFF,
+                        detector[13] & 0xFF
+                ),
+                "C5c trigger branch"
+        );
+
+        assertEquals(
+                0x03003EB4L,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x03003F7EL,
+                        detector[14] & 0xFF,
+                        detector[15] & 0xFF
+                ),
+                "C5c no-trigger branch"
+        );
+
+        assertEquals(
+                0x03003F9CL,
+                ThumbEncodingChecks.decodeLdrLiteralTarget(
+                        0x03003F98L,
+                        thunk[0] & 0xFF,
+                        thunk[1] & 0xFF
+                ),
+                "C5c function literal"
+        );
+
+        assertEquals(0xB510L,
+                ((wrapper[1] & 0xFF) << 8) | (wrapper[0] & 0xFF),
+                "C5c push {r4,lr}");
+        assertEquals(0x467CL,
+                ((wrapper[3] & 0xFF) << 8) | (wrapper[2] & 0xFF),
+                "C5c mov r4,pc");
+        assertEquals(0x3C07L,
+                ((wrapper[5] & 0xFF) << 8) | (wrapper[4] & 0xFF),
+                "C5c subs r4,#7");
+
+        assertEquals(
+                0x03003F98L,
+                ThumbEncodingChecks.decodeLongBranchWithLinkTarget(
+                        0x03003FA8L,
+                        wrapper[6] & 0xFF,
+                        wrapper[7] & 0xFF,
+                        wrapper[8] & 0xFF,
+                        wrapper[9] & 0xFF
+                ),
+                "C5c BL thunk target"
+        );
+
+        assertEquals(0x7020L,
+                ((wrapper[11] & 0xFF) << 8) | (wrapper[10] & 0xFF),
+                "C5c strb r0,[r4]");
+        assertEquals(0xBD10L,
+                ((wrapper[13] & 0xFF) << 8) | (wrapper[12] & 0xFF),
+                "C5c pop {r4,pc}");
+
+        assertEquals(0x03003FA1L, NormalContextHotkeyCandidate5c.resultLowByteAddress(),
+                "C5c result marker address");
+        assertEquals(0x03003FA2L, NormalContextHotkeyCandidate5c.callWrapperAddress(),
+                "C5c wrapper address");
+        assertEquals(0x08069E49L, NormalContextHotkeyCandidate5c.getSavedRamScriptThumb(),
+                "C5c GetSavedRamScriptIfValid Thumb");
+        assertEquals(0x03005008L, NormalContextHotkeyCandidate5c.gSaveBlock1PtrAddress(),
+                "C5c gSaveBlock1Ptr");
+
+        assertTrue(NormalContextHotkeyCandidate5c.callWrapperAddress() > 0x03003FA0L,
+                "C5c wrapper must stay after gLastSendQueueCount");
+        assertTrue(NormalContextHotkeyCandidate5c.callWrapperAddress() + wrapper.length <= 0x03003FB0L,
+                "C5c wrapper must end before gLink");
+        assertTrue(NormalContextHotkeyCandidate5c.functionThunkAddress() >= 0x03003F94L,
+                "C5c must not touch 03003F80..03003F93");
+    }
+
     private static void assertTrue(boolean condition, String message) {
         if (!condition) {
             throw new AssertionError(message);

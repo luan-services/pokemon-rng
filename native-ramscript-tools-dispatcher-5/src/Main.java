@@ -19,6 +19,7 @@ public final class Main {
                 case "build-dispatcher-candidate-5" -> buildDispatcherCandidate5(args);
                 case "build-dispatcher-candidate-5a2" -> buildDispatcherCandidate5a2(args);
                 case "build-dispatcher-candidate-5b" -> buildDispatcherCandidate5b(args);
+                case "build-dispatcher-candidate-5c" -> buildDispatcherCandidate5c(args);
                 case "verify" -> verify(args);
                 case "profiles" -> printProfiles();
                 case "effects" -> printEffects();
@@ -40,6 +41,37 @@ public final class Main {
 
 
 
+
+
+    private static void buildDispatcherCandidate5c(String[] args) throws Exception {
+        if (args.length != 3) {
+            throw new IllegalArgumentException(
+                    "Usage: java -cp out Main build-dispatcher-candidate-5c <rom> <output.bin>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        Path output = Path.of(args[2]);
+
+        RamScript ramScript = NormalContextHotkeyCandidate5c.build(rom);
+        ramScript.write(output);
+
+        System.out.println("Dispatcher Candidate 5c built successfully.");
+        System.out.println("Status:           EXPERIMENTAL - clean GetSavedRamScriptIfValid test");
+        System.out.println("ROM:              " + rom.displayName());
+        System.out.println("Trigger:          hold R, then press SELECT");
+        System.out.println("Action:           GetSavedRamScriptIfValid()");
+        System.out.println("Live globals:     03003F80..03003F93 UNTOUCHED");
+        System.out.printf("Function Thumb:   0x%08X%n", NormalContextHotkeyCandidate5c.getSavedRamScriptThumb());
+        System.out.printf("Result low byte:  0x%08X%n", NormalContextHotkeyCandidate5c.resultLowByteAddress());
+        System.out.printf("gSaveBlock1Ptr:   0x%08X%n", NormalContextHotkeyCandidate5c.gSaveBlock1PtrAddress());
+        System.out.println("Expected marker:  low8(*gSaveBlock1Ptr + 0x3624)");
+        System.out.printf("Checksum:         0x%04X%n", ramScript.storedChecksum());
+        System.out.println("Checksum valid:   " + ramScript.isChecksumValid());
+        System.out.println("Output:           " + output.toAbsolutePath());
+        System.out.println();
+        System.out.println("Offline diagnostic only. Do NOT test cable/wireless/link modes.");
+    }
 
     private static void buildDispatcherCandidate5b(String[] args) throws Exception {
         if (args.length != 3) {
@@ -399,6 +431,9 @@ public final class Main {
         );
         System.out.println(
                 "  java -cp out Main build-dispatcher-candidate-5b fr10 output.bin"
+        );
+        System.out.println(
+                "  java -cp out Main build-dispatcher-candidate-5c fr10 output.bin"
         );
         System.out.println(
                 "  java -cp out Main verify output.bin"

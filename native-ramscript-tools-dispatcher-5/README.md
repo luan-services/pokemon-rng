@@ -337,3 +337,8 @@ Corrected diagnostic. Candidate 5a is rejected due to an ADR continuation bug. S
 ## Candidate 5b
 
 Clean-layout diagnostic: preserves the call/return experiment but leaves `03003F80..03003F93` untouched. See `docs/DISPATCHER_CANDIDATE_5B.md`.
+
+
+## Candidate 5c
+
+Clean `GetSavedRamScriptIfValid()` experiment. The returned pointer's low byte is stored at `03003FA1`; compare it with `low8(*gSaveBlock1Ptr + 0x3624)`. See `docs/DISPATCHER_CANDIDATE_5C.md`.

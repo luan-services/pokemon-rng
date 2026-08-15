@@ -41,6 +41,29 @@ final class ThumbEncodingChecks {
         return instructionAddress + 4 + ((long) signed << 1);
     }
 
+
+    static long decodeLongBranchWithLinkTarget(
+            long instructionAddress,
+            int firstLowByte,
+            int firstHighByte,
+            int secondLowByte,
+            int secondHighByte) {
+        int first = (firstHighByte << 8) | firstLowByte;
+        int second = (secondHighByte << 8) | secondLowByte;
+
+        if ((first & 0xF800) != 0xF000)
+            throw new IllegalArgumentException("Not a Thumb BL first half");
+        if ((second & 0xF800) != 0xF800)
+            throw new IllegalArgumentException("Not a Thumb BL second half");
+
+        int high11 = first & 0x7FF;
+        int signedHigh = (high11 & 0x400) != 0 ? high11 - 0x800 : high11;
+        int low11 = second & 0x7FF;
+
+        long offset = ((long)signedHigh << 12) | ((long)low11 << 1);
+        return instructionAddress + 4 + offset;
+    }
+
     static long u32(byte[] data, int offset) {
         return Integer.toUnsignedLong(
                 (data[offset] & 0xFF)
