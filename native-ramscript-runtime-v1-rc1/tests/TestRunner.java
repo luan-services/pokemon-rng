@@ -891,6 +891,208 @@ public final class TestRunner {
                 "C6 stage1 exact padding boundary");
     }
 
+
+    private static void testRuntimeV1Rc1StaticAudit() {
+        RomProfile rom = RomProfile.FIRE_RED_EN_10;
+
+        byte[] supervisor = NativeRamScriptRuntimeV1Rc1.supervisorBytesForTest();
+        byte[] literals = NativeRamScriptRuntimeV1Rc1.supervisorLiteralBytesForTest();
+        byte[] wrapper = NativeRamScriptRuntimeV1Rc1.wrapperBytesForTest(rom);
+        byte[] stage1 = NativeRamScriptRuntimeV1Rc1.stage1BytesForTest();
+        byte[] stage2 = NativeRamScriptRuntimeV1Rc1.stage2BytesForTest();
+        byte[] thunk = NativeRamScriptRuntimeV1Rc1.thunkBytesForTest();
+        byte[] installer = NativeRamScriptRuntimeV1Rc1.installerBytesForTest(rom);
+        byte[] payload = NativeRamScriptRuntimeV1Rc1.payloadBytesForTest();
+
+        assertEquals(14, supervisor.length, "runtime rc1 supervisor size");
+        assertEquals(12, literals.length, "runtime rc1 supervisor literal size");
+        assertEquals(32, wrapper.length, "runtime rc1 wrapper size");
+        assertEquals(14, stage1.length, "runtime rc1 stage1 size");
+        assertEquals(14, stage2.length, "runtime rc1 stage2 size");
+        assertEquals(4, thunk.length, "runtime rc1 thunk size");
+        assertEquals(16, installer.length, "runtime rc1 installer size");
+
+        // Supervisor ADR -> 03003FA4
+        assertEquals(
+                0x03003FA4L,
+                ThumbEncodingChecks.decodeAdrTarget(
+                        0x03003F42L,
+                        supervisor[0] & 0xFF,
+                        supervisor[1] & 0xFF
+                ),
+                "runtime rc1 supervisor literals ADR"
+        );
+
+        assertEquals(
+                0x03003EB4L,
+                ThumbEncodingChecks.decodeConditionalBranchTarget(
+                        0x03003F4AL,
+                        supervisor[8] & 0xFF,
+                        supervisor[9] & 0xFF
+                ),
+                "runtime rc1 supervisor BNE tail"
+        );
+
+        assertEquals(
+                0x03003EB4L,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x03003F4EL,
+                        supervisor[12] & 0xFF,
+                        supervisor[13] & 0xFF
+                ),
+                "runtime rc1 supervisor B tail"
+        );
+
+        assertEquals(0x030030F0L, ThumbEncodingChecks.u32(literals, 0),
+                "runtime rc1 callback1 literal");
+        assertEquals(0x08056535L, ThumbEncodingChecks.u32(literals, 4),
+                "runtime rc1 CB1 literal");
+        assertEquals(0x03005311L, ThumbEncodingChecks.u32(literals, 8),
+                "runtime rc1 wrapper literal");
+
+        // Final wrapper local data/tails.
+        assertEquals(
+                0x03005320L,
+                ThumbEncodingChecks.decodeLdrLiteralTarget(
+                        0x03005310L,
+                        wrapper[0] & 0xFF,
+                        wrapper[1] & 0xFF
+                ),
+                "runtime rc1 heldKeys literal"
+        );
+
+        assertEquals(
+                0x03005324L,
+                ThumbEncodingChecks.decodeConditionalBranchTarget(
+                        0x03005316L,
+                        wrapper[6] & 0xFF,
+                        wrapper[7] & 0xFF
+                ),
+                "runtime rc1 first no-trigger branch"
+        );
+
+        assertEquals(
+                0x03005324L,
+                ThumbEncodingChecks.decodeConditionalBranchTarget(
+                        0x0300531AL,
+                        wrapper[10] & 0xFF,
+                        wrapper[11] & 0xFF
+                ),
+                "runtime rc1 second no-trigger branch"
+        );
+
+        assertEquals(
+                0x03005082L,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x0300531CL,
+                        wrapper[12] & 0xFF,
+                        wrapper[13] & 0xFF
+                ),
+                "runtime rc1 trigger branch"
+        );
+
+        assertEquals(0x03003118L, ThumbEncodingChecks.u32(wrapper, 0x10),
+                "runtime rc1 heldKeysRaw value");
+
+        assertEquals(
+                0x03005328L,
+                ThumbEncodingChecks.decodeLdrLiteralTarget(
+                        0x03005324L,
+                        wrapper[0x14] & 0xFF,
+                        wrapper[0x15] & 0xFF
+                ),
+                "runtime rc1 local CB1 literal"
+        );
+
+        assertEquals(0x08056535L, ThumbEncodingChecks.u32(wrapper, 0x18),
+                "runtime rc1 local CB1 value");
+
+        // Stage 1 / stage 2 exact branches.
+        assertEquals(
+                0x03003F98L,
+                ThumbEncodingChecks.decodeLongBranchWithLinkTarget(
+                        0x03005084L,
+                        stage1[2] & 0xFF,
+                        stage1[3] & 0xFF,
+                        stage1[4] & 0xFF,
+                        stage1[5] & 0xFF
+                ),
+                "runtime rc1 stage1 BL thunk"
+        );
+
+        assertEquals(
+                0x0300508EL,
+                ThumbEncodingChecks.decodeConditionalBranchTarget(
+                        0x0300508AL,
+                        stage1[8] & 0xFF,
+                        stage1[9] & 0xFF
+                ),
+                "runtime rc1 null return"
+        );
+
+        assertEquals(
+                0x03005032L,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x0300508CL,
+                        stage1[10] & 0xFF,
+                        stage1[11] & 0xFF
+                ),
+                "runtime rc1 stage1 -> stage2"
+        );
+
+        assertEquals(
+                0x03003F9AL,
+                ThumbEncodingChecks.decodeLongBranchWithLinkTarget(
+                        0x0300503AL,
+                        stage2[8] & 0xFF,
+                        stage2[9] & 0xFF,
+                        stage2[10] & 0xFF,
+                        stage2[11] & 0xFF
+                ),
+                "runtime rc1 stage2 BL bx-r4"
+        );
+
+        assertEquals(
+                0x0300508EL,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x0300503EL,
+                        stage2[12] & 0xFF,
+                        stage2[13] & 0xFF
+                ),
+                "runtime rc1 stage2 -> pop"
+        );
+
+        // Exact safe padding boundaries.
+        assertEquals(0x03003F50L,
+                NativeRamScriptRuntimeV1Rc1.supervisorAddress() + supervisor.length,
+                "runtime rc1 supervisor must end before gSendCmd");
+        assertEquals(0x03005040L,
+                NativeRamScriptRuntimeV1Rc1.stage2Address() + stage2.length,
+                "runtime rc1 stage2 must end before VMap");
+        assertEquals(0x03005090L,
+                NativeRamScriptRuntimeV1Rc1.stage1Address() + stage1.length,
+                "runtime rc1 stage1 must end before gTasks");
+        assertEquals(0x03005330L,
+                NativeRamScriptRuntimeV1Rc1.wrapperAddress() + wrapper.length,
+                "runtime rc1 wrapper must exactly fill UnusedVarNeededToMatch");
+
+        // Installer is deliberately replaced by the final wrapper at the same address.
+        assertEquals(NativeRamScriptRuntimeV1Rc1.wrapperAddress(), 0x03005310L,
+                "runtime rc1 final wrapper address");
+        assertEquals(0x03005311L, NativeRamScriptRuntimeV1Rc1.wrapperThumb(),
+                "runtime rc1 final wrapper Thumb pointer");
+
+        // No dependency on old experimental persistent areas.
+        assertTrue(NativeRamScriptRuntimeV1Rc1.wrapperAddress() != 0x03003F70L,
+                "runtime rc1 must not use gLinkTestBGInfo for wrapper");
+        assertTrue(NativeRamScriptRuntimeV1Rc1.wrapperAddress() != rom.installerStaging,
+                "runtime rc1 must not use old gStringVar4 staging");
+
+        assertEquals(0x11L, payload[0] & 0xFF, "runtime rc1 test payload setptr");
+        assertEquals(0x66L, payload[1] & 0xFF, "runtime rc1 test payload marker");
+        assertEquals(0x02L, payload[6] & 0xFF, "runtime rc1 test payload end");
+    }
+
     private static void assertTrue(boolean condition, String message) {
         if (!condition) {
             throw new AssertionError(message);

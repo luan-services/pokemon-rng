@@ -21,6 +21,7 @@ public final class Main {
                 case "build-dispatcher-candidate-5b" -> buildDispatcherCandidate5b(args);
                 case "build-dispatcher-candidate-5c" -> buildDispatcherCandidate5c(args);
                 case "build-dispatcher-candidate-6" -> buildDispatcherCandidate6(args);
+                case "build-runtime-v1-rc1" -> buildRuntimeV1Rc1(args);
                 case "verify" -> verify(args);
                 case "profiles" -> printProfiles();
                 case "effects" -> printEffects();
@@ -44,6 +45,40 @@ public final class Main {
 
 
 
+
+
+    private static void buildRuntimeV1Rc1(String[] args) throws Exception {
+        if (args.length != 3) {
+            throw new IllegalArgumentException(
+                    "Usage: java -cp out Main build-runtime-v1-rc1 <rom> <output.bin>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        Path output = Path.of(args[2]);
+
+        RamScript ramScript = NativeRamScriptRuntimeV1Rc1.build(rom);
+        ramScript.write(output);
+
+        System.out.println("Native RamScript Runtime v1 RC1 built successfully.");
+        System.out.println("Status:           RELEASE CANDIDATE - clean-layout validation");
+        System.out.println("ROM:              " + rom.displayName());
+        System.out.println("Trigger:          hold R, then press SELECT");
+        System.out.println("Bridge:           GetSavedRamScriptIfValid -> ScriptContext_SetupScript");
+        System.out.println("Test payload:     setptr 0x66, 0x03003FA1; end");
+        System.out.println("gStringVar4:      untouched");
+        System.out.println("gLinkTestBGInfo:  untouched");
+        System.out.println("03003F80..93:     untouched");
+        System.out.printf("VBlank supervisor:0x%08X%n", NativeRamScriptRuntimeV1Rc1.supervisorThumb());
+        System.out.printf("Callback wrapper: 0x%08X%n", NativeRamScriptRuntimeV1Rc1.wrapperThumb());
+        System.out.printf("Payload offset:   0x%02X%n", NativeRamScriptRuntimeV1Rc1.payloadOffset());
+        System.out.printf("Marker:           0x%08X -> expected 0x66%n", NativeRamScriptRuntimeV1Rc1.markerAddress());
+        System.out.printf("Checksum:         0x%04X%n", ramScript.storedChecksum());
+        System.out.println("Checksum valid:   " + ramScript.isChecksumValid());
+        System.out.println("Output:           " + output.toAbsolutePath());
+        System.out.println();
+        System.out.println("Link/wireless behavior is not validated yet.");
+    }
 
     private static void buildDispatcherCandidate6(String[] args) throws Exception {
         if (args.length != 3) {
@@ -470,6 +505,9 @@ public final class Main {
         );
         System.out.println(
                 "  java -cp out Main build-dispatcher-candidate-6 fr10 output.bin"
+        );
+        System.out.println(
+                "  java -cp out Main build-runtime-v1-rc1 fr10 output.bin"
         );
         System.out.println(
                 "  java -cp out Main verify output.bin"

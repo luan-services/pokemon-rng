@@ -347,3 +347,13 @@ Clean `GetSavedRamScriptIfValid()` experiment. The returned pointer's low byte i
 ## Candidate 6
 
 First end-to-end bridge from `R+SELECT` to a real Field Script via `GetSavedRamScriptIfValid()` and `ScriptContext_SetupScript()`. See `docs/DISPATCHER_CANDIDATE_6.md`.
+
+
+
+## Runtime v1 RC1
+
+`build-runtime-v1-rc1` is the cleanup candidate derived from the validated C6
+bridge. It removes `gStringVar4` staging and persistent `gLinkTestBGInfo` use
+while preserving the same R+SELECT -> Field Script marker test.
+
+See `docs/RUNTIME_V1_RC1.md`.
