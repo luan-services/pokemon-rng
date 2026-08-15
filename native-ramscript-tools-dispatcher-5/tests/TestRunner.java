@@ -470,6 +470,83 @@ public final class TestRunner {
                 "C5 must preserve the validated C4 supervisor bytes");
     }
 
+
+    private static void testCandidate5aStaticAudit() {
+        RomProfile rom = RomProfile.FIRE_RED_EN_10;
+
+        byte[] supervisor = NormalContextHotkeyCandidate5a.supervisorBytesForTest(rom);
+        byte[] detector = NormalContextHotkeyCandidate5a.detectorBytesForTest(rom);
+        byte[] trampoline = NormalContextHotkeyCandidate5a.trampolineBytesForTest();
+
+        assertEquals(32, supervisor.length, "C5a supervisor size");
+        assertEquals(16, detector.length, "C5a detector size");
+        assertEquals(20, trampoline.length, "C5a trampoline size");
+
+        assertTrue(
+                java.util.Arrays.equals(
+                        supervisor,
+                        NormalContextHotkeyCandidate5.supervisorBytesForTest(rom)
+                ),
+                "C5a must preserve C5 supervisor bytes"
+        );
+
+        assertTrue(
+                java.util.Arrays.equals(
+                        detector,
+                        NormalContextHotkeyCandidate5.detectorBytesForTest(rom)
+                ),
+                "C5a must preserve C5 detector bytes"
+        );
+
+        assertEquals(
+                0x03003F80L,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x03003F7CL,
+                        detector[12] & 0xFF,
+                        detector[13] & 0xFF
+                ),
+                "C5a trigger branch"
+        );
+
+        assertEquals(
+                0x03003F9CL,
+                ThumbEncodingChecks.decodeLdrLiteralTarget(
+                        0x03003F84L,
+                        trampoline[4] & 0xFF,
+                        trampoline[5] & 0xFF
+                ),
+                "C5a PlaySE literal target"
+        );
+
+        assertEquals(
+                0x03003F90L,
+                ThumbEncodingChecks.decodeAdrTarget(
+                        0x03003F86L,
+                        trampoline[6] & 0xFF,
+                        trampoline[7] & 0xFF
+                ),
+                "C5a continuation ADR"
+        );
+
+        assertEquals(0xB500L, ((trampoline[1] & 0xFF) << 8) | (trampoline[0] & 0xFF),
+                "C5a push {lr}");
+        assertEquals(0x2005L, ((trampoline[3] & 0xFF) << 8) | (trampoline[2] & 0xFF),
+                "C5a movs r0,#5");
+        assertEquals(0x4696L, ((trampoline[11] & 0xFF) << 8) | (trampoline[10] & 0xFF),
+                "C5a mov lr,r2");
+        assertEquals(0x4718L, ((trampoline[13] & 0xFF) << 8) | (trampoline[12] & 0xFF),
+                "C5a bx r3");
+        assertEquals(0xBD00L, ((trampoline[17] & 0xFF) << 8) | (trampoline[16] & 0xFF),
+                "C5a pop {pc}");
+
+        assertEquals(0x080722CDL, NormalContextHotkeyCandidate5a.playSeThumb(),
+                "C5a PlaySE Thumb");
+        assertEquals(0x0005L, NormalContextHotkeyCandidate5a.seSelect(),
+                "C5a SE_SELECT");
+        assertEquals(0x03003F80L, NormalContextHotkeyCandidate5a.trampolineAddress(),
+                "C5a deliberately preserves C5 trampoline address");
+    }
+
     private static void assertTrue(boolean condition, String message) {
         if (!condition) {
             throw new AssertionError(message);

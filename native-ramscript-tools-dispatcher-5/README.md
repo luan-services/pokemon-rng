@@ -322,3 +322,8 @@ First external ROM-function proof: persistent R+SELECT dispatcher tail-calls `Pl
 ## Candidate 5
 
 Current experiment: R+SELECT calls `GetSavedRamScriptIfValid()` and stores the returned current RamScript pointer at `03003FA4`. See `docs/DISPATCHER_CANDIDATE_5.md`.
+
+
+## Candidate 5a diagnostic
+
+Isolation test for the C5 Button Mode regression. It intentionally keeps the C5 trampoline at `03003F80` but calls `PlaySE(SE_SELECT)`. See `docs/DISPATCHER_CANDIDATE_5A.md`.
