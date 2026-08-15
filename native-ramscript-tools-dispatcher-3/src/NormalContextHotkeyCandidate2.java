@@ -14,8 +14,9 @@
 
      gIntrTable[VBLANK]
        -> 03005311 supervisor
-            if callback2 == CB2_Overworld:
+            if callback1 == CB1_Overworld:
                 callback1 = 03003F95
+            otherwise leave callback1 untouched
             tail-chain to original VBlankIntr
 
      gMain.callback1 (only while normal overworld is active)
@@ -23,9 +24,9 @@
             *(u8 *)0201C100 = 0x77
             tail-chain to CB1_Overworld
 
-   During transitions/battles callback2 is not CB2_Overworld, so the supervisor
-   leaves callback1 completely alone. Once callback2 becomes CB2_Overworld
-   again, the next VBlank re-installs the wrapper.
+   During transitions/battles callback1 is NULL or another callback, so the
+   supervisor leaves it completely alone. Only after the game itself restores
+   CB1_Overworld does the next VBlank install the wrapper again.
 
    Fixed runtime regions are the same regions already exercised by the
    fixed-RAM stability tests. No new RAM region is introduced here.
@@ -46,7 +47,7 @@ final class NormalContextHotkeyCandidate2 {
         byte[] supervisor = buildSupervisor(rom);
         byte[] callbackWrapper = buildCallbackWrapper(rom);
         byte[] callbackTailStub = buildCallbackTailStub();
-        byte[] originalCallback = littleEndian32(FR10_CB1_OVERWORLD_THUMB);
+        byte[] originalVBlank = littleEndian32(rom.originalVBlankThumb);
         byte[] installer = buildInstaller(rom);
 
         if (supervisor.length != 32)
@@ -61,7 +62,7 @@ final class NormalContextHotkeyCandidate2 {
         FieldScriptWriter script = new FieldScriptWriter()
                 // Install every runtime byte before redirecting VBlank.
                 .writeBytes(rom.tailStub, callbackTailStub)
-                .writeBytes(rom.originalVBlankLiteral, originalCallback)
+                .writeBytes(rom.originalVBlankLiteral, originalVBlank)
                 .writeBytes(rom.rngExtension, callbackWrapper)
                 .writeBytes(rom.mainHook, supervisor)
 
@@ -105,74 +106,125 @@ final class NormalContextHotkeyCandidate2 {
         return rom.mainHook | 1L;
     }
 
+
+    static byte[] supervisorBytesForTest(RomProfile rom) {
+        return buildSupervisor(rom);
+    }
+
+    static byte[] callbackWrapperBytesForTest(RomProfile rom) {
+        return buildCallbackWrapper(rom);
+    }
+
+    static byte[] vblankTailBytesForTest() {
+        return buildCallbackTailStub();
+    }
+
+    static byte[] installerBytesForTest(RomProfile rom) {
+        return buildInstaller(rom);
+    }
+
     /*
-       32-byte VBlank supervisor.
+       32-byte VBlank supervisor, revision 2d.
 
-       Literal loading is compacted with ADR + LDMIA:
+       Candidate 2 had two architectural bugs:
+         1. it clobbered r4, a callee-saved register, before tail-chaining;
+         2. it gated on callback2 only, so it could reinstall callback1 during
+            a transition window where the game intentionally set callback1 NULL.
 
+       Candidate 2b fixed those architectural bugs but had two machine-code
+       encoding bugs:
+         3. ADR r3 used imm=3, resolving to 03005320 instead of the literal
+            table at 03005324;
+         4. the callback-wrapper branch encoded 03003EB2 instead of 03003EB4.
+
+       Candidate 2c fixed those four issues but still incorrectly shared the same
+       VBlank tail literal with the callback wrapper. Candidate 2d separates
+       those control-flow targets completely.
+
+       This revision uses ONLY r0-r3 and considers callback1 itself the safety
+       gate. It installs the wrapper only when callback1 is EXACTLY the normal
+       CB1_Overworld Thumb pointer (08056535).
+
+       Therefore:
+         callback1 == NULL / battle / menu / transition -> do nothing
+         callback1 == wrapper                          -> do nothing
+         callback1 == CB1_Overworld                   -> install wrapper
+
+       Literal loading:
          r0 = &gMain.callback1
-         r1 = CB2_Overworld|1
-         r2 = tiny callback wrapper|1
-         r3 = original VBlankIntr|1
+         r1 = CB1_Overworld|1
+         r2 = callback wrapper|1
 
-       It uses callback2 as the exact safety gate. Only the normal overworld
-       value 080565B5 is accepted. In every other game mode callback1 is left
-       untouched.
+       r2 is also used to derive the already-known fixed VBlank tail stub:
+         03003F95 - 0xE0 = 03003EB5
     */
     private static byte[] buildSupervisor(RomProfile rom) {
+        if ((callbackWrapperThumb(rom) - 0xE0L) != (rom.tailStub | 1L)) {
+            throw new IllegalStateException(
+                    "Candidate 2d compact supervisor requires wrapper|1 - 0xE0 == tailStub|1"
+            );
+        }
+
         byte[] code = new byte[] {
-            0x03, (byte) 0xA4,            // adr   r4, literals at +0x10
-            0x0F, (byte) 0xCC,            // ldmia r4!, {r0,r1,r2,r3}
-            0x44, 0x68,                    // ldr   r4,[r0,#4] (callback2)
-            (byte) 0x8C, 0x42,            // cmp   r4,r1
+            0x04, (byte) 0xA3,            // adr   r3, literals at 03005324
+            0x07, (byte) 0xCB,            // ldmia r3!, {r0,r1,r2}
+            0x03, 0x68,                    // ldr   r3,[r0]       current callback1
+            (byte) 0x8B, 0x42,            // cmp   r3,r1         == CB1_Overworld?
             0x00, (byte) 0xD1,            // bne   tail
-            0x02, 0x60,                    // str   r2,[r0] (callback1 = wrapper)
-            0x18, 0x47,                    // tail: bx r3 (original VBlank)
-            (byte) 0xC0, 0x46,            // nop / alignment
+            0x02, 0x60,                    // str   r2,[r0]       callback1 = wrapper
+            (byte) 0xE0, 0x3A,            // tail: subs r2,#0xE0 -> tailStub|1
+            0x10, 0x47,                    // bx    r2
+            (byte) 0xC0, 0x46,            // padding/nop
+            (byte) 0xC0, 0x46,            // padding/nop
 
             0, 0, 0, 0,                    // &gMain.callback1
-            0, 0, 0, 0,                    // CB2_Overworld|1
-            0, 0, 0, 0,                    // callback wrapper|1
-            0, 0, 0, 0                     // original VBlankIntr|1
+            0, 0, 0, 0,                    // CB1_Overworld|1
+            0, 0, 0, 0                     // callback wrapper|1
         };
 
-        putU32(code, 0x10, FR10_GMAIN_CALLBACK1);
-        putU32(code, 0x14, FR10_CB2_OVERWORLD_THUMB);
-        putU32(code, 0x18, callbackWrapperThumb(rom));
-        putU32(code, 0x1C, rom.originalVBlankThumb);
+        putU32(code, 0x14, FR10_GMAIN_CALLBACK1);
+        putU32(code, 0x18, FR10_CB1_OVERWORLD_THUMB);
+        putU32(code, 0x1C, callbackWrapperThumb(rom));
         return code;
     }
 
     /*
        12-byte normal-context wrapper at 03003F94.
 
-       It intentionally has no hotkey logic. Every frame in which the wrapper
-       is installed it writes marker 0x77 to one byte at 0201C100, then branches
-       to the callback tail stub at 03003EB4.
+       Candidate 2c incorrectly reused the VBlank tail stub/literal for this
+       callback. That made the VBlank supervisor and callback wrapper require
+       different functions in the same literal slot.
 
-       Layout:
-         ldr  r0, =0201C100
-         movs r1, #0x77
-         strb r1, [r0]
-         b    03003EB4
-         .word 0201C100
+       Candidate 2d gives the callback wrapper its OWN CB1_Overworld literal:
+
+         03003F94  ldr r3, [pc, #4]  -> literal at 03003F9C
+         03003F96  bx  r3
+         03003F98  nop
+         03003F9A  nop
+         03003F9C  .word 08056535
+
+       The VBlank tail stub at 03003EB4 therefore remains dedicated to the
+       original VBlank handler (08000725).
+
+       There is deliberately no debug write in this candidate. callback1 itself
+       is the observable marker: 03003F95 means the wrapper is armed.
     */
     private static byte[] buildCallbackWrapper(RomProfile rom) {
-        if (rom.rngExtension != 0x03003F94L || rom.tailStub != 0x03003EB4L) {
+        if (rom.rngExtension != 0x03003F94L) {
             throw new IllegalStateException(
-                    "Candidate 2 compact callback wrapper is currently FR10-only"
+                    "Candidate 2d compact callback wrapper is currently FR10-only"
             );
         }
 
         byte[] code = new byte[] {
-            0x01, 0x48,                    // ldr r0, debug address literal
-            0x77, 0x21,                    // movs r1,#0x77
-            0x01, 0x70,                    // strb r1,[r0]
-            (byte) 0x8A, (byte) 0xE7,      // b 03003EB4
-            0, 0, 0, 0                     // 0201C100
+            0x01, 0x4B,                    // ldr r3, CB1 literal at 03003F9C
+            0x18, 0x47,                    // bx  r3
+            (byte) 0xC0, 0x46,             // nop
+            (byte) 0xC0, 0x46,             // nop
+            0, 0, 0, 0                     // CB1_Overworld|1
         };
 
-        putU32(code, 0x08, DEBUG_ADDRESS);
+        putU32(code, 0x08, FR10_CB1_OVERWORLD_THUMB);
         return code;
     }
 
@@ -181,7 +233,9 @@ final class NormalContextHotkeyCandidate2 {
          ldr r3,[pc,#8] -> literal at 03003EC0
          bx  r3
 
-       03003EC0 stores CB1_Overworld|1.
+       03003EC0 stores the ORIGINAL VBlank handler|1 (08000725).
+
+       This tail is now used only by the VBlank supervisor.
     */
     private static byte[] buildCallbackTailStub() {
         return new byte[] {
@@ -192,8 +246,8 @@ final class NormalContextHotkeyCandidate2 {
 
     /*
        Installer only redirects the VBlank table slot. callback1 is NOT touched
-       here: the supervisor installs it on the following VBlank if callback2 is
-       exactly CB2_Overworld.
+       here: the supervisor installs it on a later VBlank only when callback1 is
+       exactly CB1_Overworld.
     */
     private static byte[] buildInstaller(RomProfile rom) {
         byte[] code = new byte[] {
@@ -219,7 +273,7 @@ final class NormalContextHotkeyCandidate2 {
     private static void requireFr10(RomProfile rom) {
         if (rom != RomProfile.FIRE_RED_EN_10) {
             throw new IllegalArgumentException(
-                    "Dispatcher Candidate 2 is currently validated only for fr10"
+                    "Dispatcher Candidate 2d is currently validated only for fr10"
             );
         }
     }

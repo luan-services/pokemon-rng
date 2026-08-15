@@ -14,6 +14,7 @@ public final class Main {
                 case "build-seed-hotkey" -> buildSeedHotkey(args);
                 case "build-dispatcher-candidate-1" -> buildDispatcherCandidate1(args);
                 case "build-dispatcher-candidate-2" -> buildDispatcherCandidate2(args);
+                case "build-dispatcher-candidate-3" -> buildDispatcherCandidate3(args);
                 case "verify" -> verify(args);
                 case "profiles" -> printProfiles();
                 case "effects" -> printEffects();
@@ -31,6 +32,36 @@ public final class Main {
         }
     }
 
+
+    private static void buildDispatcherCandidate3(String[] args) throws Exception {
+        if (args.length != 3) {
+            throw new IllegalArgumentException(
+                    "Usage: java -cp out Main build-dispatcher-candidate-3 <rom> <output.bin>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        Path output = Path.of(args[2]);
+        RamScript ramScript = NormalContextHotkeyCandidate3.build(rom);
+        ramScript.write(output);
+
+        System.out.println("Dispatcher Candidate 3 built successfully.");
+        System.out.println("Status:           EXPERIMENTAL - hotkey + auto-rearm integration test");
+        System.out.println("ROM:              " + rom.displayName());
+        System.out.println("Supervisor:       VBlank, re-arms only when callback1 == CB1_Overworld");
+        System.out.println("Hotkey:           hold R, then press SELECT (normal callback context)");
+        System.out.printf("VBlank slot:      0x%08X -> 0x%08X%n", rom.vblankSlot, NormalContextHotkeyCandidate3.supervisorThumb(rom));
+        System.out.printf("Callback1 slot:   0x%08X%n", NormalContextHotkeyCandidate3.callback1Address());
+        System.out.printf("Callback wrapper: 0x%08X%n", NormalContextHotkeyCandidate3.hotkeyDetectorThumb());
+        System.out.printf("Detector storage: 0x%08X (gLinkTestBGInfo, offline test only)%n", NormalContextHotkeyCandidate3.hotkeyDetectorAddress());
+        System.out.printf("Marker:           [0x%08X] <- 0x%02X on trigger%n", NormalContextHotkeyCandidate3.markerAddress(), NormalContextHotkeyCandidate3.markerValue());
+        System.out.printf("Checksum:         0x%04X%n", ramScript.storedChecksum());
+        System.out.println("Checksum valid:   " + ramScript.isChecksumValid());
+        System.out.println("Output:           " + output.toAbsolutePath());
+        System.out.println();
+        System.out.println("Do NOT test cable/wireless/link modes with Candidate 3.");
+    }
+
     private static void buildDispatcherCandidate2(String[] args) throws Exception {
         if (args.length != 3) {
             throw new IllegalArgumentException(
@@ -43,22 +74,21 @@ public final class Main {
         RamScript ramScript = NormalContextHotkeyCandidate2.build(rom);
         ramScript.write(output);
 
-        System.out.println("Dispatcher Candidate 2 built successfully.");
+        System.out.println("Dispatcher Candidate 2d built successfully.");
         System.out.println("Status:           EXPERIMENTAL - auto-rearm test only");
         System.out.println("ROM:              " + rom.displayName());
-        System.out.println("Supervisor:       VBlank, re-arms only when callback2 == CB2_Overworld");
-        System.out.println("Hotkey:           intentionally disabled in Candidate 2");
+        System.out.println("Supervisor:       VBlank, re-arms only when callback1 == CB1_Overworld");
+        System.out.println("Hotkey:           intentionally disabled in Candidate 2d");
         System.out.printf("VBlank slot:      0x%08X -> 0x%08X%n", rom.vblankSlot, NormalContextHotkeyCandidate2.supervisorThumb(rom));
         System.out.printf("Callback1 slot:   0x%08X%n", NormalContextHotkeyCandidate2.callback1Address());
-        System.out.printf("Safe callback2:   0x%08X%n", NormalContextHotkeyCandidate2.cb2OverworldThumb());
+        System.out.printf("Re-arm gate CB1:  0x%08X%n", NormalContextHotkeyCandidate2.cb1OverworldThumb());
         System.out.printf("Callback wrapper: 0x%08X%n", NormalContextHotkeyCandidate2.callbackWrapperThumb(rom));
         System.out.printf("Original CB1:     0x%08X%n", NormalContextHotkeyCandidate2.cb1OverworldThumb());
-        System.out.printf("Debug marker:     [0x%08X] <- 0x%02X (u8)%n", NormalContextHotkeyCandidate2.debugAddress(), NormalContextHotkeyCandidate2.debugMarker());
         System.out.printf("Checksum:         0x%04X%n", ramScript.storedChecksum());
         System.out.println("Checksum valid:   " + ramScript.isChecksumValid());
         System.out.println("Output:           " + output.toAbsolutePath());
         System.out.println();
-        System.out.println("Expected: callback1 may change during transitions/battles, then returns automatically to the wrapper when normal overworld callback2 returns.");
+        System.out.println("Expected: callback1 may change during transitions/battles; when the game restores CB1_Overworld, a later VBlank re-arms 03003F95.");
     }
 
     private static void buildDispatcherCandidate1(String[] args) throws Exception {
@@ -223,6 +253,9 @@ public final class Main {
         );
         System.out.println(
                 "  java -cp out Main build-dispatcher-candidate-2 fr10 output.bin"
+        );
+        System.out.println(
+                "  java -cp out Main build-dispatcher-candidate-3 fr10 output.bin"
         );
         System.out.println(
                 "  java -cp out Main verify output.bin"

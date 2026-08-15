@@ -293,3 +293,22 @@ java -cp out Main build-dispatcher-candidate-2 fr10 dispatcher-c2.bin
 ```
 
 See `docs/DISPATCHER_CANDIDATE_2.md` before testing.
+
+
+## Experimental Candidate 2b
+
+See `docs/DISPATCHER_CANDIDATE_2B.md`. Candidate 2 is rejected and must not be used.
+
+
+## Candidate status
+
+- Candidate 2: REJECTED
+- Candidate 2b: REJECTED (bad Thumb ADR and branch encodings)
+- Candidate 2c: current experimental auto-rearm candidate
+
+See `docs/DISPATCHER_CANDIDATE_2C.md`.
+
+
+## Current dispatcher experiment
+
+Use only Candidate 2d. Candidates 2, 2b, and 2c are rejected. See `docs/DISPATCHER_CANDIDATE_2D.md`.
