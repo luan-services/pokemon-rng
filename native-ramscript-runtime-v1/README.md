@@ -367,3 +367,13 @@ the marker payload for a real visual Field Script that displays
 `Hello from the Wonder Card!`.
 
 See `docs/RUNTIME_V1_RC2.md`.
+
+
+
+## Runtime v1 RC3
+
+`build-runtime-v1-rc3` adds a conservative safety gate to RC2. R+SELECT is
+ignored while the game's field controls are locked, preventing the hotkey from
+replacing active NPC / yes-no / trainer event scripts.
+
+See `docs/RUNTIME_V1_RC3.md`.

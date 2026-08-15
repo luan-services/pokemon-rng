@@ -1,5 +1,5 @@
 /*
-   Native RamScript Runtime v1 RC1 (FireRed English 1.0)
+   Native RamScript Runtime v1 RC3 (FireRed English 1.0)
 
    This is the first cleanup pass after Candidate 6.
 
@@ -63,7 +63,7 @@
    Link/wireless behavior is NOT yet validated even though this RC no longer
    overwrites the live link globals that broke Candidate 5.
 */
-final class NativeRamScriptRuntimeV1Rc1 {
+final class NativeRamScriptRuntimeV1Rc3 {
     private static final long FR10_GMAIN_CALLBACK1 = 0x030030F0L;
     private static final long FR10_CB1_OVERWORLD_THUMB = 0x08056535L;
 
@@ -86,10 +86,17 @@ final class NativeRamScriptRuntimeV1Rc1 {
     private static final long WRAPPER = 0x03005310L;
     private static final long INSTALLER_STAGING = 0x03005310L;
 
+    // FR10 script.c static: bool8 sLockFieldControls
+    private static final long FR10_LOCK_FIELD_CONTROLS = 0x03000F9CL;
+
+    // 12-byte alignment padding after sIsInSaveFailedScreen and before
+    // gHostRfuGameData. RC3 uses 10 bytes for the hotkey safety gate.
+    private static final long SAFETY_GATE = 0x03005434L;
+
     private static final int PAYLOAD_OFFSET = 0x0A;
     private static final long VIRTUAL_BASE = 0x08010000L;
 
-    private NativeRamScriptRuntimeV1Rc1() {}
+    private NativeRamScriptRuntimeV1Rc3() {}
 
     static RamScript build(RomProfile rom) {
         requireFr10(rom);
@@ -107,6 +114,7 @@ final class NativeRamScriptRuntimeV1Rc1 {
 
         byte[] installer = buildInstaller(rom);
         byte[] finalWrapper = buildFinalWrapper(rom);
+        byte[] safetyGate = buildSafetyGate();
 
         byte[] zeroCallback = littleEndian32(0);
         byte[] originalCallback = littleEndian32(FR10_CB1_OVERWORLD_THUMB);
@@ -123,6 +131,7 @@ final class NativeRamScriptRuntimeV1Rc1 {
                 .writeBytes(PRIMARY_THUNK, thunk)
                 .writeBytes(FUNCTION_LITERAL, functionLiteral)
                 .writeBytes(FIELD_SCRIPT_MARKER, zeroMarker)
+                .writeBytes(SAFETY_GATE, safetyGate)
 
                 // installation guard:
                 // while callback1 != CB1_Overworld the VBlank supervisor will
@@ -163,13 +172,13 @@ final class NativeRamScriptRuntimeV1Rc1 {
         p += 4;
 
         if (p != PAYLOAD_OFFSET)
-            throw new IllegalStateException("Runtime v1 RC1 payload offset mismatch");
+            throw new IllegalStateException("Runtime v1 RC3 payload offset mismatch");
 
         System.arraycopy(payload, 0, script, p, payload.length);
         p += payload.length;
 
         if (p != installerOffset)
-            throw new IllegalStateException("Runtime v1 RC1 installer offset mismatch");
+            throw new IllegalStateException("Runtime v1 RC3 installer offset mismatch");
 
         System.arraycopy(installerScript, 0, script, p, installerScript.length);
 
@@ -180,6 +189,8 @@ final class NativeRamScriptRuntimeV1Rc1 {
     static long supervisorThumb() { return SUPERVISOR | 1L; }
     static long wrapperAddress() { return WRAPPER; }
     static long wrapperThumb() { return WRAPPER | 1L; }
+    static long safetyGateAddress() { return SAFETY_GATE; }
+    static long lockFieldControlsAddress() { return FR10_LOCK_FIELD_CONTROLS; }
     static long stage1Address() { return STAGE1; }
     static long stage2Address() { return STAGE2; }
     static long markerAddress() { return FIELD_SCRIPT_MARKER; }
@@ -190,6 +201,7 @@ final class NativeRamScriptRuntimeV1Rc1 {
     static byte[] supervisorBytesForTest() { return buildSupervisor(); }
     static byte[] supervisorLiteralBytesForTest() { return buildSupervisorLiterals(); }
     static byte[] wrapperBytesForTest(RomProfile rom) { return buildFinalWrapper(rom); }
+    static byte[] safetyGateBytesForTest() { return buildSafetyGate(); }
     static byte[] stage1BytesForTest() { return buildStage1(); }
     static byte[] stage2BytesForTest() { return buildStage2(); }
     static byte[] thunkBytesForTest() { return buildPrimaryThunk(); }
@@ -247,10 +259,28 @@ final class NativeRamScriptRuntimeV1Rc1 {
     */
     private static byte[] buildFinalWrapper(RomProfile rom) {
         if (rom.heldKeysRaw != 0x03003118L)
-            throw new IllegalStateException("Runtime v1 RC1 assumes FR10 heldKeysRaw at 03003118");
+            throw new IllegalStateException("Runtime v1 RC3 assumes FR10 heldKeysRaw at 03003118");
 
         byte[] out = new byte[32];
 
+        /*
+           03005310..0300532F
+
+           03005310  ldr r0,[pc,#0x0C] -> heldKeysRaw pointer at 03005320
+           03005312  ldr r0,[r0]
+           03005314  lsls r1,r0,#24     ; SELECT
+           03005316  bcc 03005324
+           03005318  lsls r1,r0,#14     ; R
+           0300531A  bcc 03005324
+           0300531C  ldr r2,[pc,#0x0C] -> &sLockFieldControls at 0300532C
+           0300531E  b   03005434       ; safety gate
+
+           03005320  heldKeysRaw pointer
+           03005324  ldr r3,[pc,#0]
+           03005326  bx r3
+           03005328  CB1_Overworld|1
+           0300532C  &sLockFieldControls
+        */
         byte[] code = new byte[] {
             0x03, 0x48,                    // ldr r0,[pc,#12] -> 03005320
             0x00, 0x68,                    // ldr r0,[r0]
@@ -258,8 +288,8 @@ final class NativeRamScriptRuntimeV1Rc1 {
             0x05, (byte)0xD3,              // bcc 03005324
             (byte)0x81, 0x03,              // lsls r1,r0,#14
             0x03, (byte)0xD3,              // bcc 03005324
-            (byte)0xB1, (byte)0xE6,        // b 03005082
-            (byte)0xC0, 0x46               // nop
+            0x03, 0x4A,                    // ldr r2,[pc,#12] -> 0300532C
+            (byte)0x89, (byte)0xE0         // b 03005434
         };
         System.arraycopy(code, 0, out, 0, code.length);
 
@@ -270,9 +300,34 @@ final class NativeRamScriptRuntimeV1Rc1 {
         out[0x16] = 0x18;                  // bx r3
         out[0x17] = 0x47;
         putU32(out, 0x18, FR10_CB1_OVERWORLD_THUMB);
+        putU32(out, 0x1C, FR10_LOCK_FIELD_CONTROLS);
 
-        // 0x1C..0x1F remain zero and are reserved for future runtime metadata.
         return out;
+    }
+
+    /*
+       Safety gate: 03005434..0300543D (10 bytes), leaving 0300543E..3F unused.
+
+       The gate runs only after the R+SELECT chord has been detected.
+
+       sLockFieldControls != 0:
+           a field script/dialogue/event still owns player controls
+           -> ignore hotkey and tail-call CB1_Overworld.
+
+       sLockFieldControls == 0:
+           overworld is free
+           -> enter the already validated RC2 bridge at 03005082.
+
+       r2 arrives preloaded with &sLockFieldControls by the wrapper.
+    */
+    private static byte[] buildSafetyGate() {
+        return new byte[] {
+            0x10, 0x78,                    // ldrb r0,[r2]
+            0x00, 0x28,                    // cmp r0,#0
+            0x00, (byte)0xD0,              // beq 0300543C
+            0x73, (byte)0xE7,              // b 03005324 (locked)
+            0x21, (byte)0xE6               // b 03005082 (unlocked)
+        };
     }
 
     /*
@@ -343,13 +398,82 @@ final class NativeRamScriptRuntimeV1Rc1 {
         return code;
     }
 
+    /*
+       RC3 visual Field Script payload.
+
+       The hotkey enters at script+0x0A, so the payload establishes its own
+       virtual-address base instead of depending on the deliveryman entry.
+
+       Layout relative to payload start:
+
+         +00  B8 00010008       setvaddress 0x08010000
+         +05  69                lockall
+         +06  BD 0F010008       vmessage 0x0801000F
+         +0B  66                waitmessage
+         +0C  6D                waitbuttonpress
+         +0D  6B                releaseall
+         +0E  02                end
+         +0F  text              "Hello from the Wonder Card!"
+    */
     private static byte[] buildFieldScriptPayload() {
-        byte[] payload = new byte[7];
-        payload[0] = 0x11;                 // setptr
-        payload[1] = 0x66;
-        putU32(payload, 2, FIELD_SCRIPT_MARKER);
-        payload[6] = 0x02;                 // end
+        byte[] text = encodeHelloMessage();
+        byte[] payload = new byte[0x0F + text.length];
+
+        int p = 0;
+        payload[p++] = (byte)0xB8;          // setvaddress
+        putU32(payload, p, VIRTUAL_BASE);
+        p += 4;
+
+        payload[p++] = 0x69;                // lockall
+
+        payload[p++] = (byte)0xBD;          // vmessage
+        putU32(payload, p, VIRTUAL_BASE + 0x0F);
+        p += 4;
+
+        payload[p++] = 0x66;                // waitmessage
+        payload[p++] = 0x6D;                // waitbuttonpress
+        payload[p++] = 0x6B;                // releaseall
+        payload[p++] = 0x02;                // end
+
+        if (p != 0x0F)
+            throw new IllegalStateException("Runtime v1 RC3 text offset mismatch");
+
+        System.arraycopy(text, 0, payload, p, text.length);
         return payload;
+    }
+
+    private static byte[] encodeHelloMessage() {
+        // Pokémon Gen III English character encoding.
+        return new byte[] {
+            (byte)0xC2,                         // H
+            (byte)0xD9,                         // e
+            (byte)0xE0,                         // l
+            (byte)0xE0,                         // l
+            (byte)0xE3,                         // o
+            0x00,                               // space
+            (byte)0xDA,                         // f
+            (byte)0xE6,                         // r
+            (byte)0xE3,                         // o
+            (byte)0xE1,                         // m
+            0x00,                               // space
+            (byte)0xE8,                         // t
+            (byte)0xDC,                         // h
+            (byte)0xD9,                         // e
+            0x00,                               // space
+            (byte)0xD1,                         // W
+            (byte)0xE3,                         // o
+            (byte)0xE2,                         // n
+            (byte)0xD8,                         // d
+            (byte)0xD9,                         // e
+            (byte)0xE6,                         // r
+            0x00,                               // space
+            (byte)0xBD,                         // C
+            (byte)0xD5,                         // a
+            (byte)0xE6,                         // r
+            (byte)0xD8,                         // d
+            (byte)0xAB,                         // !
+            (byte)0xFF                          // EOS
+        };
     }
 
     private static byte[] littleEndian32(long value) {
@@ -360,7 +484,7 @@ final class NativeRamScriptRuntimeV1Rc1 {
 
     private static void requireFr10(RomProfile rom) {
         if (rom != RomProfile.FIRE_RED_EN_10)
-            throw new IllegalArgumentException("Native RamScript Runtime v1 RC1 is currently FR10-only");
+            throw new IllegalArgumentException("Native RamScript Runtime v1 RC3 is currently FR10-only");
     }
 
     private static void putU32(byte[] data, int offset, long value) {

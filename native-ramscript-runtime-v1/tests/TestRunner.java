@@ -1136,6 +1136,132 @@ public final class TestRunner {
         assertEquals(0xFFL, payload[payload.length - 1] & 0xFF, "runtime rc2 text EOS");
     }
 
+
+    private static void testRuntimeV1Rc3StaticAudit() {
+        RomProfile rom = RomProfile.FIRE_RED_EN_10;
+
+        byte[] rc2Supervisor = NativeRamScriptRuntimeV1Rc2.supervisorBytesForTest();
+        byte[] rc3Supervisor = NativeRamScriptRuntimeV1Rc3.supervisorBytesForTest();
+        byte[] rc2Stage1 = NativeRamScriptRuntimeV1Rc2.stage1BytesForTest();
+        byte[] rc3Stage1 = NativeRamScriptRuntimeV1Rc3.stage1BytesForTest();
+        byte[] rc2Stage2 = NativeRamScriptRuntimeV1Rc2.stage2BytesForTest();
+        byte[] rc3Stage2 = NativeRamScriptRuntimeV1Rc3.stage2BytesForTest();
+        byte[] wrapper = NativeRamScriptRuntimeV1Rc3.wrapperBytesForTest(rom);
+        byte[] gate = NativeRamScriptRuntimeV1Rc3.safetyGateBytesForTest();
+        byte[] payload = NativeRamScriptRuntimeV1Rc3.payloadBytesForTest();
+
+        // RC3 safety work must not modify the validated bridge or visual payload.
+        assertTrue(java.util.Arrays.equals(rc2Supervisor, rc3Supervisor),
+                "runtime rc3 must preserve rc2 supervisor");
+        assertTrue(java.util.Arrays.equals(rc2Stage1, rc3Stage1),
+                "runtime rc3 must preserve rc2 stage1");
+        assertTrue(java.util.Arrays.equals(rc2Stage2, rc3Stage2),
+                "runtime rc3 must preserve rc2 stage2");
+        assertTrue(java.util.Arrays.equals(
+                        NativeRamScriptRuntimeV1Rc2.payloadBytesForTest(),
+                        payload),
+                "runtime rc3 must preserve rc2 message payload");
+
+        assertEquals(32, wrapper.length, "runtime rc3 wrapper size");
+        assertEquals(10, gate.length, "runtime rc3 safety gate size");
+
+        // Existing no-trigger paths still tail-call CB1_Overworld.
+        assertEquals(
+                0x03005324L,
+                ThumbEncodingChecks.decodeConditionalBranchTarget(
+                        0x03005316L,
+                        wrapper[6] & 0xFF,
+                        wrapper[7] & 0xFF
+                ),
+                "runtime rc3 SELECT fail path"
+        );
+        assertEquals(
+                0x03005324L,
+                ThumbEncodingChecks.decodeConditionalBranchTarget(
+                        0x0300531AL,
+                        wrapper[10] & 0xFF,
+                        wrapper[11] & 0xFF
+                ),
+                "runtime rc3 R fail path"
+        );
+
+        // The old NOP is now a PC-relative load of the lock-state pointer.
+        assertEquals(
+                0x0300532CL,
+                ThumbEncodingChecks.decodeLdrLiteralTarget(
+                        0x0300531CL,
+                        wrapper[12] & 0xFF,
+                        wrapper[13] & 0xFF
+                ),
+                "runtime rc3 lock pointer literal"
+        );
+
+        // Trigger enters safety gate, not bridge directly.
+        assertEquals(
+                0x03005434L,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x0300531EL,
+                        wrapper[14] & 0xFF,
+                        wrapper[15] & 0xFF
+                ),
+                "runtime rc3 wrapper -> safety gate"
+        );
+
+        assertEquals(0x03003118L, ThumbEncodingChecks.u32(wrapper, 0x10),
+                "runtime rc3 heldKeysRaw pointer");
+        assertEquals(0x08056535L, ThumbEncodingChecks.u32(wrapper, 0x18),
+                "runtime rc3 CB1_Overworld pointer");
+        assertEquals(0x03000F9CL, ThumbEncodingChecks.u32(wrapper, 0x1C),
+                "runtime rc3 sLockFieldControls pointer");
+
+        // Gate logic.
+        assertEquals(0x7810L,
+                ((gate[1] & 0xFF) << 8) | (gate[0] & 0xFF),
+                "runtime rc3 ldrb r0,[r2]");
+        assertEquals(0x2800L,
+                ((gate[3] & 0xFF) << 8) | (gate[2] & 0xFF),
+                "runtime rc3 cmp r0,#0");
+
+        assertEquals(
+                0x0300543CL,
+                ThumbEncodingChecks.decodeConditionalBranchTarget(
+                        0x03005438L,
+                        gate[4] & 0xFF,
+                        gate[5] & 0xFF
+                ),
+                "runtime rc3 unlocked branch"
+        );
+
+        assertEquals(
+                0x03005324L,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x0300543AL,
+                        gate[6] & 0xFF,
+                        gate[7] & 0xFF
+                ),
+                "runtime rc3 locked -> CB1 tail"
+        );
+
+        assertEquals(
+                0x03005082L,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x0300543CL,
+                        gate[8] & 0xFF,
+                        gate[9] & 0xFF
+                ),
+                "runtime rc3 unlocked -> validated bridge"
+        );
+
+        assertEquals(0x03005434L, NativeRamScriptRuntimeV1Rc3.safetyGateAddress(),
+                "runtime rc3 gate address");
+        assertEquals(0x03000F9CL, NativeRamScriptRuntimeV1Rc3.lockFieldControlsAddress(),
+                "runtime rc3 lock flag address");
+
+        // 03005434..3D uses 10 of the known 12-byte padding; do not reach 03005440.
+        assertTrue(NativeRamScriptRuntimeV1Rc3.safetyGateAddress() + gate.length <= 0x03005440L,
+                "runtime rc3 gate must stay before gHostRfuGameData");
+    }
+
     private static void assertTrue(boolean condition, String message) {
         if (!condition) {
             throw new AssertionError(message);
