@@ -327,3 +327,8 @@ Current experiment: R+SELECT calls `GetSavedRamScriptIfValid()` and stores the r
 ## Candidate 5a diagnostic
 
 Isolation test for the C5 Button Mode regression. It intentionally keeps the C5 trampoline at `03003F80` but calls `PlaySE(SE_SELECT)`. See `docs/DISPATCHER_CANDIDATE_5A.md`.
+
+
+## Candidate 5a2
+
+Corrected diagnostic. Candidate 5a is rejected due to an ADR continuation bug. See `docs/DISPATCHER_CANDIDATE_5A2.md`.

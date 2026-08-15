@@ -471,23 +471,27 @@ public final class TestRunner {
     }
 
 
-    private static void testCandidate5aStaticAudit() {
+    private static void testCandidate5a2StaticAudit() {
         RomProfile rom = RomProfile.FIRE_RED_EN_10;
 
-        byte[] supervisor = NormalContextHotkeyCandidate5a.supervisorBytesForTest(rom);
-        byte[] detector = NormalContextHotkeyCandidate5a.detectorBytesForTest(rom);
-        byte[] trampoline = NormalContextHotkeyCandidate5a.trampolineBytesForTest();
+        byte[] supervisor = NormalContextHotkeyCandidate5a2.supervisorBytesForTest(rom);
+        byte[] detector = NormalContextHotkeyCandidate5a2.detectorBytesForTest(rom);
+        byte[] trampoline = NormalContextHotkeyCandidate5a2.trampolineBytesForTest();
 
-        assertEquals(32, supervisor.length, "C5a supervisor size");
-        assertEquals(16, detector.length, "C5a detector size");
-        assertEquals(20, trampoline.length, "C5a trampoline size");
+        assertEquals(32, supervisor.length, "C5a2 supervisor size");
+        assertEquals(16, detector.length, "C5a2 detector size");
+        assertEquals(20, trampoline.length, "C5a2 trampoline size");
+        assertEquals(0xA202L,
+                ((trampoline[7] & 0xFF) << 8) | (trampoline[6] & 0xFF),
+                "C5a2 ADR opcode must be 02 A2");
+
 
         assertTrue(
                 java.util.Arrays.equals(
                         supervisor,
                         NormalContextHotkeyCandidate5.supervisorBytesForTest(rom)
                 ),
-                "C5a must preserve C5 supervisor bytes"
+                "C5a2 must preserve C5 supervisor bytes"
         );
 
         assertTrue(
@@ -495,7 +499,7 @@ public final class TestRunner {
                         detector,
                         NormalContextHotkeyCandidate5.detectorBytesForTest(rom)
                 ),
-                "C5a must preserve C5 detector bytes"
+                "C5a2 must preserve C5 detector bytes"
         );
 
         assertEquals(
@@ -505,7 +509,7 @@ public final class TestRunner {
                         detector[12] & 0xFF,
                         detector[13] & 0xFF
                 ),
-                "C5a trigger branch"
+                "C5a2 trigger branch"
         );
 
         assertEquals(
@@ -515,7 +519,7 @@ public final class TestRunner {
                         trampoline[4] & 0xFF,
                         trampoline[5] & 0xFF
                 ),
-                "C5a PlaySE literal target"
+                "C5a2 PlaySE literal target"
         );
 
         assertEquals(
@@ -525,26 +529,26 @@ public final class TestRunner {
                         trampoline[6] & 0xFF,
                         trampoline[7] & 0xFF
                 ),
-                "C5a continuation ADR"
+                "C5a2 continuation ADR"
         );
 
         assertEquals(0xB500L, ((trampoline[1] & 0xFF) << 8) | (trampoline[0] & 0xFF),
-                "C5a push {lr}");
+                "C5a2 push {lr}");
         assertEquals(0x2005L, ((trampoline[3] & 0xFF) << 8) | (trampoline[2] & 0xFF),
-                "C5a movs r0,#5");
+                "C5a2 movs r0,#5");
         assertEquals(0x4696L, ((trampoline[11] & 0xFF) << 8) | (trampoline[10] & 0xFF),
-                "C5a mov lr,r2");
+                "C5a2 mov lr,r2");
         assertEquals(0x4718L, ((trampoline[13] & 0xFF) << 8) | (trampoline[12] & 0xFF),
-                "C5a bx r3");
+                "C5a2 bx r3");
         assertEquals(0xBD00L, ((trampoline[17] & 0xFF) << 8) | (trampoline[16] & 0xFF),
-                "C5a pop {pc}");
+                "C5a2 pop {pc}");
 
-        assertEquals(0x080722CDL, NormalContextHotkeyCandidate5a.playSeThumb(),
-                "C5a PlaySE Thumb");
-        assertEquals(0x0005L, NormalContextHotkeyCandidate5a.seSelect(),
-                "C5a SE_SELECT");
-        assertEquals(0x03003F80L, NormalContextHotkeyCandidate5a.trampolineAddress(),
-                "C5a deliberately preserves C5 trampoline address");
+        assertEquals(0x080722CDL, NormalContextHotkeyCandidate5a2.playSeThumb(),
+                "C5a2 PlaySE Thumb");
+        assertEquals(0x0005L, NormalContextHotkeyCandidate5a2.seSelect(),
+                "C5a2 SE_SELECT");
+        assertEquals(0x03003F80L, NormalContextHotkeyCandidate5a2.trampolineAddress(),
+                "C5a2 deliberately preserves C5 trampoline address");
     }
 
     private static void assertTrue(boolean condition, String message) {

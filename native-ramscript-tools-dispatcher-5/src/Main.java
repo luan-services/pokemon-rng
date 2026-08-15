@@ -17,7 +17,7 @@ public final class Main {
                 case "build-dispatcher-candidate-3" -> buildDispatcherCandidate3(args);
                 case "build-dispatcher-candidate-4" -> buildDispatcherCandidate4(args);
                 case "build-dispatcher-candidate-5" -> buildDispatcherCandidate5(args);
-                case "build-dispatcher-candidate-5a" -> buildDispatcherCandidate5a(args);
+                case "build-dispatcher-candidate-5a2" -> buildDispatcherCandidate5a2(args);
                 case "verify" -> verify(args);
                 case "profiles" -> printProfiles();
                 case "effects" -> printEffects();
@@ -39,34 +39,34 @@ public final class Main {
 
 
 
-    private static void buildDispatcherCandidate5a(String[] args) throws Exception {
+    private static void buildDispatcherCandidate5a2(String[] args) throws Exception {
         if (args.length != 3) {
             throw new IllegalArgumentException(
-                    "Usage: java -cp out Main build-dispatcher-candidate-5a <rom> <output.bin>"
+                    "Usage: java -cp out Main build-dispatcher-candidate-5a2 <rom> <output.bin>"
             );
         }
 
         RomProfile rom = RomProfile.fromId(args[1]);
         Path output = Path.of(args[2]);
 
-        RamScript ramScript = NormalContextHotkeyCandidate5a.build(rom);
+        RamScript ramScript = NormalContextHotkeyCandidate5a2.build(rom);
         ramScript.write(output);
 
-        System.out.println("Dispatcher Candidate 5a built successfully.");
+        System.out.println("Dispatcher Candidate 5a2 built successfully.");
         System.out.println("Status:           DIAGNOSTIC - C5 regression isolation");
         System.out.println("ROM:              " + rom.displayName());
         System.out.println("Trigger:          hold R, then press SELECT");
         System.out.println("Action:           PlaySE(SE_SELECT) via C5-style call/return trampoline");
-        System.out.printf("PlaySE Thumb:     0x%08X%n", NormalContextHotkeyCandidate5a.playSeThumb());
-        System.out.printf("SE_SELECT:        0x%04X%n", NormalContextHotkeyCandidate5a.seSelect());
-        System.out.printf("Trampoline:       0x%08X%n", NormalContextHotkeyCandidate5a.trampolineAddress());
-        System.out.printf("Function literal: 0x%08X%n", NormalContextHotkeyCandidate5a.functionLiteralAddress());
-        System.out.printf("Callback wrapper: 0x%08X%n", NormalContextHotkeyCandidate5a.hotkeyDetectorThumb());
+        System.out.printf("PlaySE Thumb:     0x%08X%n", NormalContextHotkeyCandidate5a2.playSeThumb());
+        System.out.printf("SE_SELECT:        0x%04X%n", NormalContextHotkeyCandidate5a2.seSelect());
+        System.out.printf("Trampoline:       0x%08X%n", NormalContextHotkeyCandidate5a2.trampolineAddress());
+        System.out.printf("Function literal: 0x%08X%n", NormalContextHotkeyCandidate5a2.functionLiteralAddress());
+        System.out.printf("Callback wrapper: 0x%08X%n", NormalContextHotkeyCandidate5a2.hotkeyDetectorThumb());
         System.out.printf("Checksum:         0x%04X%n", ramScript.storedChecksum());
         System.out.println("Checksum valid:   " + ramScript.isChecksumValid());
         System.out.println("Output:           " + output.toAbsolutePath());
         System.out.println();
-        System.out.println("IMPORTANT: Candidate 5a deliberately keeps the C5 trampoline at 03003F80.");
+        System.out.println("IMPORTANT: Candidate 5a2 deliberately keeps the C5 trampoline at 03003F80.");
         System.out.println("It is diagnostic only. Do NOT test cable/wireless/link modes.");
     }
 
@@ -363,7 +363,7 @@ public final class Main {
                 "  java -cp out Main build-dispatcher-candidate-5 fr10 output.bin"
         );
         System.out.println(
-                "  java -cp out Main build-dispatcher-candidate-5a fr10 output.bin"
+                "  java -cp out Main build-dispatcher-candidate-5a2 fr10 output.bin"
         );
         System.out.println(
                 "  java -cp out Main verify output.bin"

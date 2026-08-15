@@ -1,5 +1,5 @@
 /*
-   Experimental isolation candidate 5a.
+   Experimental isolation candidate 5a2.
 
    Purpose:
      isolate the C5 regression.
@@ -24,7 +24,7 @@
      PlaySE = 080722CC -> Thumb 080722CD
      SE_SELECT = 0x0005
 */
-final class NormalContextHotkeyCandidate5a {
+final class NormalContextHotkeyCandidate5a2 {
     private static final long FR10_GMAIN_CALLBACK1 = 0x030030F0L;
     private static final long FR10_CB1_OVERWORLD_THUMB = 0x08056535L;
     private static final long FR10_PLAY_SE_THUMB = 0x080722CDL;
@@ -35,7 +35,7 @@ final class NormalContextHotkeyCandidate5a {
     private static final long HOTKEY_DATA = 0x03003F94L;
     private static final long FUNCTION_LITERAL = 0x03003F9CL;
 
-    private NormalContextHotkeyCandidate5a() {}
+    private NormalContextHotkeyCandidate5a2() {}
 
     static RamScript build(RomProfile rom) {
         requireFr10(rom);
@@ -111,7 +111,7 @@ final class NormalContextHotkeyCandidate5a {
     /* same C5 detector: trigger goes to 03003F80 */
     private static byte[] buildHotkeyDetector(RomProfile rom) {
         if (rom.heldKeysRaw != 0x03003118L)
-            throw new IllegalStateException("Candidate 5a assumes FR10 heldKeysRaw at 03003118");
+            throw new IllegalStateException("Candidate 5a2 assumes FR10 heldKeysRaw at 03003118");
 
         return new byte[] {
             0x08, 0x48,
@@ -153,7 +153,7 @@ final class NormalContextHotkeyCandidate5a {
             0x00, (byte)0xB5,             // push {lr}
             0x05, 0x20,                   // movs r0,#5
             0x05, 0x4B,                   // ldr r3,[pc,#20] -> 03003F9C
-            0x01, (byte)0xA2,             // adr r2,03003F90
+            0x02, (byte)0xA2,             // adr r2,03003F90
             0x01, 0x32,                   // adds r2,#1
             (byte)0x96, 0x46,             // mov lr,r2
             0x18, 0x47,                   // bx r3
@@ -189,7 +189,7 @@ final class NormalContextHotkeyCandidate5a {
 
     private static void requireFr10(RomProfile rom) {
         if (rom != RomProfile.FIRE_RED_EN_10)
-            throw new IllegalArgumentException("Dispatcher Candidate 5a is currently FR10-only");
+            throw new IllegalArgumentException("Dispatcher Candidate 5a2 is currently FR10-only");
     }
 
     private static void putU32(byte[] data, int offset, long value) {
