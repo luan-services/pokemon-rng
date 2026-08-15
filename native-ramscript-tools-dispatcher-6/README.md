@@ -342,3 +342,8 @@ Clean-layout diagnostic: preserves the call/return experiment but leaves `03003F
 ## Candidate 5c
 
 Clean `GetSavedRamScriptIfValid()` experiment. The returned pointer's low byte is stored at `03003FA1`; compare it with `low8(*gSaveBlock1Ptr + 0x3624)`. See `docs/DISPATCHER_CANDIDATE_5C.md`.
+
+
+## Candidate 6
+
+First end-to-end bridge from `R+SELECT` to a real Field Script via `GetSavedRamScriptIfValid()` and `ScriptContext_SetupScript()`. See `docs/DISPATCHER_CANDIDATE_6.md`.

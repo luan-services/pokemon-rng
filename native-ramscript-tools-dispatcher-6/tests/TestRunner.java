@@ -771,6 +771,126 @@ public final class TestRunner {
                 "C5c must not touch 03003F80..03003F93");
     }
 
+
+    private static void testCandidate6StaticAudit() {
+        RomProfile rom = RomProfile.FIRE_RED_EN_10;
+
+        byte[] supervisor = NormalContextHotkeyCandidate6.supervisorBytesForTest(rom);
+        byte[] detector = NormalContextHotkeyCandidate6.detectorBytesForTest(rom);
+        byte[] stage1 = NormalContextHotkeyCandidate6.stage1BytesForTest();
+        byte[] stage2 = NormalContextHotkeyCandidate6.stage2BytesForTest();
+        byte[] thunk = NormalContextHotkeyCandidate6.thunkBytesForTest();
+        byte[] payload = NormalContextHotkeyCandidate6.payloadBytesForTest();
+
+        assertTrue(
+                java.util.Arrays.equals(
+                        supervisor,
+                        NormalContextHotkeyCandidate5c.supervisorBytesForTest(rom)
+                ),
+                "C6 must preserve C5c supervisor bytes"
+        );
+
+        assertEquals(16, detector.length, "C6 detector size");
+        assertEquals(14, stage1.length, "C6 stage1 size");
+        assertEquals(14, stage2.length, "C6 stage2 size");
+        assertEquals(4, thunk.length, "C6 thunk size");
+        assertEquals(7, payload.length, "C6 field payload size");
+
+        assertEquals(
+                0x03003FA2L,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x03003F7CL,
+                        detector[12] & 0xFF,
+                        detector[13] & 0xFF
+                ),
+                "C6 detector trigger"
+        );
+
+        assertEquals(
+                0x03003F9CL,
+                ThumbEncodingChecks.decodeLdrLiteralTarget(
+                        0x03003F98L,
+                        thunk[0] & 0xFF,
+                        thunk[1] & 0xFF
+                ),
+                "C6 GetSaved literal"
+        );
+
+        assertEquals(0x4720L,
+                ((thunk[3] & 0xFF) << 8) | (thunk[2] & 0xFF),
+                "C6 thunk bx r4");
+
+        assertEquals(
+                0x03003F98L,
+                ThumbEncodingChecks.decodeLongBranchWithLinkTarget(
+                        0x03003FA4L,
+                        stage1[2] & 0xFF,
+                        stage1[3] & 0xFF,
+                        stage1[4] & 0xFF,
+                        stage1[5] & 0xFF
+                ),
+                "C6 stage1 BL GetSaved thunk"
+        );
+
+        assertEquals(
+                0x03003F42L,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x03003FACL,
+                        stage1[10] & 0xFF,
+                        stage1[11] & 0xFF
+                ),
+                "C6 stage1 branch stage2"
+        );
+
+        assertEquals(
+                0x03003F9AL,
+                ThumbEncodingChecks.decodeLongBranchWithLinkTarget(
+                        0x03003F4AL,
+                        stage2[8] & 0xFF,
+                        stage2[9] & 0xFF,
+                        stage2[10] & 0xFF,
+                        stage2[11] & 0xFF
+                ),
+                "C6 stage2 BL bx-r4"
+        );
+
+        assertEquals(
+                0x03003FAEL,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x03003F4EL,
+                        stage2[12] & 0xFF,
+                        stage2[13] & 0xFF
+                ),
+                "C6 stage2 return to pop"
+        );
+
+        assertEquals(0x08069E49L, NormalContextHotkeyCandidate6.getSavedRamScriptThumb(),
+                "C6 GetSaved pointer");
+        assertEquals(0x08069AE5L, NormalContextHotkeyCandidate6.scriptContextSetupThumb(),
+                "C6 SetupScript pointer");
+        assertEquals(0x364L,
+                NormalContextHotkeyCandidate6.getSavedRamScriptThumb()
+                        - NormalContextHotkeyCandidate6.scriptContextSetupThumb(),
+                "C6 ROM function delta");
+
+        assertEquals(0x0AL, NormalContextHotkeyCandidate6.payloadOffset(),
+                "C6 payload offset");
+
+        assertEquals(0x11L, payload[0] & 0xFF, "C6 payload setptr opcode");
+        assertEquals(0x66L, payload[1] & 0xFF, "C6 payload marker value");
+        assertEquals(0x02L, payload[6] & 0xFF, "C6 payload end opcode");
+
+        // Stage2 must end before gSendCmd at 03003F50.
+        assertEquals(0x03003F50L,
+                NormalContextHotkeyCandidate6.stage2Address() + stage2.length,
+                "C6 stage2 exact padding boundary");
+
+        // Stage1 must end exactly at gLink start.
+        assertEquals(0x03003FB0L,
+                NormalContextHotkeyCandidate6.stage1Address() + stage1.length,
+                "C6 stage1 exact padding boundary");
+    }
+
     private static void assertTrue(boolean condition, String message) {
         if (!condition) {
             throw new AssertionError(message);
