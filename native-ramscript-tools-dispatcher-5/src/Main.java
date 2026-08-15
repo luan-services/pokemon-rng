@@ -18,6 +18,7 @@ public final class Main {
                 case "build-dispatcher-candidate-4" -> buildDispatcherCandidate4(args);
                 case "build-dispatcher-candidate-5" -> buildDispatcherCandidate5(args);
                 case "build-dispatcher-candidate-5a2" -> buildDispatcherCandidate5a2(args);
+                case "build-dispatcher-candidate-5b" -> buildDispatcherCandidate5b(args);
                 case "verify" -> verify(args);
                 case "profiles" -> printProfiles();
                 case "effects" -> printEffects();
@@ -38,6 +39,37 @@ public final class Main {
 
 
 
+
+
+    private static void buildDispatcherCandidate5b(String[] args) throws Exception {
+        if (args.length != 3) {
+            throw new IllegalArgumentException(
+                    "Usage: java -cp out Main build-dispatcher-candidate-5b <rom> <output.bin>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        Path output = Path.of(args[2]);
+
+        RamScript ramScript = NormalContextHotkeyCandidate5b.build(rom);
+        ramScript.write(output);
+
+        System.out.println("Dispatcher Candidate 5b built successfully.");
+        System.out.println("Status:           DIAGNOSTIC - clean-layout call/return test");
+        System.out.println("ROM:              " + rom.displayName());
+        System.out.println("Trigger:          hold R, then press SELECT");
+        System.out.println("Action:           PlaySE(SE_SELECT)");
+        System.out.println("Live globals:     03003F80..03003F93 UNTOUCHED");
+        System.out.printf("Thunk:            0x%08X%n", NormalContextHotkeyCandidate5b.functionThunkAddress());
+        System.out.printf("Continuation:     0x%08X%n", NormalContextHotkeyCandidate5b.continuationAddress());
+        System.out.printf("Call wrapper:     0x%08X%n", NormalContextHotkeyCandidate5b.callWrapperAddress());
+        System.out.printf("PlaySE Thumb:     0x%08X%n", NormalContextHotkeyCandidate5b.playSeThumb());
+        System.out.printf("Checksum:         0x%04X%n", ramScript.storedChecksum());
+        System.out.println("Checksum valid:   " + ramScript.isChecksumValid());
+        System.out.println("Output:           " + output.toAbsolutePath());
+        System.out.println();
+        System.out.println("Diagnostic offline test only. Do NOT test cable/wireless/link modes.");
+    }
 
     private static void buildDispatcherCandidate5a2(String[] args) throws Exception {
         if (args.length != 3) {
@@ -364,6 +396,9 @@ public final class Main {
         );
         System.out.println(
                 "  java -cp out Main build-dispatcher-candidate-5a2 fr10 output.bin"
+        );
+        System.out.println(
+                "  java -cp out Main build-dispatcher-candidate-5b fr10 output.bin"
         );
         System.out.println(
                 "  java -cp out Main verify output.bin"

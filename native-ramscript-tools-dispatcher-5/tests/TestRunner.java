@@ -551,6 +551,119 @@ public final class TestRunner {
                 "C5a2 deliberately preserves C5 trampoline address");
     }
 
+
+    private static void testCandidate5bStaticAudit() {
+        RomProfile rom = RomProfile.FIRE_RED_EN_10;
+
+        byte[] supervisor = NormalContextHotkeyCandidate5b.supervisorBytesForTest(rom);
+        byte[] detector = NormalContextHotkeyCandidate5b.detectorBytesForTest(rom);
+        byte[] thunk = NormalContextHotkeyCandidate5b.thunkBytesForTest();
+        byte[] continuation = NormalContextHotkeyCandidate5b.continuationBytesForTest();
+        byte[] wrapper = NormalContextHotkeyCandidate5b.wrapperBytesForTest();
+
+        assertTrue(
+                java.util.Arrays.equals(
+                        supervisor,
+                        NormalContextHotkeyCandidate5a2.supervisorBytesForTest(rom)
+                ),
+                "C5b must preserve validated supervisor bytes"
+        );
+
+        assertEquals(16, detector.length, "C5b detector size");
+        assertEquals(4, thunk.length, "C5b thunk size");
+        assertEquals(2, continuation.length, "C5b continuation size");
+        assertEquals(12, wrapper.length, "C5b wrapper size");
+
+        // Detector still reads heldKeysRaw pointer at 03003F94.
+        assertEquals(
+                0x03003F94L,
+                ThumbEncodingChecks.decodeLdrLiteralTarget(
+                        0x03003F70L,
+                        detector[0] & 0xFF,
+                        detector[1] & 0xFF
+                ),
+                "C5b heldKeys literal"
+        );
+
+        // Trigger now skips the entire live-global area and lands at 03003FA4.
+        assertEquals(
+                0x03003FA4L,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x03003F7CL,
+                        detector[12] & 0xFF,
+                        detector[13] & 0xFF
+                ),
+                "C5b trigger branch"
+        );
+
+        assertEquals(
+                0x03003EB4L,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x03003F7EL,
+                        detector[14] & 0xFF,
+                        detector[15] & 0xFF
+                ),
+                "C5b no-trigger branch"
+        );
+
+        // Tiny thunk's literal is exactly at 03003F9C.
+        assertEquals(
+                0x03003F9CL,
+                ThumbEncodingChecks.decodeLdrLiteralTarget(
+                        0x03003F98L,
+                        thunk[0] & 0xFF,
+                        thunk[1] & 0xFF
+                ),
+                "C5b thunk literal"
+        );
+
+        // Wrapper critical opcodes and final branch.
+        assertEquals(0xB500L,
+                ((wrapper[1] & 0xFF) << 8) | (wrapper[0] & 0xFF),
+                "C5b push {lr}");
+        assertEquals(0x2005L,
+                ((wrapper[3] & 0xFF) << 8) | (wrapper[2] & 0xFF),
+                "C5b movs r0,#5");
+        assertEquals(0x467AL,
+                ((wrapper[5] & 0xFF) << 8) | (wrapper[4] & 0xFF),
+                "C5b mov r2,pc");
+        assertEquals(0x3A09L,
+                ((wrapper[7] & 0xFF) << 8) | (wrapper[6] & 0xFF),
+                "C5b subs r2,#9");
+        assertEquals(0x4696L,
+                ((wrapper[9] & 0xFF) << 8) | (wrapper[8] & 0xFF),
+                "C5b mov lr,r2");
+
+        assertEquals(
+                0x03003F98L,
+                ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                        0x03003FAEL,
+                        wrapper[10] & 0xFF,
+                        wrapper[11] & 0xFF
+                ),
+                "C5b branch to thunk"
+        );
+
+        assertEquals(0xBD00L,
+                ((continuation[1] & 0xFF) << 8) | (continuation[0] & 0xFF),
+                "C5b continuation pop {pc}");
+
+        assertEquals(0x03003F98L, NormalContextHotkeyCandidate5b.functionThunkAddress(),
+                "C5b thunk address");
+        assertEquals(0x03003FA2L, NormalContextHotkeyCandidate5b.continuationAddress(),
+                "C5b continuation address");
+        assertEquals(0x03003FA4L, NormalContextHotkeyCandidate5b.callWrapperAddress(),
+                "C5b wrapper address");
+        assertEquals(0x080722CDL, NormalContextHotkeyCandidate5b.playSeThumb(),
+                "C5b PlaySE Thumb");
+
+        // Explicitly assert that no C5b region overlaps 03003F80..03003F93.
+        assertTrue(NormalContextHotkeyCandidate5b.functionThunkAddress() >= 0x03003F94L,
+                "C5b thunk must be above live C5 region");
+        assertTrue(NormalContextHotkeyCandidate5b.callWrapperAddress() >= 0x03003FA1L,
+                "C5b wrapper must be in post-FA0 padding");
+    }
+
     private static void assertTrue(boolean condition, String message) {
         if (!condition) {
             throw new AssertionError(message);

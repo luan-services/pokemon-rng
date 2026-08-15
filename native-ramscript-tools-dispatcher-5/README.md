@@ -332,3 +332,8 @@ Isolation test for the C5 Button Mode regression. It intentionally keeps the C5 
 ## Candidate 5a2
 
 Corrected diagnostic. Candidate 5a is rejected due to an ADR continuation bug. See `docs/DISPATCHER_CANDIDATE_5A2.md`.
+
+
+## Candidate 5b
+
+Clean-layout diagnostic: preserves the call/return experiment but leaves `03003F80..03003F93` untouched. See `docs/DISPATCHER_CANDIDATE_5B.md`.
