@@ -399,3 +399,17 @@ out-of-range Thumb conditional branch.
 runtime RC audits are actually executed.
 
 See `docs/RUNTIME_V1_RC4A.md`.
+
+
+## Multi-profile Runtime v1
+
+Use:
+
+```text
+java -cp out Main build-runtime-v1 <fr10|lg10|fr11|lg11> output.bin
+```
+
+`fr10` is runtime-validated. `lg10` is ready for runtime validation.
+`fr11`/`lg11` are symbol-verified but intentionally marked untested.
+
+See `docs/RUNTIME_V1_MULTIPROFILE.md`.

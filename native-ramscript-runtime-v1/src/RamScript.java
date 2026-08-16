@@ -64,4 +64,9 @@ final class RamScript {
     void write(Path output) throws IOException {
         Files.write(output, data);
     }
+
+    byte[] bytes() {
+        return data.clone();
+    }
+
 }

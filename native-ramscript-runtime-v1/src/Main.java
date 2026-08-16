@@ -26,6 +26,7 @@ public final class Main {
                 case "build-runtime-v1-rc3" -> buildRuntimeV1Rc3(args);
                 case "build-runtime-v1-rc4" -> buildRuntimeV1Rc4(args);
                 case "build-runtime-v1-rc4a" -> buildRuntimeV1Rc4a(args);
+                case "build-runtime-v1" -> buildRuntimeV1(args);
                 case "verify" -> verify(args);
                 case "profiles" -> printProfiles();
                 case "effects" -> printEffects();
@@ -54,6 +55,46 @@ public final class Main {
 
 
 
+
+
+    private static void buildRuntimeV1(String[] args) throws Exception {
+        if (args.length != 3) {
+            throw new IllegalArgumentException(
+                    "Usage: java -cp out Main build-runtime-v1 <rom> <output.bin>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        Path output = Path.of(args[2]);
+
+        RamScript ramScript = NativeRamScriptRuntimeV1.build(rom);
+        ramScript.write(output);
+
+        System.out.println("Native RamScript Runtime v1 built successfully.");
+        System.out.println("ROM:              " + rom.displayName());
+        System.out.println("Validation:       " + rom.validationStatus().label());
+        System.out.println("Trigger:          hold R, then press SELECT");
+        System.out.println("Safety gate:      blocks trigger while field controls are locked");
+        System.out.printf("CB1 Overworld:    0x%08X%n", rom.cb1OverworldThumb);
+        System.out.printf("Original VBlank:  0x%08X%n", rom.originalVBlankThumb);
+        System.out.printf("GetSavedRamScript:0x%08X%n", rom.getSavedRamScriptThumb);
+        System.out.printf("SetupScript:      0x%08X%n", rom.scriptContextSetupThumb);
+        System.out.printf("Format signature: 0x%04X at script+0x%02X%n",
+                NativeRamScriptRuntimeV1.runtimeFormatSignature(),
+                NativeRamScriptRuntimeV1.signatureOffset());
+        System.out.printf("Payload offset:   0x%02X%n",
+                NativeRamScriptRuntimeV1.payloadOffset());
+        System.out.println("Visual payload:   \"Hello from the Wonder Card!\"");
+        System.out.printf("Checksum:         0x%04X%n", ramScript.storedChecksum());
+        System.out.println("Checksum valid:   " + ramScript.isChecksumValid());
+        System.out.println("Output:           " + output.toAbsolutePath());
+
+        if (rom.validationStatus() != RomProfile.ValidationStatus.RUNTIME_VALIDATED) {
+            System.out.println();
+            System.out.println("NOTE: this profile is symbol-verified but has not yet completed");
+            System.out.println("the full emulator/runtime regression suite.");
+        }
+    }
 
     private static void buildRuntimeV1Rc4a(String[] args) throws Exception {
         if (args.length != 3) {
@@ -665,6 +706,9 @@ public final class Main {
         );
         System.out.println(
                 "  java -cp out Main build-runtime-v1-rc4a fr10 output.bin"
+        );
+        System.out.println(
+                "  java -cp out Main build-runtime-v1 <fr10|lg10|fr11|lg11> output.bin"
         );
         System.out.println(
                 "  java -cp out Main verify output.bin"

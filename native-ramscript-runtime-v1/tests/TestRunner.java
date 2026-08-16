@@ -28,6 +28,7 @@ public final class TestRunner {
         testRuntimeV1Rc2StaticAudit();
         testRuntimeV1Rc3StaticAudit();
         testRuntimeV1Rc4aStaticAudit();
+        testRuntimeV1MultiProfileAudit();
 
         System.out.println("All tests passed.");
     }
@@ -1454,6 +1455,100 @@ public final class TestRunner {
         assertEquals(0x03005440L,
                 NativeRamScriptRuntimeV1Rc4a.safetyGateAddress() + gate.length,
                 "runtime rc4a gate exact boundary");
+    }
+
+
+    private static void testRuntimeV1MultiProfileAudit() {
+        RomProfile[] profiles = {
+                RomProfile.FIRE_RED_EN_10,
+                RomProfile.LEAF_GREEN_EN_10,
+                RomProfile.FIRE_RED_EN_11,
+                RomProfile.LEAF_GREEN_EN_11
+        };
+
+        for (RomProfile rom : profiles) {
+            byte[] supervisor = NativeRamScriptRuntimeV1.supervisorBytesForTest(rom);
+            byte[] literals = NativeRamScriptRuntimeV1.supervisorLiteralBytesForTest(rom);
+            byte[] wrapper = NativeRamScriptRuntimeV1.wrapperBytesForTest(rom);
+            byte[] stage1 = NativeRamScriptRuntimeV1.stage1BytesForTest();
+            byte[] stage2 = NativeRamScriptRuntimeV1.stage2BytesForTest(rom);
+            byte[] validator = NativeRamScriptRuntimeV1.formatValidatorBytesForTest();
+
+            assertEquals(14, supervisor.length, "runtime v1 supervisor size " + rom.id());
+            assertEquals(12, literals.length, "runtime v1 literals size " + rom.id());
+            assertEquals(32, wrapper.length, "runtime v1 wrapper size " + rom.id());
+
+            assertEquals(0x030030F0L, ThumbEncodingChecks.u32(literals, 0),
+                    "runtime v1 callback slot " + rom.id());
+            assertEquals(rom.cb1OverworldThumb, ThumbEncodingChecks.u32(literals, 4),
+                    "runtime v1 CB1 literal " + rom.id());
+            assertEquals(0x03005311L, ThumbEncodingChecks.u32(literals, 8),
+                    "runtime v1 wrapper literal " + rom.id());
+
+            assertEquals(rom.heldKeysRaw, ThumbEncodingChecks.u32(wrapper, 0x10),
+                    "runtime v1 heldKeysRaw " + rom.id());
+            assertEquals(rom.cb1OverworldThumb, ThumbEncodingChecks.u32(wrapper, 0x18),
+                    "runtime v1 wrapper CB1 " + rom.id());
+            assertEquals(rom.lockFieldControls, ThumbEncodingChecks.u32(wrapper, 0x1C),
+                    "runtime v1 lock flag " + rom.id());
+
+            assertEquals(0x364L,
+                    rom.getSavedRamScriptThumb - rom.scriptContextSetupThumb,
+                    "runtime v1 function delta " + rom.id());
+
+            assertEquals(0x8941L,
+                    ((validator[1] & 0xFF) << 8) | (validator[0] & 0xFF),
+                    "runtime v1 validator LDRH " + rom.id());
+
+            assertEquals(
+                    0x0300543EL,
+                    ThumbEncodingChecks.decodeConditionalBranchTarget(
+                            0x030053ACL,
+                            validator[4] & 0xFF,
+                            validator[5] & 0xFF
+                    ),
+                    "runtime v1 validator reject " + rom.id()
+            );
+
+            assertEquals(
+                    0x03005032L,
+                    ThumbEncodingChecks.decodeUnconditionalBranchTarget(
+                            0x030053AEL,
+                            validator[6] & 0xFF,
+                            validator[7] & 0xFF
+                    ),
+                    "runtime v1 validator accept " + rom.id()
+            );
+
+            assertEquals(0x300CL,
+                    ((stage2[1] & 0xFF) << 8) | (stage2[0] & 0xFF),
+                    "runtime v1 payload add " + rom.id());
+
+            assertEquals(
+                    0x03003F98L,
+                    ThumbEncodingChecks.decodeLongBranchWithLinkTarget(
+                            0x03005084L,
+                            stage1[2] & 0xFF,
+                            stage1[3] & 0xFF,
+                            stage1[4] & 0xFF,
+                            stage1[5] & 0xFF
+                    ),
+                    "runtime v1 stage1 thunk " + rom.id()
+            );
+        }
+
+        RamScript fr10 = NativeRamScriptRuntimeV1.build(RomProfile.FIRE_RED_EN_10);
+        RamScript lg10 = NativeRamScriptRuntimeV1.build(RomProfile.LEAF_GREEN_EN_10);
+        assertTrue(java.util.Arrays.equals(fr10.bytes(), lg10.bytes()),
+                "FR10 and LG10 must build byte-identically");
+
+        RamScript fr11 = NativeRamScriptRuntimeV1.build(RomProfile.FIRE_RED_EN_11);
+        RamScript lg11 = NativeRamScriptRuntimeV1.build(RomProfile.LEAF_GREEN_EN_11);
+        assertTrue(java.util.Arrays.equals(fr11.bytes(), lg11.bytes()),
+                "FR11 and LG11 must build byte-identically");
+
+        assertTrue(!java.util.Arrays.equals(fr10.bytes(), fr11.bytes()),
+                "revision 1.0 and 1.1 runtime binaries must differ");
     }
 
     private static void assertTrue(boolean condition, String message) {
