@@ -44,6 +44,21 @@ public final class Main {
                 case "build-clear-flag-bin" -> buildClearFlagBin(args);
                 case "build-clear-flag-wc3" -> buildClearFlagWc3(args);
 
+                case "build-trigger-test-bin" -> buildTriggerTestBin(args);
+                case "build-trigger-test-wc3" -> buildTriggerTestWc3(args);
+                case "build-compact-installer-c1-bin" -> buildCompactInstallerC1Bin(args);
+                case "build-compact-installer-c1-wc3" -> buildCompactInstallerC1Wc3(args);
+                case "build-compact-installer-c2-bin" -> buildCompactInstallerC2Bin(args);
+                case "build-compact-installer-c2-wc3" -> buildCompactInstallerC2Wc3(args);
+                case "build-compact-installer-c2a-bin" -> buildCompactInstallerC2aBin(args);
+                case "build-compact-installer-c2a-wc3" -> buildCompactInstallerC2aWc3(args);
+                case "build-compact-runtime-c3-bin" -> buildCompactRuntimeC3Bin(args);
+                case "build-compact-runtime-c3-wc3" -> buildCompactRuntimeC3Wc3(args);
+                case "build-compact-runtime-c4-bin" -> buildCompactRuntimeC4Bin(args);
+                case "build-compact-runtime-c4-wc3" -> buildCompactRuntimeC4Wc3(args);
+                case "build-compact-runtime-c5a-bin" -> buildCompactRuntimeC5aBin(args);
+                case "build-compact-runtime-c5a-wc3" -> buildCompactRuntimeC5aWc3(args);
+
                 /* Compatibility aliases kept from the experimental v5 CLI. */
                 case "build-aurora" -> requireArgs(args, 3, () ->
                         buildIntoWc3(
@@ -139,6 +154,348 @@ public final class Main {
         };
     }
 
+
+
+
+
+
+
+
+    private static void buildCompactRuntimeC5aBin(String[] args) throws Exception {
+        if (args.length != 3) {
+            throw new IllegalArgumentException("Usage: build-compact-runtime-c5a-bin <rom> <output.bin>");
+        }
+        RomProfile rom = RomProfile.fromId(args[1]);
+        RamScript script = CompactRuntimeCandidate5a.build(rom);
+        buildBinary(script, Path.of(args[2]));
+        printCompactRuntimeC5a(rom);
+    }
+
+    private static void buildCompactRuntimeC5aWc3(String[] args) throws Exception {
+        if (args.length != 4) {
+            throw new IllegalArgumentException("Usage: build-compact-runtime-c5a-wc3 <rom> <input.wc3> <output.wc3>");
+        }
+        RomProfile rom = RomProfile.fromId(args[1]);
+        RamScript script = CompactRuntimeCandidate5a.build(rom);
+        buildIntoWc3(script, Path.of(args[2]), Path.of(args[3]));
+        printCompactRuntimeC5a(rom);
+    }
+
+    private static void printCompactRuntimeC5a(RomProfile rom) {
+        int total = CompactRuntimeCandidate5a.scriptSize(rom);
+        int payload = CompactRuntimeCandidate5a.payloadSize();
+        System.out.println();
+        System.out.println("Compact Runtime Candidate 5a:");
+        System.out.println("  ROM:               " + rom.displayName());
+        System.out.println("  status:            RELEASE CANDIDATE - C4 layout + generic payload fix");
+        System.out.println("  trigger:           R + SELECT");
+        System.out.println("  payload:           \"Hello from the Wonder Card!\"");
+        System.out.println("  bootstrap bytes:   " + CompactRuntimeCandidate5a.bootstrapBytes(rom).length);
+        System.out.println("  table bytes:       " + CompactRuntimeCandidate5a.TABLE_SIZE);
+        System.out.println("  native blob bytes: " + CompactRuntimeCandidate5a.NATIVE_BLOB_SIZE);
+        System.out.println("  field installer:   " + CompactRuntimeCandidate5a.fieldInstallerSize(rom));
+        System.out.println("  payload bytes:     " + payload);
+        System.out.println("  runtime overhead:  " + (total - payload));
+        System.out.println("  total script:      " + total + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  free bytes:        " + (RamScript.SCRIPT_SIZE - total));
+        System.out.println();
+        System.out.println("Hello build is byte-identical to validated C4.");
+        System.out.println("Difference: arbitrary payload lengths now generate the correct bootstrap target.");
+    }
+
+    private static void buildCompactRuntimeC4Bin(String[] args) throws Exception {
+        if (args.length != 3) {
+            throw new IllegalArgumentException(
+                    "Usage: build-compact-runtime-c4-bin <rom> <output.bin>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        RamScript script = CompactRuntimeCandidate4.build(rom);
+        buildBinary(script, Path.of(args[2]));
+        printCompactRuntimeC4(rom);
+    }
+
+    private static void buildCompactRuntimeC4Wc3(String[] args) throws Exception {
+        if (args.length != 4) {
+            throw new IllegalArgumentException(
+                    "Usage: build-compact-runtime-c4-wc3 <rom> <input.wc3> <output.wc3>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        RamScript script = CompactRuntimeCandidate4.build(rom);
+        buildIntoWc3(script, Path.of(args[2]), Path.of(args[3]));
+        printCompactRuntimeC4(rom);
+    }
+
+    private static void printCompactRuntimeC4(RomProfile rom) {
+        int total = CompactRuntimeCandidate4.scriptSize(rom);
+        int payload = CompactRuntimeCandidate4.payloadSize();
+
+        System.out.println();
+        System.out.println("Compact Runtime Candidate 4:");
+        System.out.println("  ROM:               " + rom.displayName());
+        System.out.println("  status:            EXPERIMENTAL - sAddressOffset bootstrap");
+        System.out.println("  trigger:           R + SELECT");
+        System.out.println("  payload:           \"Hello from the Wonder Card!\"");
+        System.out.printf("  sAddressOffset:    0x%08X%n",
+                CompactRuntimeCandidate4.S_ADDRESS_OFFSET);
+        System.out.println("  bootstrap bytes:   "
+                + CompactRuntimeCandidate4.bootstrapBytes(rom).length);
+        System.out.println("  native blob bytes: "
+                + CompactRuntimeCandidate4.NATIVE_BLOB_SIZE);
+        System.out.println("  field installer:   "
+                + CompactRuntimeCandidate4.fieldInstallerSize(rom));
+        System.out.println("  payload bytes:     " + payload);
+        System.out.println("  runtime overhead:  " + (total - payload));
+        System.out.println("  total script:      " + total + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  free bytes:        " + (RamScript.SCRIPT_SIZE - total));
+        System.out.println();
+        System.out.println("C3 resident runtime is otherwise unchanged.");
+        System.out.println("Expected after installation:");
+        System.out.println("  callback1 = 03005311");
+        System.out.println("  VBlank    = 03003F43");
+        System.out.println("  R+SELECT  = Hello from the Wonder Card!");
+    }
+
+    private static void buildCompactRuntimeC3Bin(String[] args) throws Exception {
+        if (args.length != 3) {
+            throw new IllegalArgumentException(
+                    "Usage: build-compact-runtime-c3-bin <rom> <output.bin>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        RamScript script = CompactRuntimeCandidate3.build(rom);
+        buildBinary(script, Path.of(args[2]));
+        printCompactRuntimeC3(rom);
+    }
+
+    private static void buildCompactRuntimeC3Wc3(String[] args) throws Exception {
+        if (args.length != 4) {
+            throw new IllegalArgumentException(
+                    "Usage: build-compact-runtime-c3-wc3 <rom> <input.wc3> <output.wc3>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        RamScript script = CompactRuntimeCandidate3.build(rom);
+        buildIntoWc3(script, Path.of(args[2]), Path.of(args[3]));
+        printCompactRuntimeC3(rom);
+    }
+
+    private static void printCompactRuntimeC3(RomProfile rom) {
+        System.out.println();
+        System.out.println("Compact Runtime Candidate 3:");
+        System.out.println("  ROM:               " + rom.displayName());
+        System.out.println("  status:            EXPERIMENTAL - compact full runtime + active hotkey");
+        System.out.println("  payload:           Hello from the Wonder Card!");
+        System.out.printf("  signature:         0x%04X at script+0x%02X%n",
+                CompactRuntimeCandidate3.FORMAT_SIGNATURE,
+                CompactRuntimeCandidate3.SIGNATURE_OFFSET);
+        System.out.printf("  payload offset:    0x%02X%n", CompactRuntimeCandidate3.PAYLOAD_OFFSET);
+        System.out.println("  payload bytes:     " + CompactRuntimeCandidate3.payloadSize());
+        System.out.printf("  native blob offset:0x%02X%n", CompactRuntimeCandidate3.nativeBlobOffset());
+        System.out.println("  alignment padding: " + CompactRuntimeCandidate3.alignmentPadding());
+        System.out.println("  native blob bytes: " + CompactRuntimeCandidate3.NATIVE_BLOB_SIZE);
+        System.out.println("  bootstrap bytes:   " + CompactRuntimeCandidate3.bootstrapBytes(rom).length);
+        System.out.println("  field installer:   " + CompactRuntimeCandidate3.fieldInstallerSize(rom));
+        System.out.println("  runtime overhead:  " + CompactRuntimeCandidate3.runtimeOverhead(rom));
+        System.out.println("  total script:      " + CompactRuntimeCandidate3.scriptSize(rom)
+                + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  free bytes:        " + CompactRuntimeCandidate3.freeBytes(rom));
+        System.out.println("  VBlank hook:       active after compact resident copy");
+        System.out.println();
+        System.out.println("Expected after deliveryman:");
+        System.out.println("  callback1 -> 03005311 after supervisor rearms it");
+        System.out.println("  VBlank    -> 03003F43");
+        System.out.println("  R+SELECT opens the Hello message");
+    }
+
+    private static void buildCompactInstallerC2aBin(String[] args) throws Exception {
+        if (args.length != 3) {
+            throw new IllegalArgumentException(
+                    "Usage: build-compact-installer-c2a-bin <rom> <output.bin>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        RamScript script = CompactInstallerCandidate2a.build(rom);
+        buildBinary(script, Path.of(args[2]));
+        printCompactInstallerC2a(rom);
+    }
+
+    private static void buildCompactInstallerC2aWc3(String[] args) throws Exception {
+        if (args.length != 4) {
+            throw new IllegalArgumentException(
+                    "Usage: build-compact-installer-c2a-wc3 <rom> <input.wc3> <output.wc3>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        RamScript script = CompactInstallerCandidate2a.build(rom);
+        buildIntoWc3(script, Path.of(args[2]), Path.of(args[3]));
+        printCompactInstallerC2a(rom);
+    }
+
+    private static void printCompactInstallerC2a(RomProfile rom) {
+        System.out.println();
+        System.out.println("Compact installer Candidate 2a:");
+        System.out.println("  ROM:               " + rom.displayName());
+        System.out.println("  status:            EXPERIMENTAL - aligned full resident copy, hooks disabled");
+        System.out.printf("  native blob offset:0x%02X%n", CompactInstallerCandidate2a.NATIVE_BLOB_OFFSET);
+        System.out.println("  alignment padding: " + CompactInstallerCandidate2a.ALIGNMENT_PADDING + " bytes");
+        System.out.println("  bootstrap bytes:   " + CompactInstallerCandidate2a.bootstrapBytes(rom).length);
+        System.out.println("  native blob bytes: " + CompactInstallerCandidate2a.NATIVE_BLOB_SIZE);
+        System.out.println("  resident bytes:    " + RuntimeV1ResidentBlocks.totalResidentBytes(rom));
+        System.out.println("  field installer:   " + CompactInstallerCandidate2a.fieldInstallerSize(rom));
+        System.out.println("  total script:      " + CompactInstallerCandidate2a.scriptSize(rom)
+                + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  free bytes:        " + CompactInstallerCandidate2a.freeBytes(rom));
+        System.out.println("  hooks installed:   NONE");
+        System.out.println();
+        System.out.println("C2 was rejected: native blob at script+0x0A was 2 mod 4 and broke ADR targets.");
+        System.out.println("C2a aligns the native blob at script+0x0C.");
+        System.out.println("R+SELECT remains intentionally inactive.");
+    }
+
+    private static void buildCompactInstallerC2Bin(String[] args) throws Exception {
+        if (args.length != 3) {
+            throw new IllegalArgumentException(
+                    "Usage: build-compact-installer-c2-bin <rom> <output.bin>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        RamScript script = CompactInstallerCandidate2.build(rom);
+        buildBinary(script, Path.of(args[2]));
+        printCompactInstallerC2(rom);
+    }
+
+    private static void buildCompactInstallerC2Wc3(String[] args) throws Exception {
+        if (args.length != 4) {
+            throw new IllegalArgumentException(
+                    "Usage: build-compact-installer-c2-wc3 <rom> <input.wc3> <output.wc3>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        RamScript script = CompactInstallerCandidate2.build(rom);
+        buildIntoWc3(script, Path.of(args[2]), Path.of(args[3]));
+        printCompactInstallerC2(rom);
+    }
+
+    private static void printCompactInstallerC2(RomProfile rom) {
+        System.out.println();
+        System.out.println("Compact installer Candidate 2:");
+        System.out.println("  ROM:               " + rom.displayName());
+        System.out.println("  status:            EXPERIMENTAL - full resident copy, hooks disabled");
+        System.out.printf("  bootstrap staging: 0x%08X%n", CompactInstallerCandidate2.BOOTSTRAP_ADDRESS);
+        System.out.println("  bootstrap bytes:   " + CompactInstallerCandidate2.bootstrapBytes(rom).length);
+        System.out.println("  native blob bytes: " + CompactInstallerCandidate2.NATIVE_BLOB_SIZE);
+        System.out.println("  resident bytes:    " + RuntimeV1ResidentBlocks.totalResidentBytes(rom));
+        System.out.println("  field installer:   " + CompactInstallerCandidate2.fieldInstallerSize(rom));
+        System.out.println("  total script:      " + CompactInstallerCandidate2.scriptSize(rom)
+                + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  free bytes:        " + CompactInstallerCandidate2.freeBytes(rom));
+        System.out.println("  hooks installed:   NONE");
+        System.out.println();
+        System.out.println("Expected after deliveryman:");
+        System.out.println("  all Runtime v1 resident blocks are present in RAM");
+        System.out.println("  callback1 and VBlank remain unchanged");
+        System.out.println("  R+SELECT remains intentionally inactive");
+    }
+
+    private static void buildCompactInstallerC1Bin(String[] args) throws Exception {
+        if (args.length != 3) {
+            throw new IllegalArgumentException(
+                    "Usage: build-compact-installer-c1-bin <rom> <output.bin>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        RamScript script = CompactInstallerCandidate1.build(rom);
+        buildBinary(script, Path.of(args[2]));
+        printCompactInstallerC1(rom);
+    }
+
+    private static void buildCompactInstallerC1Wc3(String[] args) throws Exception {
+        if (args.length != 4) {
+            throw new IllegalArgumentException(
+                    "Usage: build-compact-installer-c1-wc3 <rom> <input.wc3> <output.wc3>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        RamScript script = CompactInstallerCandidate1.build(rom);
+        buildIntoWc3(script, Path.of(args[2]), Path.of(args[3]));
+        printCompactInstallerC1(rom);
+    }
+
+    private static void printCompactInstallerC1(RomProfile rom) {
+        int total = CompactInstallerCandidate1.scriptSize(rom);
+        int installer = CompactInstallerCandidate1.installerSize(rom);
+
+        System.out.println();
+        System.out.println("Compact installer Candidate 1:");
+        System.out.println("  ROM:              " + rom.displayName());
+        System.out.println("  status:           EXPERIMENTAL - one-block copier only");
+        System.out.printf("  copier staging:   0x%08X%n", CompactInstallerCandidate1.COPIER_ADDRESS);
+        System.out.printf("  destination:      0x%08X%n", CompactInstallerCandidate1.DESTINATION);
+        System.out.println("  copied bytes:     " + CompactInstallerCandidate1.BLOB_SIZE);
+        System.out.println("  copier bytes:     " + CompactInstallerCandidate1.copierBytes(rom).length);
+        System.out.println("  installer bytes:  " + installer);
+        System.out.println("  total script:     " + total + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  free bytes:       " + (RamScript.SCRIPT_SIZE - total));
+        System.out.println("  hooks installed:  NONE");
+        System.out.println();
+        System.out.println("Expected RAM at 03003F42..03003F4F:");
+        System.out.println("18 A3 07 CB 03 68 8B 42 B3 D1 02 60 B1 E7");
+        System.out.println("R+SELECT is intentionally inactive in this candidate.");
+    }
+
+    private static void buildTriggerTestBin(String[] args) throws Exception {
+        if (args.length != 4) {
+            throw new IllegalArgumentException(
+                    "Usage: build-trigger-test-bin <deliveryman|hotkey> <rom> <output.bin>"
+            );
+        }
+        EventTrigger trigger = EventTrigger.fromId(args[1]);
+        RomProfile rom = RomProfile.fromId(args[2]);
+        TriggerBuildResult result = TriggerComposer.compose(
+                trigger, rom, TriggerTestPayloads.helloWonderCard()
+        );
+        buildBinary(result.ramScript(), Path.of(args[3]));
+        printTriggerBuild(result);
+    }
+
+    private static void buildTriggerTestWc3(String[] args) throws Exception {
+        if (args.length != 5) {
+            throw new IllegalArgumentException(
+                    "Usage: build-trigger-test-wc3 <deliveryman|hotkey> <rom> <input.wc3> <output.wc3>"
+            );
+        }
+        EventTrigger trigger = EventTrigger.fromId(args[1]);
+        RomProfile rom = RomProfile.fromId(args[2]);
+        TriggerBuildResult result = TriggerComposer.compose(
+                trigger, rom, TriggerTestPayloads.helloWonderCard()
+        );
+        buildIntoWc3(result.ramScript(), Path.of(args[3]), Path.of(args[4]));
+        printTriggerBuild(result);
+    }
+
+    private static void printTriggerBuild(TriggerBuildResult result) {
+        System.out.println();
+        System.out.println("Trigger composition:");
+        System.out.println("  trigger:          " + result.trigger());
+        System.out.println("  ROM:              " + result.rom().displayName());
+        System.out.println("  validation:       " + result.rom().validationStatus().label());
+        System.out.println("  payload bytes:    " + result.payloadBytes());
+        System.out.println("  runtime overhead: " + result.runtimeOverheadBytes());
+        System.out.println("  total script:     " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  free bytes:       " + result.freeScriptBytes());
+    }
 
     private static void buildRepeatableItemGiftBin(String[] args) throws Exception {
         if (args.length < 4) {
@@ -527,6 +884,13 @@ public final class Main {
         System.out.println("Optional item-gift text overrides:");
         System.out.println("  one-time:   --intro \"...\" --success \"...\" --already \"...\" --bag-full \"...\"");
         System.out.println("  repeatable: --intro \"...\" --success \"...\" --bag-full \"...\"");
+        System.out.println();
+        System.out.println();
+        System.out.println("Trigger composition test:");
+        System.out.println("  java -cp out Main build-trigger-test-bin hotkey fr10 output.bin");
+        System.out.println("  java -cp out Main build-trigger-test-wc3 hotkey lg10 input.wc3 output.wc3");
+        System.out.println("  trigger: deliveryman | hotkey");
+        System.out.println("  ROM: fr10 | lg10 | fr11 | lg11");
         System.out.println();
         System.out.println("Legacy v5 build-* commands remain accepted for compatibility.");
     }

@@ -1,0 +1,9 @@
+record TriggerBuildResult(
+        RamScript ramScript,
+        EventTrigger trigger,
+        RomProfile rom,
+        int payloadBytes,
+        int runtimeOverheadBytes,
+        int totalScriptBytes,
+        int freeScriptBytes
+) {}

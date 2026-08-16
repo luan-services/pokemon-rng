@@ -1,0 +1,28 @@
+/* Chooses how a Field Script payload is entered.
+
+   DELIVERYMAN keeps the classic behavior: the payload itself is the RamScript.
+   HOTKEY_RUNTIME wraps the exact same payload in Native Runtime v1.
+*/
+final class TriggerComposer {
+    private TriggerComposer() {}
+
+    static TriggerBuildResult compose(EventTrigger trigger, RomProfile rom, byte[] payload) {
+        if (payload == null || payload.length == 0) {
+            throw new IllegalArgumentException("payload must not be empty");
+        }
+
+        return switch (trigger) {
+            case DELIVERYMAN -> {
+                if (payload.length > RamScript.SCRIPT_SIZE) {
+                    throw new IllegalArgumentException("payload exceeds RamScript capacity");
+                }
+                RamScript script = RamScript.createWonderCard(payload);
+                yield new TriggerBuildResult(
+                        script, trigger, rom, payload.length, 0,
+                        payload.length, RamScript.SCRIPT_SIZE - payload.length
+                );
+            }
+            case HOTKEY_RUNTIME -> NativeRuntimeV1Composer.compose(rom, payload);
+        };
+    }
+}

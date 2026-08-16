@@ -328,3 +328,19 @@ for that same card may no longer be available to run the clearing script.
 In that situation, use a different card/available received-gift slot for the
 clear-flag utility, or handle save editing separately in a future save tool.
 
+
+
+## Trigger runtime integration
+
+The event builder and the trigger are now separate concepts.
+
+```text
+java -cp out Main build-trigger-test-bin hotkey fr10 output.bin
+java -cp out Main build-trigger-test-wc3 hotkey lg10 input.wc3 output.wc3
+```
+
+The first integration test uses the same `Hello from the Wonder Card!` payload
+for both direct deliveryman execution and the Runtime v1 R+SELECT trigger.
+Existing presets are intentionally unchanged in this revision.
+
+See `docs/TRIGGER_RUNTIME.md`.
