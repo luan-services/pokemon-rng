@@ -16,6 +16,7 @@ public final class TestRunner {
         testScriptSizeLimit();
         testCatalog();
         testTriggerComposition();
+        testCustomPayloadComposition();
 
         testHotkeyRuntimeV1();
 
@@ -203,6 +204,54 @@ public final class TestRunner {
             assertTrue(Arrays.equals(expected, hotkeyFr.ramScript().bytesCopy()),
                     "integrated hotkey hello must match validated Runtime v1 FR10 binary");
         }
+    }
+
+
+    private static void testCustomPayloadComposition() {
+        byte[] payload = TriggerTestPayloads.helloWonderCard();
+
+        TriggerBuildResult delivery = CustomPayloadComposer.compose(
+                EventTrigger.DELIVERYMAN,
+                RomProfile.LEAF_GREEN_EN_10,
+                payload
+        );
+        assertTrue(delivery.runtimeOverheadBytes() == 0,
+                "custom deliveryman payload must not add runtime overhead");
+        assertTrue(delivery.totalScriptBytes() == payload.length,
+                "custom deliveryman payload size");
+        assertTrue(java.util.Arrays.equals(
+                        java.util.Arrays.copyOf(delivery.ramScript().scriptCopy(), payload.length),
+                        payload
+                ),
+                "custom deliveryman must preserve payload byte-for-byte");
+
+        TriggerBuildResult hotkey = CustomPayloadComposer.hotkey(
+                RomProfile.FIRE_RED_EN_10,
+                payload
+        );
+        assertTrue(hotkey.runtimeOverheadBytes() > 0,
+                "custom hotkey payload must include runtime");
+        byte[] wrapped = hotkey.ramScript().scriptCopy();
+        assertTrue(java.util.Arrays.equals(
+                        java.util.Arrays.copyOfRange(
+                                wrapped,
+                                HotkeyRuntimeV1.PAYLOAD_OFFSET,
+                                HotkeyRuntimeV1.PAYLOAD_OFFSET + payload.length
+                        ),
+                        payload
+                ),
+                "custom hotkey must preserve payload byte-for-byte");
+
+        TriggerBuildResult frDelivery = CustomPayloadComposer.compose(
+                EventTrigger.DELIVERYMAN,
+                RomProfile.FIRE_RED_EN_10,
+                payload
+        );
+        assertTrue(java.util.Arrays.equals(
+                        frDelivery.ramScript().bytesCopy(),
+                        delivery.ramScript().bytesCopy()
+                ),
+                "deliveryman custom payload must be ROM-profile agnostic");
     }
 
     private static int indexOfByte(byte[] data, int value) {

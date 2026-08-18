@@ -28,3 +28,8 @@ java -cp out Main build-trigger-test-wc3 hotkey fr10 input.wc3 output.wc3
 ```
 
 For `fr10` with the Hello test payload, the production build is byte-identical to the validated Candidate 5a.
+
+
+## Custom payloads
+
+User-created Field Scripts may execute directly through the deliveryman or be wrapped in `HotkeyRuntimeV1` for R+SELECT. See `docs/CUSTOM_PAYLOADS.md`.

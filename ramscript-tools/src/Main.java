@@ -1,3 +1,4 @@
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -46,6 +47,8 @@ public final class Main {
 
                 case "build-trigger-test-bin" -> buildTriggerTestBin(args);
                 case "build-trigger-test-wc3" -> buildTriggerTestWc3(args);
+                case "build-custom-payload-bin" -> buildCustomPayloadBin(args);
+                case "build-custom-payload-wc3" -> buildCustomPayloadWc3(args);
 
                 /* Compatibility aliases kept from the experimental v5 CLI. */
                 case "build-aurora" -> requireArgs(args, 3, () ->
@@ -148,6 +151,64 @@ public final class Main {
 
 
 
+
+
+    /*
+       Composes a raw Field Script payload supplied by the user.
+
+       DELIVERYMAN:
+         payload becomes the RamScript directly. No ROM-specific runtime is added.
+
+       HOTKEY:
+         payload is embedded byte-for-byte into HotkeyRuntimeV1 and is started
+         later with R+SELECT.
+
+       The payload is expected to be a complete executable FR/LG Field Script.
+       If it contains relocatable pointers, it should normally begin with
+       setvaddress and use the v* control-flow/message commands, exactly like
+       scripts emitted by RamScriptBuilder.
+    */
+    private static void buildCustomPayloadBin(String[] args) throws Exception {
+        if (args.length != 5) {
+            throw new IllegalArgumentException(
+                    "Usage: build-custom-payload-bin <deliveryman|hotkey> <rom> <payload.bin> <output.bin>"
+            );
+        }
+
+        EventTrigger trigger = EventTrigger.fromId(args[1]);
+        RomProfile rom = RomProfile.fromId(args[2]);
+        Path payloadPath = Path.of(args[3]);
+        byte[] payload = Files.readAllBytes(payloadPath);
+
+        TriggerBuildResult result = CustomPayloadComposer.compose(trigger, rom, payload);
+        buildBinary(result.ramScript(), Path.of(args[4]));
+
+        System.out.println();
+        System.out.println("Custom payload composed successfully.");
+        System.out.println("Payload BIN:      " + payloadPath.toAbsolutePath());
+        printTriggerBuild(result);
+    }
+
+    private static void buildCustomPayloadWc3(String[] args) throws Exception {
+        if (args.length != 6) {
+            throw new IllegalArgumentException(
+                    "Usage: build-custom-payload-wc3 <deliveryman|hotkey> <rom> <payload.bin> <input.wc3> <output.wc3>"
+            );
+        }
+
+        EventTrigger trigger = EventTrigger.fromId(args[1]);
+        RomProfile rom = RomProfile.fromId(args[2]);
+        Path payloadPath = Path.of(args[3]);
+        byte[] payload = Files.readAllBytes(payloadPath);
+
+        TriggerBuildResult result = CustomPayloadComposer.compose(trigger, rom, payload);
+        buildIntoWc3(result.ramScript(), Path.of(args[4]), Path.of(args[5]));
+
+        System.out.println();
+        System.out.println("Custom payload composed successfully.");
+        System.out.println("Payload BIN:      " + payloadPath.toAbsolutePath());
+        printTriggerBuild(result);
+    }
 
     private static void buildTriggerTestBin(String[] args) throws Exception {
         if (args.length != 4) {
