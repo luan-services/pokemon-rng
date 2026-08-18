@@ -1,7 +1,7 @@
 /* Chooses how a Field Script payload is entered.
 
    DELIVERYMAN keeps the classic behavior: the payload itself is the RamScript.
-   HOTKEY_RUNTIME wraps the exact same payload in Native Runtime v1.
+   HOTKEY_RUNTIME wraps the exact same payload in Hotkey Runtime v1.
 */
 final class TriggerComposer {
     private TriggerComposer() {}
@@ -22,7 +22,7 @@ final class TriggerComposer {
                         payload.length, RamScript.SCRIPT_SIZE - payload.length
                 );
             }
-            case HOTKEY_RUNTIME -> NativeRuntimeV1Composer.compose(rom, payload);
+            case HOTKEY_RUNTIME -> HotkeyRuntimeV1.compose(rom, payload);
         };
     }
 }

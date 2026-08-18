@@ -2,27 +2,22 @@ import java.io.ByteArrayOutputStream;
 import java.util.List;
 
 /*
-   Compact Runtime Candidate 4.
+   Production hotkey runtime for FireRed/LeafGreen RamScripts.
 
-   C3 is the first full functional compact runtime candidate:
+   Deliveryman installation:
+     -> writes a 20-byte fixed-IWRAM bootstrap with Field Script
+     -> bootstrap resolves the relocated RamScript through sAddressOffset
+     -> jumps into the aligned native installer stored inside the RamScript
+     -> installer copies the validated 123-byte resident Runtime v1 image
+     -> installer atomically hooks VBlank to the validated supervisor
+     -> supervisor rearms callback1 when CB1_Overworld is active
 
-     deliveryman
-       -> installs 32-byte bootstrap with Field Script
-       -> bootstrap resolves current RamScript
-       -> jumps into aligned native installer stored compactly in RamScript
-       -> native installer copies the validated 123-byte resident Runtime v1
-       -> native installer atomically hooks VBlank to the validated supervisor
-       -> supervisor later rearms callback1 when CB1_Overworld is present
+   Hotkey:
+     R + SELECT -> safety/format guards -> executes Field Script payload at +0x0C.
 
-     R + SELECT
-       -> validated safety gate / format guard
-       -> ScriptContext_SetupScript(script + 0x0C)
-       -> Hello from the Wonder Card!
-
-   The resident Runtime v1 bytes are identical to C2a / RC4a. Only the
-   transport/activation mechanism is changed.
+   This implementation is the promoted form of validated Candidate 5a.
 */
-final class CompactRuntimeCandidate4 {
+final class HotkeyRuntimeV1 {
     static final long BOOTSTRAP_ADDRESS = 0x03005310L;
     static final long VIRTUAL_BASE = 0x08010000L;
 
@@ -45,7 +40,7 @@ final class CompactRuntimeCandidate4 {
     static final int NATIVE_BLOB_SIZE =
             NATIVE_CODE_AND_LITERALS_SIZE + TABLE_SIZE + RESIDENT_DATA_SIZE; // 227
 
-    private CompactRuntimeCandidate4() {}
+    private HotkeyRuntimeV1() {}
 
     static RamScript build(RomProfile rom) {
         byte[] payload = TriggerTestPayloads.helloWonderCard();
@@ -54,14 +49,14 @@ final class CompactRuntimeCandidate4 {
 
     static RamScript build(RomProfile rom, byte[] payload) {
         if (payload == null || payload.length == 0) {
-            throw new IllegalArgumentException("compact C4 payload must not be empty");
+            throw new IllegalArgumentException("hotkey runtime v1 payload must not be empty");
         }
 
-        byte[] bootstrap = bootstrapBytes(rom);
         byte[] nativeBlob = nativeInstallerBlob(rom);
 
         int afterPayload = PAYLOAD_OFFSET + payload.length;
         int nativeBlobOffset = align4(afterPayload);
+        byte[] bootstrap = bootstrapBytes(rom, nativeBlobOffset);
         int alignmentPadding = nativeBlobOffset - afterPayload;
         int fieldInstallerOffset = nativeBlobOffset + nativeBlob.length;
 
@@ -77,7 +72,7 @@ final class CompactRuntimeCandidate4 {
         int total = fieldInstallerOffset + fieldInstaller.length;
         if (total > RamScript.SCRIPT_SIZE) {
             throw new IllegalArgumentException(
-                    "Compact C3 requires " + total + " bytes; maximum is "
+                    "Hotkey Runtime v1 requires " + total + " bytes; maximum is "
                             + RamScript.SCRIPT_SIZE
             );
         }
@@ -94,14 +89,14 @@ final class CompactRuntimeCandidate4 {
         p += 4;
 
         if (p != SIGNATURE_OFFSET) {
-            throw new IllegalStateException("compact C4 signature offset mismatch");
+            throw new IllegalStateException("hotkey runtime v1 signature offset mismatch");
         }
 
         script[p++] = (byte)(FORMAT_SIGNATURE & 0xFF);
         script[p++] = (byte)((FORMAT_SIGNATURE >>> 8) & 0xFF);
 
         if (p != PAYLOAD_OFFSET) {
-            throw new IllegalStateException("compact C4 payload offset mismatch");
+            throw new IllegalStateException("hotkey runtime v1 payload offset mismatch");
         }
 
         System.arraycopy(payload, 0, script, p, payload.length);
@@ -115,14 +110,14 @@ final class CompactRuntimeCandidate4 {
         }
 
         if (p != nativeBlobOffset || (nativeBlobOffset & 3) != 0) {
-            throw new IllegalStateException("compact C4 native blob alignment mismatch");
+            throw new IllegalStateException("hotkey runtime v1 native blob alignment mismatch");
         }
 
         System.arraycopy(nativeBlob, 0, script, p, nativeBlob.length);
         p += nativeBlob.length;
 
         if (p != fieldInstallerOffset) {
-            throw new IllegalStateException("compact C4 field installer offset mismatch");
+            throw new IllegalStateException("hotkey runtime v1 field installer offset mismatch");
         }
 
         System.arraycopy(fieldInstaller, 0, script, p, fieldInstaller.length);
@@ -131,8 +126,12 @@ final class CompactRuntimeCandidate4 {
     }
 
     static byte[] bootstrapBytes(RomProfile rom) {
+        return bootstrapBytes(rom, nativeBlobOffset());
+    }
+
+    static byte[] bootstrapBytes(RomProfile rom, int nativeBlobOffset) {
         /*
-           Candidate 4 no longer calls GetSavedRamScriptIfValid().
+           Candidate 5a no longer calls GetSavedRamScriptIfValid().
 
            setvaddress already calculated:
 
@@ -175,17 +174,17 @@ final class CompactRuntimeCandidate4 {
         };
 
         putU32(out, 0x0C, S_ADDRESS_OFFSET);
-        putU32(out, 0x10, VIRTUAL_BASE + nativeBlobOffset() + 1L);
+        putU32(out, 0x10, VIRTUAL_BASE + nativeBlobOffset + 1L);
         return out;
     }
 
     static byte[] nativeInstallerBlob(RomProfile rom) {
         List<RuntimeV1ResidentBlocks.Block> blocks = RuntimeV1ResidentBlocks.build(rom);
         if (blocks.size() != 12) {
-            throw new IllegalStateException("compact C4 expects 12 resident blocks");
+            throw new IllegalStateException("hotkey runtime v1 expects 12 resident blocks");
         }
         if (RuntimeV1ResidentBlocks.totalResidentBytes(rom) != RESIDENT_DATA_SIZE) {
-            throw new IllegalStateException("compact C4 resident byte count mismatch");
+            throw new IllegalStateException("hotkey runtime v1 resident byte count mismatch");
         }
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -226,7 +225,7 @@ final class CompactRuntimeCandidate4 {
         };
 
         if (codeAndLiterals.length != NATIVE_CODE_AND_LITERALS_SIZE) {
-            throw new IllegalStateException("compact C4 native code size mismatch");
+            throw new IllegalStateException("hotkey runtime v1 native code size mismatch");
         }
         out.writeBytes(codeAndLiterals);
 
@@ -234,7 +233,7 @@ final class CompactRuntimeCandidate4 {
         for (RuntimeV1ResidentBlocks.Block block : blocks) {
             long address = block.address();
             if ((address & 0xFFFF0000L) != 0x03000000L) {
-                throw new IllegalStateException("compact C4 block outside IWRAM");
+                throw new IllegalStateException("hotkey runtime v1 block outside IWRAM");
             }
             u16(out, (int)(address & 0xFFFF));
             u16(out, block.data().length);
@@ -248,11 +247,39 @@ final class CompactRuntimeCandidate4 {
         byte[] blob = out.toByteArray();
         if (blob.length != NATIVE_BLOB_SIZE) {
             throw new IllegalStateException(
-                    "compact C4 expected native blob " + NATIVE_BLOB_SIZE
+                    "hotkey runtime v1 expected native blob " + NATIVE_BLOB_SIZE
                             + ", got " + blob.length
             );
         }
         return blob;
+    }
+
+    static TriggerBuildResult compose(RomProfile rom, byte[] payload) {
+        RamScript script = build(rom, payload);
+        int total = scriptSize(rom, payload);
+        return new TriggerBuildResult(
+                script,
+                EventTrigger.HOTKEY_RUNTIME,
+                rom,
+                payload.length,
+                total - payload.length,
+                total,
+                RamScript.SCRIPT_SIZE - total
+        );
+    }
+
+    static int scriptSize(RomProfile rom, byte[] payload) {
+        if (payload == null || payload.length == 0) {
+            throw new IllegalArgumentException("hotkey payload must not be empty");
+        }
+        int nativeOffset = align4(PAYLOAD_OFFSET + payload.length);
+        int fieldInstaller = new FieldScriptWriter()
+                .writeBytes(BOOTSTRAP_ADDRESS, bootstrapBytes(rom, nativeOffset))
+                .callNative(BOOTSTRAP_ADDRESS | 1L)
+                .returnRam()
+                .build()
+                .length;
+        return nativeOffset + NATIVE_BLOB_SIZE + fieldInstaller;
     }
 
     static int payloadSize() {

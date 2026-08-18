@@ -16,12 +16,8 @@ public final class TestRunner {
         testScriptSizeLimit();
         testCatalog();
         testTriggerComposition();
-        testCompactInstallerCandidate1();
-        testCompactInstallerCandidate2();
-        testCompactInstallerCandidate2a();
-        testCompactRuntimeCandidate3();
-        testCompactRuntimeCandidate4();
-        testCompactRuntimeCandidate5a();
+
+        testHotkeyRuntimeV1();
 
         System.out.println("All tests passed.");
     }
@@ -230,312 +226,46 @@ public final class TestRunner {
     }
 
 
-    private static void testCompactInstallerCandidate1() {
+    private static void testHotkeyRuntimeV1() {
         for (RomProfile rom : RomProfile.values()) {
-            byte[] blob = CompactInstallerCandidate1.supervisorBlob();
-            byte[] copier = CompactInstallerCandidate1.copierBytes(rom);
+            byte[] hello = TriggerTestPayloads.helloWonderCard();
+            RamScript direct = HotkeyRuntimeV1.build(rom, hello);
+            TriggerBuildResult composed = TriggerComposer.compose(
+                    EventTrigger.HOTKEY_RUNTIME, rom, hello
+            );
 
-            assertTrue(blob.length == 14, "compact C1 supervisor blob size " + rom.id());
-            assertTrue(copier.length == 40, "compact C1 copier size " + rom.id());
+            assertTrue(direct.isChecksumValid(), "hotkey runtime checksum " + rom.id());
+            assertTrue(java.util.Arrays.equals(direct.bytesCopy(), composed.ramScript().bytesCopy()),
+                    "trigger composer must use HotkeyRuntimeV1 " + rom.id());
+            assertTrue(composed.payloadBytes() == hello.length,
+                    "hotkey payload size " + rom.id());
+            assertTrue(composed.totalScriptBytes() == 409,
+                    "validated Hello total size " + rom.id());
+            assertTrue(composed.freeScriptBytes() == 586,
+                    "validated Hello free size " + rom.id());
 
-            int push = ((copier[1] & 0xFF) << 8) | (copier[0] & 0xFF);
-            assertTrue(push == 0xB500, "compact C1 push lr " + rom.id());
-
-            assertTrue(Binary.u32(copier, 0x20) == rom.getSavedRamScriptThumb,
-                    "compact C1 GetSaved literal " + rom.id());
-            assertTrue(Binary.u32(copier, 0x24) == 0x03003F42L,
-                    "compact C1 destination literal " + rom.id());
-
-            byte[] expected = new byte[] {
-                    0x18,(byte)0xA3, 0x07,(byte)0xCB, 0x03,0x68, (byte)0x8B,0x42,
-                    (byte)0xB3,(byte)0xD1, 0x02,0x60, (byte)0xB1,(byte)0xE7
+            byte[][] payloads = {
+                    new byte[] {(byte)0xB8, 0x00,0x00,0x01,0x08, 0x02},
+                    new byte[64],
+                    new byte[300]
             };
-            assertTrue(java.util.Arrays.equals(expected, blob),
-                    "compact C1 supervisor blob equality " + rom.id());
+            payloads[1][0] = (byte)0xB8;
+            payloads[1][1] = 0x00; payloads[1][2] = 0x00; payloads[1][3] = 0x01; payloads[1][4] = 0x08;
+            payloads[1][63] = 0x02;
+            payloads[2][0] = (byte)0xB8;
+            payloads[2][1] = 0x00; payloads[2][2] = 0x00; payloads[2][3] = 0x01; payloads[2][4] = 0x08;
+            payloads[2][299] = 0x02;
 
-            RamScript script = CompactInstallerCandidate1.build(rom);
-            assertTrue(script.isChecksumValid(), "compact C1 checksum " + rom.id());
-            assertTrue(CompactInstallerCandidate1.scriptSize(rom) < 400,
-                    "compact C1 should stay below 400 bytes " + rom.id());
-        }
-    }
-
-
-    private static void testCompactInstallerCandidate2() {
-        for (RomProfile rom : RomProfile.values()) {
-            byte[] bootstrap = CompactInstallerCandidate2.bootstrapBytes(rom);
-            byte[] blob = CompactInstallerCandidate2.nativeInstallerBlob(rom);
-            java.util.List<RuntimeV1ResidentBlocks.Block> blocks =
-                    RuntimeV1ResidentBlocks.build(rom);
-
-            assertTrue(bootstrap.length == 32,
-                    "compact C2 bootstrap size " + rom.id());
-            assertTrue(blob.length == 211,
-                    "compact C2 native blob size " + rom.id());
-            assertTrue(blocks.size() == 12,
-                    "compact C2 resident block count " + rom.id());
-            assertTrue(RuntimeV1ResidentBlocks.totalResidentBytes(rom) == 123,
-                    "compact C2 resident data bytes " + rom.id());
-
-            // Bootstrap literal must be profile-specific GetSavedRamScriptIfValid|1.
-            assertTrue(Binary.u32(bootstrap, 0x1C) == rom.getSavedRamScriptThumb,
-                    "compact C2 GetSaved literal " + rom.id());
-
-            // Independently assembled bootstrap opcodes for:
-            // ldrh r1,[r0,#6], add r0,r0,r1, sub #211, bx r0.
-            assertTrue((((bootstrap[13] & 0xFF) << 8) | (bootstrap[12] & 0xFF)) == 0x88C1,
-                    "compact C2 installer-offset LDRH " + rom.id());
-            assertTrue((((bootstrap[15] & 0xFF) << 8) | (bootstrap[14] & 0xFF)) == 0x1840,
-                    "compact C2 script+offset ADD " + rom.id());
-            assertTrue((((bootstrap[17] & 0xFF) << 8) | (bootstrap[16] & 0xFF)) == 0x38D3,
-                    "compact C2 subtract blob size " + rom.id());
-
-            // Native blob code/table boundary and record metadata.
-            assertTrue((((blob[1] & 0xFF) << 8) | (blob[0] & 0xFF)) == 0xB4F0,
-                    "compact C2 native push " + rom.id());
-
-            int table = CompactInstallerCandidate2.NATIVE_CODE_SIZE;
-            int data = CompactInstallerCandidate2.NATIVE_CODE_SIZE
-                    + CompactInstallerCandidate2.TABLE_SIZE;
-
-            int cursor = data;
-            for (int i = 0; i < blocks.size(); i++) {
-                RuntimeV1ResidentBlocks.Block block = blocks.get(i);
-                int record = table + i * 4;
-                int destinationLow = (blob[record] & 0xFF)
-                        | ((blob[record + 1] & 0xFF) << 8);
-                int size = (blob[record + 2] & 0xFF)
-                        | ((blob[record + 3] & 0xFF) << 8);
-
-                assertTrue(destinationLow == (int)(block.address() & 0xFFFF),
-                        "compact C2 table destination " + i + " " + rom.id());
-                assertTrue(size == block.data().length,
-                        "compact C2 table size " + i + " " + rom.id());
-
-                for (int j = 0; j < size; j++) {
-                    assertTrue(blob[cursor + j] == block.data()[j],
-                            "compact C2 block data " + i + ":" + j + " " + rom.id());
-                }
-                cursor += size;
+            for (byte[] payload : payloads) {
+                int nativeOffset = (HotkeyRuntimeV1.PAYLOAD_OFFSET + payload.length + 3) & ~3;
+                byte[] bootstrap = HotkeyRuntimeV1.bootstrapBytes(rom, nativeOffset);
+                long target = Binary.u32(bootstrap, 0x10);
+                assertTrue(target == HotkeyRuntimeV1.VIRTUAL_BASE + nativeOffset + 1L,
+                        "generic payload bootstrap target " + payload.length + " " + rom.id());
+                RamScript script = HotkeyRuntimeV1.build(rom, payload);
+                assertTrue(script.isChecksumValid(),
+                        "generic payload checksum " + payload.length + " " + rom.id());
             }
-            assertTrue(cursor == blob.length,
-                    "compact C2 data consumes entire blob " + rom.id());
-
-            // Wrapper must be last, so bootstrap self-overwrite happens only
-            // after the copier has moved execution into the RamScript blob.
-            RuntimeV1ResidentBlocks.Block last = blocks.get(blocks.size() - 1);
-            assertTrue(last.address() == 0x03005310L && last.data().length == 32,
-                    "compact C2 wrapper-last invariant " + rom.id());
-
-            RamScript script = CompactInstallerCandidate2.build(rom);
-            assertTrue(script.isChecksumValid(),
-                    "compact C2 checksum " + rom.id());
-            assertTrue(CompactInstallerCandidate2.scriptSize(rom) < 500,
-                    "compact C2 full copy should fit below 500 bytes " + rom.id());
-        }
-    }
-
-
-    private static void testCompactInstallerCandidate2a() {
-        for (RomProfile rom : RomProfile.values()) {
-            byte[] blob = CompactInstallerCandidate2a.nativeInstallerBlob(rom);
-            byte[] bootstrap = CompactInstallerCandidate2a.bootstrapBytes(rom);
-
-            assertTrue(CompactInstallerCandidate2a.NATIVE_BLOB_OFFSET == 0x0C,
-                    "compact C2a blob offset must be 4-byte aligned relative to script " + rom.id());
-            assertTrue((0x3624 + CompactInstallerCandidate2a.NATIVE_BLOB_OFFSET) % 4 == 0,
-                    "compact C2a physical SaveBlock-relative blob alignment " + rom.id());
-
-            // With blob base B aligned to 4:
-            // ADR r4 at B+2 uses Align(B+6,4)+36 = B+40 (table).
-            // ADR r6 at B+4 uses Align(B+8,4)+80 = B+88 (data).
-            long syntheticBase = 0x0200000CL;
-            long tableTarget = (syntheticBase + 4) + 36;
-            long dataTarget = (syntheticBase + 8) + 80;
-            assertTrue(tableTarget == syntheticBase + CompactInstallerCandidate2a.NATIVE_CODE_SIZE,
-                    "compact C2a ADR table target " + rom.id());
-            assertTrue(dataTarget == syntheticBase
-                            + CompactInstallerCandidate2a.NATIVE_CODE_SIZE
-                            + CompactInstallerCandidate2a.TABLE_SIZE,
-                    "compact C2a ADR data target " + rom.id());
-
-            assertTrue(blob.length == 211, "compact C2a blob size " + rom.id());
-            assertTrue(bootstrap.length == 32, "compact C2a bootstrap size " + rom.id());
-
-            RamScript script = CompactInstallerCandidate2a.build(rom);
-            assertTrue(script.isChecksumValid(), "compact C2a checksum " + rom.id());
-            assertTrue(CompactInstallerCandidate2a.scriptSize(rom) == 421,
-                    "compact C2a exact script size " + rom.id());
-            assertTrue(CompactInstallerCandidate2a.freeBytes(rom) == 574,
-                    "compact C2a free bytes " + rom.id());
-        }
-    }
-
-
-    private static void testCompactRuntimeCandidate3() {
-        for (RomProfile rom : RomProfile.values()) {
-            byte[] bootstrap = CompactRuntimeCandidate3.bootstrapBytes(rom);
-            byte[] blob = CompactRuntimeCandidate3.nativeInstallerBlob(rom);
-            byte[] payload = TriggerTestPayloads.helloWonderCard();
-
-            assertTrue(payload.length == 43,
-                    "compact C3 hello payload size " + rom.id());
-            assertTrue(CompactRuntimeCandidate3.PAYLOAD_OFFSET == 0x0C,
-                    "compact C3 runtime payload offset " + rom.id());
-            assertTrue(CompactRuntimeCandidate3.nativeBlobOffset() == 0x38,
-                    "compact C3 aligned native blob offset " + rom.id());
-            assertTrue(CompactRuntimeCandidate3.alignmentPadding() == 1,
-                    "compact C3 hello alignment padding " + rom.id());
-            assertTrue((0x3624 + CompactRuntimeCandidate3.nativeBlobOffset()) % 4 == 0,
-                    "compact C3 physical native blob alignment " + rom.id());
-
-            assertTrue(bootstrap.length == 32,
-                    "compact C3 bootstrap size " + rom.id());
-            assertTrue(Binary.u32(bootstrap, 0x1C) == rom.getSavedRamScriptThumb,
-                    "compact C3 GetSaved literal " + rom.id());
-            assertTrue((((bootstrap[17] & 0xFF) << 8) | (bootstrap[16] & 0xFF)) == 0x38E3,
-                    "compact C3 subtract 227 " + rom.id());
-
-            assertTrue(blob.length == 227,
-                    "compact C3 native blob size " + rom.id());
-
-            // Independently assembled activation sequence at blob + 0x24.
-            assertTrue((((blob[0x25] & 0xFF) << 8) | (blob[0x24] & 0xFF)) == 0x4802,
-                    "compact C3 ldr VBlank slot " + rom.id());
-            assertTrue((((blob[0x27] & 0xFF) << 8) | (blob[0x26] & 0xFF)) == 0x4903,
-                    "compact C3 ldr supervisor ptr " + rom.id());
-            assertTrue((((blob[0x29] & 0xFF) << 8) | (blob[0x28] & 0xFF)) == 0x6001,
-                    "compact C3 atomic VBlank str " + rom.id());
-            assertTrue(Binary.u32(blob, 0x30) == 0x03003550L,
-                    "compact C3 VBlank slot literal " + rom.id());
-            assertTrue(Binary.u32(blob, 0x34) == 0x03003F43L,
-                    "compact C3 supervisor literal " + rom.id());
-
-            // The compact payload data must still be the exact C2a resident image.
-            int data = CompactRuntimeCandidate3.NATIVE_CODE_AND_LITERALS_SIZE
-                    + CompactRuntimeCandidate3.TABLE_SIZE;
-            int cursor = data;
-            java.util.List<RuntimeV1ResidentBlocks.Block> blocks =
-                    RuntimeV1ResidentBlocks.build(rom);
-            for (RuntimeV1ResidentBlocks.Block block : blocks) {
-                for (int j = 0; j < block.data().length; j++) {
-                    assertTrue(blob[cursor + j] == block.data()[j],
-                            "compact C3 resident byte mismatch " + rom.id());
-                }
-                cursor += block.data().length;
-            }
-            assertTrue(cursor == blob.length,
-                    "compact C3 resident data consumes blob " + rom.id());
-
-            RamScript script = CompactRuntimeCandidate3.build(rom);
-            assertTrue(script.isChecksumValid(),
-                    "compact C3 checksum " + rom.id());
-            assertTrue(CompactRuntimeCandidate3.scriptSize(rom) == 481,
-                    "compact C3 exact script size " + rom.id());
-            assertTrue(CompactRuntimeCandidate3.runtimeOverhead(rom) == 438,
-                    "compact C3 runtime overhead " + rom.id());
-            assertTrue(CompactRuntimeCandidate3.freeBytes(rom) == 514,
-                    "compact C3 free bytes " + rom.id());
-        }
-    }
-
-
-    private static void testCompactRuntimeCandidate4() {
-        for (RomProfile rom : RomProfile.values()) {
-            byte[] bootstrap = CompactRuntimeCandidate4.bootstrapBytes(rom);
-            byte[] blob = CompactRuntimeCandidate4.nativeInstallerBlob(rom);
-
-            assertTrue(bootstrap.length == 20,
-                    "compact C4 bootstrap size " + rom.id());
-            assertTrue(Binary.u32(bootstrap, 0x0C) == 0x020370A8L,
-                    "compact C4 sAddressOffset literal " + rom.id());
-
-            long expectedVirtualThumb =
-                    0x08010000L + CompactRuntimeCandidate4.nativeBlobOffset() + 1L;
-            assertTrue(Binary.u32(bootstrap, 0x10) == expectedVirtualThumb,
-                    "compact C4 virtual blob literal " + rom.id());
-
-            // Exact independently assembled opcodes.
-            assertTrue((((bootstrap[1] & 0xFF) << 8) | (bootstrap[0] & 0xFF)) == 0x4802,
-                    "compact C4 ldr offset ptr " + rom.id());
-            assertTrue((((bootstrap[3] & 0xFF) << 8) | (bootstrap[2] & 0xFF)) == 0x6800,
-                    "compact C4 ldr offset " + rom.id());
-            assertTrue((((bootstrap[5] & 0xFF) << 8) | (bootstrap[4] & 0xFF)) == 0x4902,
-                    "compact C4 ldr virtual target " + rom.id());
-            assertTrue((((bootstrap[7] & 0xFF) << 8) | (bootstrap[6] & 0xFF)) == 0x1A09,
-                    "compact C4 subtract relocation " + rom.id());
-            assertTrue((((bootstrap[9] & 0xFF) << 8) | (bootstrap[8] & 0xFF)) == 0x4708,
-                    "compact C4 bx target " + rom.id());
-
-            // C4 keeps the same 227-byte compact runtime blob as C3 except
-            // the return instruction: pop {pc} -> bx lr.
-            assertTrue(blob.length == CompactRuntimeCandidate3.NATIVE_BLOB_SIZE,
-                    "compact C4 blob size " + rom.id());
-
-            // Find the native return tail inside the 56-byte code/literal area.
-            int tail = -1;
-            for (int i = 0; i <= 52; i++) {
-                if ((blob[i] & 0xFF) == 0xF0
-                        && (blob[i + 1] & 0xFF) == 0xBC
-                        && (blob[i + 2] & 0xFF) == 0x70
-                        && (blob[i + 3] & 0xFF) == 0x47) {
-                    tail = i;
-                    break;
-                }
-            }
-            assertTrue(tail >= 0, "compact C4 native tail bx lr " + rom.id());
-
-            // C3 and C4 native blobs must otherwise be byte-identical,
-            // except for the two-byte return instruction at tail+2.
-            byte[] c3Blob = CompactRuntimeCandidate3.nativeInstallerBlob(rom);
-            assertTrue(c3Blob.length == blob.length,
-                    "compact C4/C3 blob length equality " + rom.id());
-            for (int i = 0; i < blob.length; i++) {
-                if (i == tail + 2 || i == tail + 3) {
-                    continue;
-                }
-                assertTrue(blob[i] == c3Blob[i],
-                        "compact C4/C3 blob unchanged at " + i + " " + rom.id());
-            }
-            assertTrue((c3Blob[tail + 2] & 0xFF) == 0x00
-                            && (c3Blob[tail + 3] & 0xFF) == 0xBD,
-                    "compact C3 old pop pc tail " + rom.id());
-
-            RamScript script = CompactRuntimeCandidate4.build(rom);
-            assertTrue(script.isChecksumValid(),
-                    "compact C4 checksum " + rom.id());
-
-            assertTrue(CompactRuntimeCandidate4.fieldInstallerSize(rom) == 126,
-                    "compact C4 field installer exact size " + rom.id());
-            assertTrue(CompactRuntimeCandidate4.scriptSize(rom) == 409,
-                    "compact C4 exact script size " + rom.id());
-            assertTrue(RamScript.SCRIPT_SIZE - CompactRuntimeCandidate4.scriptSize(rom) == 586,
-                    "compact C4 free bytes " + rom.id());
-        }
-    }
-
-    private static void testCompactRuntimeCandidate5a() {
-        for (RomProfile rom : RomProfile.values()) {
-            RamScript c4 = CompactRuntimeCandidate4.build(rom);
-            RamScript c5a = CompactRuntimeCandidate5a.build(rom);
-            assertTrue(c4.isChecksumValid(), "compact C4 reference checksum " + rom.id());
-            assertTrue(c5a.isChecksumValid(), "compact C5a checksum " + rom.id());
-
-            byte[] a = c4.bytesCopy();
-            byte[] b = c5a.bytesCopy();
-            assertTrue(a.length == b.length, "compact C5a/C4 total length " + rom.id());
-            for (int i = 0; i < a.length; i++) {
-                assertTrue(a[i] == b[i], "compact C5a Hello byte-identical to C4 at " + i + " " + rom.id());
-            }
-
-            byte[] shortPayload = new byte[] {(byte)0xB8,0,0,1,8,0x02};
-            int nativeOffset = ((CompactRuntimeCandidate5a.PAYLOAD_OFFSET + shortPayload.length + 3) / 4) * 4;
-            byte[] boot = CompactRuntimeCandidate5a.bootstrapBytes(rom, nativeOffset);
-            long target = Binary.u32(boot, 0x10);
-            assertTrue(target == CompactRuntimeCandidate5a.VIRTUAL_BASE + nativeOffset + 1L,
-                    "compact C5a generic payload target " + rom.id());
-            RamScript generic = CompactRuntimeCandidate5a.build(rom, shortPayload);
-            assertTrue(generic.isChecksumValid(), "compact C5a generic checksum " + rom.id());
         }
     }
 
