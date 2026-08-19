@@ -22,14 +22,14 @@ final class Wc3Factory {
         card.setSendType(0);         // DISALLOWED
         card.setMaxStamps(0);
 
-        card.setTitle("CUSTOM WONDER CARD");
-        card.setSubtitle("CHOPPY'S WC3 BUILDER");
-        card.setBodyLine(0, "This is a custom Wonder Card.");
-        card.setBodyLine(1, "No real event is attached yet.");
-        card.setBodyLine(2, "Edit the design, then attach");
-        card.setBodyLine(3, "a RamScript when you are ready.");
+        card.setTitle("MYSTERY EVENT");
+        card.setSubtitle("CHOPPY'S CUSTOM EVENT");
+        card.setBodyLine(0, "A special event is available!");
+        card.setBodyLine(1, "Talk to the deliveryman");
+        card.setBodyLine(2, "inside the POKEMON CENTER.");
+        card.setBodyLine(3, "");
         card.setFooterLine1("Custom Wonder Card");
-        card.setFooterLine2("Generated from scratch");
+        card.setFooterLine2("");
 
         wc3.setRamScript(DefaultDeliveryScript.build());
         wc3.updateCardCrc();

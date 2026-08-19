@@ -17,6 +17,7 @@ public final class TestRunner {
         testCatalog();
         testTriggerComposition();
         testCustomPayloadComposition();
+        testShowSecretIdPreset();
 
         testHotkeyRuntimeV1();
 
@@ -252,6 +253,88 @@ public final class TestRunner {
                         delivery.ramScript().bytesCopy()
                 ),
                 "deliveryman custom payload must be ROM-profile agnostic");
+    }
+
+
+    private static void testShowSecretIdPreset() {
+        byte[] referenceHelper = null;
+        byte[] referenceScript = null;
+
+        for (RomProfile rom : RomProfile.values()) {
+            NativeHelper helper = SecretIdNativeHelper.build(rom);
+            byte[] code = helper.codeCopy();
+
+            assertTrue(helper.stagingAddress() == 0x03005310L,
+                    "SID helper staging " + rom.id());
+            assertTrue(helper.thumbEntryAddress() == 0x03005311L,
+                    "SID helper Thumb entry " + rom.id());
+            assertTrue(code.length == 20,
+                    "SID helper exact size " + rom.id());
+
+            // Independently verified Thumb opcodes:
+            // ldr r0,literal; ldr r0,[r0]; ldrh r0,[r0,#0x0C];
+            // ldr r1,literal; strh r0,[r1]; bx lr.
+            assertTrue((((code[1] & 0xFF) << 8) | (code[0] & 0xFF)) == 0x4802,
+                    "SID helper first literal load " + rom.id());
+            assertTrue((((code[3] & 0xFF) << 8) | (code[2] & 0xFF)) == 0x6800,
+                    "SID helper SaveBlock2 dereference " + rom.id());
+            assertTrue((((code[5] & 0xFF) << 8) | (code[4] & 0xFF)) == 0x8980,
+                    "SID helper Secret ID halfword load " + rom.id());
+            assertTrue((((code[7] & 0xFF) << 8) | (code[6] & 0xFF)) == 0x4902,
+                    "SID helper result literal load " + rom.id());
+            assertTrue((((code[9] & 0xFF) << 8) | (code[8] & 0xFF)) == 0x8008,
+                    "SID helper result halfword store " + rom.id());
+            assertTrue((((code[11] & 0xFF) << 8) | (code[10] & 0xFF)) == 0x4770,
+                    "SID helper bx lr " + rom.id());
+
+            assertTrue(Binary.u32(code, 0x0C) == rom.saveBlock2Ptr,
+                    "SID helper gSaveBlock2Ptr literal " + rom.id());
+            assertTrue(Binary.u32(code, 0x10) == rom.specialVarResult,
+                    "SID helper gSpecialVar_Result literal " + rom.id());
+
+            RamScript script = ShowSecretIdPreset.build(rom);
+            assertTrue(script.isChecksumValid(),
+                    "ShowSecretId checksum " + rom.id());
+            assertTrue(script.hasWonderCardHeader(),
+                    "ShowSecretId WC header " + rom.id());
+
+            byte[] payload = ShowSecretIdPreset.buildScript(rom);
+            assertTrue(payload.length < 200,
+                    "ShowSecretId should remain compact " + rom.id());
+
+            // The current four supported profiles expose the same RAM symbols,
+            // so this helper/preset should be byte-identical across them.
+            if (referenceHelper == null) {
+                referenceHelper = code;
+                referenceScript = payload;
+            } else {
+                assertTrue(java.util.Arrays.equals(referenceHelper, code),
+                        "SID helper profile equality " + rom.id());
+                assertTrue(java.util.Arrays.equals(referenceScript, payload),
+                        "ShowSecretId profile equality " + rom.id());
+            }
+
+            // Confirm the script contains buffernumberstring 0, VAR_RESULT.
+            byte[] needle = new byte[] {
+                    (byte)0x83, 0x00, 0x0D, (byte)0x80
+            };
+            assertTrue(indexOfSequence(payload, needle) >= 0,
+                    "ShowSecretId buffernumberstring VAR_RESULT " + rom.id());
+        }
+    }
+
+
+    private static int indexOfSequence(byte[] haystack, byte[] needle) {
+        outer:
+        for (int i = 0; i <= haystack.length - needle.length; i++) {
+            for (int j = 0; j < needle.length; j++) {
+                if (haystack[i + j] != needle[j]) {
+                    continue outer;
+                }
+            }
+            return i;
+        }
+        return -1;
     }
 
     private static int indexOfByte(byte[] data, int value) {

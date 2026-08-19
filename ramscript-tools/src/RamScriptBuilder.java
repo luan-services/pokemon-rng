@@ -183,6 +183,22 @@ final class RamScriptBuilder {
         return this;
     }
 
+    /* --- Arbitrary byte writes for native-helper staging --- */
+
+    RamScriptBuilder setPtr(int value, long address) {
+        opcode(0x11);
+        u8(value);
+        u32(address);
+        return this;
+    }
+
+    RamScriptBuilder writeBytes(long address, byte[] bytes) {
+        for (int i = 0; i < bytes.length; i++) {
+            setPtr(Byte.toUnsignedInt(bytes[i]), address + i);
+        }
+        return this;
+    }
+
     /* --- Items --- */
 
     RamScriptBuilder addItem(int itemOrVariable, int amountOrVariable) {
@@ -266,6 +282,13 @@ final class RamScriptBuilder {
         opcode(0x80);
         u8(stringVarIndex);
         u16(itemOrVariable);
+        return this;
+    }
+
+    RamScriptBuilder bufferNumberString(int stringVarIndex, int valueOrVariable) {
+        opcode(0x83);
+        u8(stringVarIndex);
+        u16(valueOrVariable);
         return this;
     }
 

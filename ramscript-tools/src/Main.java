@@ -49,6 +49,8 @@ public final class Main {
                 case "build-trigger-test-wc3" -> buildTriggerTestWc3(args);
                 case "build-custom-payload-bin" -> buildCustomPayloadBin(args);
                 case "build-custom-payload-wc3" -> buildCustomPayloadWc3(args);
+                case "build-show-secret-id-bin" -> buildShowSecretIdBin(args);
+                case "build-show-secret-id-wc3" -> buildShowSecretIdWc3(args);
 
                 /* Compatibility aliases kept from the experimental v5 CLI. */
                 case "build-aurora" -> requireArgs(args, 3, () ->
@@ -168,6 +170,49 @@ public final class Main {
        setvaddress and use the v* control-flow/message commands, exactly like
        scripts emitted by RamScriptBuilder.
     */
+
+    private static void buildShowSecretIdBin(String[] args) throws Exception {
+        if (args.length != 3) {
+            throw new IllegalArgumentException(
+                    "Usage: build-show-secret-id-bin <rom> <output.bin>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        RamScript script = ShowSecretIdPreset.build(rom);
+        buildBinary(script, Path.of(args[2]));
+        printShowSecretId(rom, script);
+    }
+
+    private static void buildShowSecretIdWc3(String[] args) throws Exception {
+        if (args.length != 4) {
+            throw new IllegalArgumentException(
+                    "Usage: build-show-secret-id-wc3 <rom> <input.wc3> <output.wc3>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        RamScript script = ShowSecretIdPreset.build(rom);
+        buildIntoWc3(script, Path.of(args[2]), Path.of(args[3]));
+        printShowSecretId(rom, script);
+    }
+
+    private static void printShowSecretId(RomProfile rom, RamScript script) {
+        NativeHelper helper = SecretIdNativeHelper.build(rom);
+        int used = ShowSecretIdPreset.payloadSize(rom);
+
+        System.out.println();
+        System.out.println("Show Secret ID preset:");
+        System.out.println("  ROM:               " + rom.displayName());
+        System.out.println("  execution:         deliveryman");
+        System.out.println("  hotkey runtime:    none");
+        System.out.printf("  helper staging:    0x%08X%n", helper.stagingAddress());
+        System.out.println("  native helper:     " + helper.size() + " bytes");
+        System.out.println("  total script:      " + used + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  free bytes:        " + (RamScript.SCRIPT_SIZE - used));
+        System.out.println("  output:            Your Secret ID is <value>.");
+    }
+
     private static void buildCustomPayloadBin(String[] args) throws Exception {
         if (args.length != 5) {
             throw new IllegalArgumentException(

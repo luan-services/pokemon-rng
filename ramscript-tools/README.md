@@ -33,3 +33,8 @@ For `fr10` with the Hello test payload, the production build is byte-identical t
 ## Custom payloads
 
 User-created Field Scripts may execute directly through the deliveryman or be wrapped in `HotkeyRuntimeV1` for R+SELECT. See `docs/CUSTOM_PAYLOADS.md`.
+
+
+## Hybrid preset example
+
+`ShowSecretIdPreset` demonstrates a deliveryman Field Script that stages and calls a small native helper, then returns to stock Field Script for number formatting and UI. See `docs/SHOW_SECRET_ID.md`.

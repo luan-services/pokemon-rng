@@ -15,7 +15,9 @@ enum RomProfile {
             0x08056535L,
             0x08069E49L,
             0x08069AE5L,
-            0x03000F9CL
+            0x03000F9CL,
+            0x0300500CL,
+            0x020370D0L
     ),
 
     LEAF_GREEN_EN_10(
@@ -34,7 +36,9 @@ enum RomProfile {
             0x08056535L,
             0x08069E49L,
             0x08069AE5L,
-            0x03000F9CL
+            0x03000F9CL,
+            0x0300500CL,
+            0x020370D0L
     ),
 
     FIRE_RED_EN_11(
@@ -53,7 +57,9 @@ enum RomProfile {
             0x08056549L,
             0x08069E5DL,
             0x08069AF9L,
-            0x03000F9CL
+            0x03000F9CL,
+            0x0300500CL,
+            0x020370D0L
     ),
 
     LEAF_GREEN_EN_11(
@@ -72,7 +78,9 @@ enum RomProfile {
             0x08056549L,
             0x08069E5DL,
             0x08069AF9L,
-            0x03000F9CL
+            0x03000F9CL,
+            0x0300500CL,
+            0x020370D0L
     );
 
     enum ValidationStatus {
@@ -113,6 +121,10 @@ enum RomProfile {
     final long scriptContextSetupThumb;
     final long lockFieldControls;
 
+    // Generic native-helper profile fields.
+    final long saveBlock2Ptr;
+    final long specialVarResult;
+
     RomProfile(
             String id,
             String displayName,
@@ -129,7 +141,9 @@ enum RomProfile {
             long cb1OverworldThumb,
             long getSavedRamScriptThumb,
             long scriptContextSetupThumb,
-            long lockFieldControls
+            long lockFieldControls,
+            long saveBlock2Ptr,
+            long specialVarResult
     ) {
         this.id = id;
         this.displayName = displayName;
@@ -147,6 +161,8 @@ enum RomProfile {
         this.getSavedRamScriptThumb = getSavedRamScriptThumb;
         this.scriptContextSetupThumb = scriptContextSetupThumb;
         this.lockFieldControls = lockFieldControls;
+        this.saveBlock2Ptr = saveBlock2Ptr;
+        this.specialVarResult = specialVarResult;
     }
 
     String id() {
