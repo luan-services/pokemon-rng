@@ -18,6 +18,7 @@ public final class TestRunner {
         testTriggerComposition();
         testCustomPayloadComposition();
         testShowSecretIdPreset();
+        testSeedModifierPreset();
 
         testHotkeyRuntimeV1();
 
@@ -320,6 +321,72 @@ public final class TestRunner {
             };
             assertTrue(indexOfSequence(payload, needle) >= 0,
                     "ShowSecretId buffernumberstring VAR_RESULT " + rom.id());
+        }
+    }
+
+
+    private static void testSeedModifierPreset() {
+        int desiredSeed = 0x1234;
+        long predecessor = SeedModifierPreset.predecessor(desiredSeed);
+
+        assertTrue(RngMath.nextState(predecessor) == desiredSeed,
+                "Seed Modifier predecessor must advance to desired seed");
+        assertTrue(SeedModifierPreset.message(desiredSeed).equals("Press A to set 1234 as seed."),
+                "Seed Modifier prompt must include 4-digit uppercase seed");
+        assertTrue(SeedModifierPreset.message(0x00AF).equals("Press A to set 00AF as seed."),
+                "Seed Modifier prompt must preserve leading zeroes");
+
+        byte[] referencePayload = null;
+        for (RomProfile rom : RomProfile.values()) {
+            byte[] payload = SeedModifierPreset.buildPayload(rom, desiredSeed);
+            TriggerBuildResult result = SeedModifierPreset.build(rom, desiredSeed);
+
+            assertTrue(result.trigger() == EventTrigger.HOTKEY_RUNTIME,
+                    "Seed Modifier must use hotkey runtime " + rom.id());
+            assertTrue(result.ramScript().isChecksumValid(),
+                    "Seed Modifier checksum " + rom.id());
+            assertTrue(result.ramScript().hasWonderCardHeader(),
+                    "Seed Modifier WC header " + rom.id());
+            assertTrue(result.payloadBytes() == payload.length,
+                    "Seed Modifier payload accounting " + rom.id());
+            assertTrue(payload.length == 68,
+                    "Seed Modifier compact payload size " + rom.id());
+
+            byte[] predecessorBytes = new byte[] {
+                    (byte) predecessor,
+                    (byte) (predecessor >>> 8),
+                    (byte) (predecessor >>> 16),
+                    (byte) (predecessor >>> 24)
+            };
+            for (int i = 0; i < predecessorBytes.length; i++) {
+                byte[] write = new byte[] {
+                        0x11, predecessorBytes[i],
+                        (byte) ((rom.rngValue + i) & 0xFF),
+                        (byte) (((rom.rngValue + i) >>> 8) & 0xFF),
+                        (byte) (((rom.rngValue + i) >>> 16) & 0xFF),
+                        (byte) (((rom.rngValue + i) >>> 24) & 0xFF)
+                };
+                assertTrue(indexOfSequence(payload, write) >= 0,
+                        "Seed Modifier writes predecessor byte " + i + " " + rom.id());
+            }
+
+            byte[] message = Gen3TextCodec.encodeString(SeedModifierPreset.message(desiredSeed));
+            assertTrue(indexOfSequence(payload, message) >= 0,
+                    "Seed Modifier message embedded " + rom.id());
+
+            if (referencePayload == null) {
+                referencePayload = payload;
+            } else {
+                assertTrue(java.util.Arrays.equals(referencePayload, payload),
+                        "Seed Modifier profile equality " + rom.id());
+            }
+        }
+
+        try {
+            SeedModifierPreset.buildPayload(RomProfile.FIRE_RED_EN_10, 0x10000);
+            throw new AssertionError("Seed Modifier must reject >u16 seed");
+        } catch (IllegalArgumentException expected) {
+            // expected
         }
     }
 

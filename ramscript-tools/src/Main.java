@@ -51,6 +51,8 @@ public final class Main {
                 case "build-custom-payload-wc3" -> buildCustomPayloadWc3(args);
                 case "build-show-secret-id-bin" -> buildShowSecretIdBin(args);
                 case "build-show-secret-id-wc3" -> buildShowSecretIdWc3(args);
+                case "build-seed-modifier-bin" -> buildSeedModifierBin(args);
+                case "build-seed-modifier-wc3" -> buildSeedModifierWc3(args);
 
                 /* Compatibility aliases kept from the experimental v5 CLI. */
                 case "build-aurora" -> requireArgs(args, 3, () ->
@@ -170,6 +172,65 @@ public final class Main {
        setvaddress and use the v* control-flow/message commands, exactly like
        scripts emitted by RamScriptBuilder.
     */
+
+    private static void buildSeedModifierBin(String[] args) throws Exception {
+        if (args.length != 4) {
+            throw new IllegalArgumentException(
+                    "Usage: build-seed-modifier-bin <rom> <seed-hex> <output.bin>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int seed = parseSeed(args[2]);
+        TriggerBuildResult result = SeedModifierPreset.build(rom, seed);
+        buildBinary(result.ramScript(), Path.of(args[3]));
+        printSeedModifier(result, seed);
+    }
+
+    private static void buildSeedModifierWc3(String[] args) throws Exception {
+        if (args.length != 5) {
+            throw new IllegalArgumentException(
+                    "Usage: build-seed-modifier-wc3 <rom> <seed-hex> <input.wc3> <output.wc3>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int seed = parseSeed(args[2]);
+        TriggerBuildResult result = SeedModifierPreset.build(rom, seed);
+        buildIntoWc3(result.ramScript(), Path.of(args[3]), Path.of(args[4]));
+        printSeedModifier(result, seed);
+    }
+
+    private static int parseSeed(String value) {
+        try {
+            String digits = (value.startsWith("0x") || value.startsWith("0X"))
+                    ? value.substring(2)
+                    : value;
+            int seed = Integer.parseUnsignedInt(digits, 16);
+            if (seed > 0xFFFF) {
+                throw new IllegalArgumentException("Initial seed must fit in u16");
+            }
+            return seed;
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("Invalid hexadecimal seed: " + value);
+        }
+    }
+
+    private static void printSeedModifier(TriggerBuildResult result, int seed) {
+        long predecessor = SeedModifierPreset.predecessor(seed);
+        System.out.println();
+        System.out.println("Seed Modifier preset:");
+        System.out.println("  ROM:               " + result.rom().displayName());
+        System.out.println("  trigger:           R + SELECT");
+        System.out.println("  prompt:            " + SeedModifierPreset.message(seed));
+        System.out.printf("  desired seed:      0x%04X%n", seed);
+        System.out.printf("  predecessor:       0x%08X%n", predecessor);
+        System.out.printf("  after Random():    0x%08X%n", RngMath.nextState(predecessor));
+        System.out.println("  payload bytes:     " + result.payloadBytes());
+        System.out.println("  runtime overhead:  " + result.runtimeOverheadBytes());
+        System.out.println("  total script:      " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  free bytes:        " + result.freeScriptBytes());
+    }
 
     private static void buildShowSecretIdBin(String[] args) throws Exception {
         if (args.length != 3) {
@@ -629,6 +690,12 @@ public final class Main {
         System.out.println(
                 "  build-clear-flag-*             utility event that clears one normal script flag"
         );
+        System.out.println(
+                "  build-show-secret-id-*         deliveryman preset that displays the Secret ID"
+        );
+        System.out.println(
+                "  build-seed-modifier-*          R+SELECT RNG seed modifier with A confirmation"
+        );
     }
 
     private static String bytesToHex(byte[] data) {
@@ -691,6 +758,12 @@ public final class Main {
         System.out.println("  java -cp out Main build-trigger-test-wc3 hotkey lg10 input.wc3 output.wc3");
         System.out.println("  trigger: deliveryman | hotkey");
         System.out.println("  ROM: fr10 | lg10 | fr11 | lg11");
+        System.out.println();
+        System.out.println("Advanced presets:");
+        System.out.println("  java -cp out Main build-show-secret-id-bin fr10 output.bin");
+        System.out.println("  java -cp out Main build-show-secret-id-wc3 fr10 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-seed-modifier-bin fr10 1234 output.bin");
+        System.out.println("  java -cp out Main build-seed-modifier-wc3 fr10 1234 input.wc3 output.wc3");
         System.out.println();
         System.out.println("Legacy v5 build-* commands remain accepted for compatibility.");
     }
