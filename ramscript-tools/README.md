@@ -47,3 +47,7 @@ User-created Field Scripts may execute directly through the deliveryman or be wr
 
 Advanced hotkey presets default to `R + SELECT`, but may append `--hotkey <held>-<pressed>`.
 For example, `--hotkey r-b` means hold R and press B. Supported names are `a`, `b`, `select`, `start`, `right`, `left`, `up`, `down`, `r`, and `l`.
+
+## Repel hotkey
+
+`RepelHotkeyPreset` provides a lightweight configurable-hotkey shortcut that uses the longest-duration Repel currently available and does not stack while another Repel is active. The modern-style automatic `Use another?` behavior remains a future V2 idea. See `docs/REPEL_HOTKEY.md`.

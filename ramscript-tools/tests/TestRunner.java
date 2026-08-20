@@ -20,6 +20,7 @@ public final class TestRunner {
         testShowSecretIdPreset();
         testSeedModifierPreset();
         testPartyIvViewerPreset();
+        testRepelHotkeyPreset();
         testHotkeyConfiguration();
 
         testHotkeyRuntimeV1();
@@ -493,6 +494,60 @@ public final class TestRunner {
                 "party helper should embed prompt-clear before SPA page");
     }
 
+
+
+    private static void testRepelHotkeyPreset() {
+        byte[] payload = RepelHotkeyPreset.buildPayload();
+
+        for (RomProfile rom : RomProfile.values()) {
+            TriggerBuildResult result = RepelHotkeyPreset.build(rom);
+            assertTrue(result.trigger() == EventTrigger.HOTKEY_RUNTIME,
+                    "Repel hotkey must use HotkeyRuntimeV1 " + rom.id());
+            assertTrue(result.payloadBytes() == payload.length,
+                    "Repel hotkey payload accounting " + rom.id());
+            assertTrue(result.totalScriptBytes() <= RamScript.SCRIPT_SIZE,
+                    "Repel hotkey must fit " + rom.id());
+            assertTrue(result.ramScript().isChecksumValid(),
+                    "Repel hotkey checksum " + rom.id());
+        }
+
+        // compare VAR_REPEL_STEP_COUNT, 0
+        assertTrue(indexOfSequence(payload, new byte[] {
+                0x21, 0x20, 0x40, 0x00, 0x00
+        }) >= 0, "Repel hotkey must refuse stacking while active");
+
+        // Prefer Max Repel (0x0054), then Super (0x0053), then normal Repel (0x0056).
+        int maxCheck = indexOfSequence(payload, new byte[] {0x47, 0x54, 0x00, 0x01, 0x00});
+        int superCheck = indexOfSequence(payload, new byte[] {0x47, 0x53, 0x00, 0x01, 0x00});
+        int normalCheck = indexOfSequence(payload, new byte[] {0x47, 0x56, 0x00, 0x01, 0x00});
+        assertTrue(maxCheck >= 0 && maxCheck < superCheck && superCheck < normalCheck,
+                "Repel hotkey item priority");
+
+        // setvar VAR_REPEL_STEP_COUNT with stock durations 250/200/100.
+        assertTrue(indexOfSequence(payload, new byte[] {0x16, 0x20, 0x40, (byte)0xFA, 0x00}) >= 0,
+                "Max Repel duration");
+        assertTrue(indexOfSequence(payload, new byte[] {0x16, 0x20, 0x40, (byte)0xC8, 0x00}) >= 0,
+                "Super Repel duration");
+        assertTrue(indexOfSequence(payload, new byte[] {0x16, 0x20, 0x40, 0x64, 0x00}) >= 0,
+                "Repel duration");
+
+        assertTrue(indexOfSequence(payload, Gen3TextCodec.encodeString("No Repels.")) >= 0,
+                "Repel hotkey no-item message");
+
+        // Mirror vanilla Repel feedback: SE_REPEL (0x0029), waitse, and used-item message.
+        assertTrue(indexOfSequence(payload, new byte[] {0x2F, 0x29, 0x00, 0x30}) >= 0,
+                "Repel hotkey must play and wait for SE_REPEL");
+        assertTrue(indexOfSequence(payload, Gen3TextCodec.encodeString("{PLAYER} used the\\n{STR_VAR_2}.")) >= 0,
+                "Repel hotkey used-item message");
+
+        // Every use branch must buffer its chosen item into STR_VAR_2 (index 1).
+        assertTrue(indexOfSequence(payload, new byte[] {(byte)0x80, 0x01, 0x54, 0x00}) >= 0,
+                "Max Repel name buffer");
+        assertTrue(indexOfSequence(payload, new byte[] {(byte)0x80, 0x01, 0x53, 0x00}) >= 0,
+                "Super Repel name buffer");
+        assertTrue(indexOfSequence(payload, new byte[] {(byte)0x80, 0x01, 0x56, 0x00}) >= 0,
+                "Repel name buffer");
+    }
 
     private static void testHotkeyConfiguration() {
         assertTrue(Hotkey.parse("r-select").equals(Hotkey.DEFAULT),

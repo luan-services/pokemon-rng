@@ -55,6 +55,8 @@ public final class Main {
                 case "build-seed-modifier-wc3" -> buildSeedModifierWc3(args);
                 case "build-party-iv-viewer-bin" -> buildPartyIvViewerBin(args);
                 case "build-party-iv-viewer-wc3" -> buildPartyIvViewerWc3(args);
+                case "build-repel-hotkey-bin" -> buildRepelHotkeyBin(args);
+                case "build-repel-hotkey-wc3" -> buildRepelHotkeyWc3(args);
 
                 /* Compatibility aliases kept from the experimental v5 CLI. */
                 case "build-aurora" -> requireArgs(args, 3, () ->
@@ -281,6 +283,48 @@ public final class Main {
         System.out.println("  hotkey semantics:  hold " + hotkey.heldButton().displayName() + ", press " + hotkey.pressedButton().displayName());
         System.out.println("  display:           continuous prompted IV pages for the whole party");
         System.out.println("  native installer:  " + PartyIvViewerPreset.selectedInstallerMode(result.rom()) + " (AUTO)");
+        System.out.println("  payload bytes:     " + result.payloadBytes());
+        System.out.println("  runtime overhead:  " + result.runtimeOverheadBytes());
+        System.out.println("  total script:      " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  free bytes:        " + result.freeScriptBytes());
+    }
+
+
+    private static void buildRepelHotkeyBin(String[] args) throws Exception {
+        if (args.length != 3 && args.length != 5) {
+            throw new IllegalArgumentException(
+                    "Usage: build-repel-hotkey-bin <rom> <output.bin> [--hotkey <held>-<pressed>]"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        Hotkey hotkey = parseOptionalHotkey(args, 3);
+        TriggerBuildResult result = RepelHotkeyPreset.build(rom, hotkey);
+        buildBinary(result.ramScript(), Path.of(args[2]));
+        printRepelHotkey(result, hotkey);
+    }
+
+    private static void buildRepelHotkeyWc3(String[] args) throws Exception {
+        if (args.length != 4 && args.length != 6) {
+            throw new IllegalArgumentException(
+                    "Usage: build-repel-hotkey-wc3 <rom> <input.wc3> <output.wc3> [--hotkey <held>-<pressed>]"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        Hotkey hotkey = parseOptionalHotkey(args, 4);
+        TriggerBuildResult result = RepelHotkeyPreset.build(rom, hotkey);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        printRepelHotkey(result, hotkey);
+    }
+
+    private static void printRepelHotkey(TriggerBuildResult result, Hotkey hotkey) {
+        System.out.println();
+        System.out.println("Repel Hotkey preset:");
+        System.out.println("  ROM:               " + result.rom().displayName());
+        System.out.println("  trigger:           " + hotkey.displayName());
+        System.out.println("  hotkey semantics:  hold " + hotkey.heldButton().displayName() + ", press " + hotkey.pressedButton().displayName());
+        System.out.println("  behavior:          Max Repel > Super Repel > Repel; no stacking while active");
         System.out.println("  payload bytes:     " + result.payloadBytes());
         System.out.println("  runtime overhead:  " + result.runtimeOverheadBytes());
         System.out.println("  total script:      " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
@@ -766,6 +810,9 @@ public final class Main {
         System.out.println(
                 "  build-party-iv-viewer-*        configurable-hotkey sequential party IV viewer"
         );
+        System.out.println(
+                "  build-repel-hotkey-*            configurable-hotkey best-available Repel shortcut"
+        );
     }
 
     private static String bytesToHex(byte[] data) {
@@ -836,6 +883,8 @@ public final class Main {
         System.out.println("  java -cp out Main build-seed-modifier-wc3 fr10 1234 input.wc3 output.wc3 [--hotkey r-b]");
         System.out.println("  java -cp out Main build-party-iv-viewer-bin fr10 output.bin [--hotkey r-select]");
         System.out.println("  java -cp out Main build-party-iv-viewer-wc3 fr10 input.wc3 output.wc3 [--hotkey l-start]");
+        System.out.println("  java -cp out Main build-repel-hotkey-bin fr10 output.bin [--hotkey r-select]");
+        System.out.println("  java -cp out Main build-repel-hotkey-wc3 fr10 input.wc3 output.wc3 [--hotkey r-b]");
         System.out.println("  hotkey syntax: <held>-<pressed>; first button is held, second is newly pressed");
         System.out.println("  buttons: a b select start right left up down r l");
         System.out.println("  default hotkey remains r-select");
