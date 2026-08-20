@@ -4,10 +4,15 @@ final class SeedModifierPreset {
     private SeedModifierPreset() {}
 
     static TriggerBuildResult build(RomProfile rom, int desiredSeed) {
+        return build(rom, desiredSeed, Hotkey.DEFAULT);
+    }
+
+    static TriggerBuildResult build(RomProfile rom, int desiredSeed, Hotkey hotkey) {
         return TriggerComposer.compose(
                 EventTrigger.HOTKEY_RUNTIME,
                 rom,
-                buildPayload(rom, desiredSeed)
+                buildPayload(rom, desiredSeed),
+                hotkey
         );
     }
 

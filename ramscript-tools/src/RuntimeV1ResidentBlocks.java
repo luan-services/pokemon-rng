@@ -22,6 +22,10 @@ final class RuntimeV1ResidentBlocks {
     private RuntimeV1ResidentBlocks() {}
 
     static List<Block> build(RomProfile rom) {
+        return build(rom, Hotkey.DEFAULT);
+    }
+
+    static List<Block> build(RomProfile rom, Hotkey hotkey) {
         List<Block> blocks = new ArrayList<>();
 
         // Order is intentional. WRAPPER is last because Candidate 2 initially
@@ -39,14 +43,18 @@ final class RuntimeV1ResidentBlocks {
         blocks.add(new Block(MARKER, new byte[] { 0x00 }));
         blocks.add(new Block(SAFETY_GATE, safetyGate()));
         blocks.add(new Block(FORMAT_VALIDATOR, validator()));
-        blocks.add(new Block(WRAPPER, wrapper(rom)));
+        blocks.add(new Block(WRAPPER, wrapper(rom, hotkey)));
 
         return List.copyOf(blocks);
     }
 
     static int totalResidentBytes(RomProfile rom) {
+        return totalResidentBytes(rom, Hotkey.DEFAULT);
+    }
+
+    static int totalResidentBytes(RomProfile rom, Hotkey hotkey) {
         int total = 0;
-        for (Block block : build(rom)) total += block.data().length;
+        for (Block block : build(rom, hotkey)) total += block.data().length;
         return total;
     }
 
@@ -93,13 +101,38 @@ final class RuntimeV1ResidentBlocks {
         };
     }
 
-    private static byte[] wrapper(RomProfile rom) {
+    private static byte[] wrapper(RomProfile rom, Hotkey hotkey) {
         byte[] out = new byte[32];
-        byte[] code = new byte[] {
-                0x03,0x48, 0x00,0x68, 0x01,0x06, 0x05,(byte)0xD3,
-                (byte)0x81,0x03, 0x03,(byte)0xD3, 0x03,0x4A, (byte)0x89,(byte)0xE0
-        };
-        System.arraycopy(code, 0, out, 0, code.length);
+
+        // Preserve the exact validated C5a bytes for the historical default.
+        // This keeps existing R+SELECT builds byte-for-byte unchanged.
+        if (hotkey.equals(Hotkey.DEFAULT)) {
+            byte[] code = new byte[] {
+                    0x03,0x48, 0x00,0x68, 0x01,0x06, 0x05,(byte)0xD3,
+                    (byte)0x81,0x03, 0x03,(byte)0xD3, 0x03,0x4A, (byte)0x89,(byte)0xE0
+            };
+            System.arraycopy(code, 0, out, 0, code.length);
+        } else {
+            // gMain.heldKeysRaw and gMain.newKeysRaw are adjacent u16 values.
+            // The existing wrapper loads both with one 32-bit LDR. For custom
+            // chords we test the requested low-half held bit and high-half
+            // newly-pressed bit through Thumb LSRS carry, preserving the same
+            // 32-byte resident wrapper size and the same fail branches.
+            byte[] code = new byte[] {
+                    0x03,0x48,             // ldr  r0, heldKeysRaw
+                    0x00,0x68,             // ldr  r0, [r0] (held | new<<16)
+                    0x00,0x00,             // lsrs r1,r0,#heldBit+1
+                    0x05,(byte)0xD3,       // bcc  fail
+                    0x00,0x00,             // lsrs r1,r0,#17+pressedBit
+                    0x03,(byte)0xD3,       // bcc  fail
+                    0x03,0x4A,             // ldr  r2, lockFieldControls
+                    (byte)0x89,(byte)0xE0  // validated continuation
+            };
+            putU16(code, 0x04, thumbLsrsImm(1, 0, hotkey.heldButton().bit() + 1));
+            putU16(code, 0x08, thumbLsrsImm(1, 0, 17 + hotkey.pressedButton().bit()));
+            System.arraycopy(code, 0, out, 0, code.length);
+        }
+
         putU32(out, 0x10, rom.heldKeysRaw);
         out[0x14] = 0x00;
         out[0x15] = 0x4B;
@@ -108,6 +141,18 @@ final class RuntimeV1ResidentBlocks {
         putU32(out, 0x18, rom.cb1OverworldThumb);
         putU32(out, 0x1C, rom.lockFieldControls);
         return out;
+    }
+
+    private static int thumbLsrsImm(int rd, int rm, int shift) {
+        if (shift < 1 || shift > 31) {
+            throw new IllegalArgumentException("Thumb LSRS immediate must be 1..31");
+        }
+        return 0x0800 | (shift << 6) | (rm << 3) | rd;
+    }
+
+    private static void putU16(byte[] data, int offset, int value) {
+        data[offset] = (byte)value;
+        data[offset + 1] = (byte)(value >>> 8);
     }
 
     private static byte[] le32(long value) {

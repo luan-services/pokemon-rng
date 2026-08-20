@@ -7,6 +7,10 @@ final class TriggerComposer {
     private TriggerComposer() {}
 
     static TriggerBuildResult compose(EventTrigger trigger, RomProfile rom, byte[] payload) {
+        return compose(trigger, rom, payload, Hotkey.DEFAULT);
+    }
+
+    static TriggerBuildResult compose(EventTrigger trigger, RomProfile rom, byte[] payload, Hotkey hotkey) {
         if (payload == null || payload.length == 0) {
             throw new IllegalArgumentException("payload must not be empty");
         }
@@ -22,7 +26,7 @@ final class TriggerComposer {
                         payload.length, RamScript.SCRIPT_SIZE - payload.length
                 );
             }
-            case HOTKEY_RUNTIME -> HotkeyRuntimeV1.compose(rom, payload);
+            case HOTKEY_RUNTIME -> HotkeyRuntimeV1.compose(rom, payload, hotkey);
         };
     }
 }

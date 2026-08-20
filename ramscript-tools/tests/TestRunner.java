@@ -20,6 +20,7 @@ public final class TestRunner {
         testShowSecretIdPreset();
         testSeedModifierPreset();
         testPartyIvViewerPreset();
+        testHotkeyConfiguration();
 
         testHotkeyRuntimeV1();
 
@@ -490,6 +491,60 @@ public final class TestRunner {
         // printer to show the down-arrow and clear the existing message window.
         assertTrue(indexOfSequence(rev0.codeCopy(), new byte[] {(byte)0xFB, (byte)0xCD, (byte)0xCA, (byte)0xBB}) >= 0,
                 "party helper should embed prompt-clear before SPA page");
+    }
+
+
+    private static void testHotkeyConfiguration() {
+        assertTrue(Hotkey.parse("r-select").equals(Hotkey.DEFAULT),
+                "r-select must parse as the default hotkey");
+        assertTrue(Hotkey.parse("R+B").equals(new Hotkey(HotkeyButton.R, HotkeyButton.B)),
+                "plus syntax should parse and preserve held/pressed order");
+        assertTrue(Hotkey.parse("l-start").displayName().equals("L + START"),
+                "hotkey display name");
+
+        try {
+            Hotkey.parse("r-r");
+            throw new AssertionError("same-button hotkey must be rejected");
+        } catch (IllegalArgumentException expected) {
+            // expected
+        }
+
+        RomProfile rom = RomProfile.FIRE_RED_EN_10;
+        byte[] hello = TriggerTestPayloads.helloWonderCard();
+        RamScript defaultExplicit = HotkeyRuntimeV1.build(rom, hello, Hotkey.DEFAULT);
+        RamScript defaultLegacyApi = HotkeyRuntimeV1.build(rom, hello);
+        assertTrue(Arrays.equals(defaultExplicit.bytesCopy(), defaultLegacyApi.bytesCopy()),
+                "explicit default hotkey must preserve legacy build bytes");
+
+        Hotkey rB = new Hotkey(HotkeyButton.R, HotkeyButton.B);
+        RamScript custom = HotkeyRuntimeV1.build(rom, hello, rB);
+        assertTrue(custom.isChecksumValid(), "custom hotkey checksum");
+        assertTrue(custom.scriptCopy().length == defaultExplicit.scriptCopy().length,
+                "custom hotkey must not increase runtime size");
+        assertTrue(!Arrays.equals(custom.bytesCopy(), defaultExplicit.bytesCopy()),
+                "custom hotkey must change runtime bytes");
+
+        byte[] wrapper = RuntimeV1ResidentBlocks.build(rom, rB).stream()
+                .filter(block -> block.address() == RuntimeV1ResidentBlocks.WRAPPER)
+                .findFirst()
+                .orElseThrow()
+                .data();
+
+        // Custom wrapper uses LSRS carry tests over the packed
+        // heldKeysRaw | (newKeysRaw << 16) word.
+        // R (bit 8 held) => LSRS #9 = 0x0A41.
+        // B (bit 1 new)  => LSRS #18 = 0x0C81.
+        assertTrue((((wrapper[5] & 0xFF) << 8) | (wrapper[4] & 0xFF)) == 0x0A41,
+                "custom wrapper held R test");
+        assertTrue((((wrapper[9] & 0xFF) << 8) | (wrapper[8] & 0xFF)) == 0x0C81,
+                "custom wrapper pressed B test");
+
+        TriggerBuildResult seed = SeedModifierPreset.build(rom, 0x1234, rB);
+        TriggerBuildResult ivs = PartyIvViewerPreset.build(rom, rB);
+        assertTrue(seed.totalScriptBytes() == SeedModifierPreset.build(rom, 0x1234).totalScriptBytes(),
+                "custom Seed Modifier hotkey must be size-neutral");
+        assertTrue(ivs.totalScriptBytes() == PartyIvViewerPreset.build(rom).totalScriptBytes(),
+                "custom Party IV hotkey must be size-neutral");
     }
 
     private static void testHotkeyRuntimeV1() {

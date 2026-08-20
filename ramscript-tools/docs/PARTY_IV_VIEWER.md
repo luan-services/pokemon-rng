@@ -4,7 +4,7 @@ Compact party IV viewer preset.
 
 ## Trigger
 
-`R + SELECT` through `HotkeyRuntimeV1`.
+`HotkeyRuntimeV1` with a configurable two-button chord. The default remains `R + SELECT`.
 
 The current runtime supports one hotkey/payload at a time. A future shared
 multi-hotkey runtime can combine smaller presets without duplicating the
@@ -127,16 +127,17 @@ Validated in-game so far:
 - original direct-install Party IV Viewer: FireRed English 1.0
 - compact CpuSet Party IV Viewer without nickname: FireRed English 1.0
 - compact CpuSet Party IV Viewer with nickname: FireRed English 1.0
+- continuous-message/down-arrow Party IV Viewer: FireRed English 1.0
 
-The continuous-message/down-arrow build passes Java structural/checksum tests
-and generates for `fr10`, `lg10`, `fr11`, and `lg11`, but still requires an
-in-game test before it is marked runtime-validated.
+The continuous-message/down-arrow build is validated in-game on FireRed English 1.0. It also passes Java structural/checksum tests and generates for `fr10`, `lg10`, `fr11`, and `lg11`. The non-default configurable-hotkey path is size-neutral and structurally tested, but individual custom chords still require an in-game smoke test.
 
 ## CLI
 
 ```cmd
 java -cp out Main build-party-iv-viewer-bin fr10 ../dummy-saves/party-ivs.bin
+java -cp out Main build-party-iv-viewer-bin fr10 ../dummy-saves/party-ivs-rb.bin --hotkey r-b
 java -cp out Main build-party-iv-viewer-wc3 fr10 ../dummy-saves/custom-design.wc3 ../dummy-saves/party-ivs.wc3
+java -cp out Main build-party-iv-viewer-wc3 fr10 ../dummy-saves/custom-design.wc3 ../dummy-saves/party-ivs-rb.wc3 --hotkey r-b
 ```
 
 Supported ROM profiles: `fr10`, `lg10`, `fr11`, `lg11`.

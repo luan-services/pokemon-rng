@@ -2,7 +2,7 @@ import java.io.ByteArrayOutputStream;
 import java.util.List;
 
 /*
-   Production hotkey runtime for FireRed/LeafGreen RamScripts.
+   Production configurable two-button hotkey runtime for FireRed/LeafGreen RamScripts.
 
    Deliveryman installation:
      -> writes a 20-byte fixed-IWRAM bootstrap with Field Script
@@ -13,7 +13,8 @@ import java.util.List;
      -> supervisor rearms callback1 when CB1_Overworld is active
 
    Hotkey:
-     R + SELECT -> safety/format guards -> executes Field Script payload at +0x0C.
+     default R + SELECT, or a configured held+pressed chord
+     -> safety/format guards -> executes Field Script payload at +0x0C.
 
    This implementation is the promoted form of validated Candidate 5a.
 */
@@ -48,11 +49,17 @@ final class HotkeyRuntimeV1 {
     }
 
     static RamScript build(RomProfile rom, byte[] payload) {
+        return build(rom, payload, Hotkey.DEFAULT);
+    }
+
+    static RamScript build(RomProfile rom, byte[] payload, Hotkey hotkey) {
         if (payload == null || payload.length == 0) {
             throw new IllegalArgumentException("hotkey runtime v1 payload must not be empty");
         }
 
-        byte[] nativeBlob = nativeInstallerBlob(rom);
+        if (hotkey == null) throw new IllegalArgumentException("hotkey must not be null");
+
+        byte[] nativeBlob = nativeInstallerBlob(rom, hotkey);
 
         int afterPayload = PAYLOAD_OFFSET + payload.length;
         int nativeBlobOffset = align4(afterPayload);
@@ -179,11 +186,15 @@ final class HotkeyRuntimeV1 {
     }
 
     static byte[] nativeInstallerBlob(RomProfile rom) {
-        List<RuntimeV1ResidentBlocks.Block> blocks = RuntimeV1ResidentBlocks.build(rom);
+        return nativeInstallerBlob(rom, Hotkey.DEFAULT);
+    }
+
+    static byte[] nativeInstallerBlob(RomProfile rom, Hotkey hotkey) {
+        List<RuntimeV1ResidentBlocks.Block> blocks = RuntimeV1ResidentBlocks.build(rom, hotkey);
         if (blocks.size() != 12) {
             throw new IllegalStateException("hotkey runtime v1 expects 12 resident blocks");
         }
-        if (RuntimeV1ResidentBlocks.totalResidentBytes(rom) != RESIDENT_DATA_SIZE) {
+        if (RuntimeV1ResidentBlocks.totalResidentBytes(rom, hotkey) != RESIDENT_DATA_SIZE) {
             throw new IllegalStateException("hotkey runtime v1 resident byte count mismatch");
         }
 
@@ -255,7 +266,11 @@ final class HotkeyRuntimeV1 {
     }
 
     static TriggerBuildResult compose(RomProfile rom, byte[] payload) {
-        RamScript script = build(rom, payload);
+        return compose(rom, payload, Hotkey.DEFAULT);
+    }
+
+    static TriggerBuildResult compose(RomProfile rom, byte[] payload, Hotkey hotkey) {
+        RamScript script = build(rom, payload, hotkey);
         int total = scriptSize(rom, payload);
         return new TriggerBuildResult(
                 script,

@@ -19,10 +19,18 @@ final class CustomPayloadComposer {
     }
 
     static TriggerBuildResult hotkey(RomProfile rom, byte[] payload) {
-        return TriggerComposer.compose(EventTrigger.HOTKEY_RUNTIME, rom, payload);
+        return hotkey(rom, payload, Hotkey.DEFAULT);
+    }
+
+    static TriggerBuildResult hotkey(RomProfile rom, byte[] payload, Hotkey hotkey) {
+        return TriggerComposer.compose(EventTrigger.HOTKEY_RUNTIME, rom, payload, hotkey);
     }
 
     static TriggerBuildResult compose(EventTrigger trigger, RomProfile rom, byte[] payload) {
         return TriggerComposer.compose(trigger, rom, payload);
+    }
+
+    static TriggerBuildResult compose(EventTrigger trigger, RomProfile rom, byte[] payload, Hotkey hotkey) {
+        return TriggerComposer.compose(trigger, rom, payload, hotkey);
     }
 }

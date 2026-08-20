@@ -167,7 +167,7 @@ public final class Main {
 
        HOTKEY:
          payload is embedded byte-for-byte into HotkeyRuntimeV1 and is started
-         later with R+SELECT.
+         later with the configured hotkey (default R+SELECT).
 
        The payload is expected to be a complete executable FR/LG Field Script.
        If it contains relocatable pointers, it should normally begin with
@@ -176,31 +176,41 @@ public final class Main {
     */
 
     private static void buildSeedModifierBin(String[] args) throws Exception {
-        if (args.length != 4) {
+        if (args.length != 4 && args.length != 6) {
             throw new IllegalArgumentException(
-                    "Usage: build-seed-modifier-bin <rom> <seed-hex> <output.bin>"
+                    "Usage: build-seed-modifier-bin <rom> <seed-hex> <output.bin> [--hotkey <held>-<pressed>]"
             );
         }
 
         RomProfile rom = RomProfile.fromId(args[1]);
         int seed = parseSeed(args[2]);
-        TriggerBuildResult result = SeedModifierPreset.build(rom, seed);
+        Hotkey hotkey = parseOptionalHotkey(args, 4);
+        TriggerBuildResult result = SeedModifierPreset.build(rom, seed, hotkey);
         buildBinary(result.ramScript(), Path.of(args[3]));
-        printSeedModifier(result, seed);
+        printSeedModifier(result, seed, hotkey);
     }
 
     private static void buildSeedModifierWc3(String[] args) throws Exception {
-        if (args.length != 5) {
+        if (args.length != 5 && args.length != 7) {
             throw new IllegalArgumentException(
-                    "Usage: build-seed-modifier-wc3 <rom> <seed-hex> <input.wc3> <output.wc3>"
+                    "Usage: build-seed-modifier-wc3 <rom> <seed-hex> <input.wc3> <output.wc3> [--hotkey <held>-<pressed>]"
             );
         }
 
         RomProfile rom = RomProfile.fromId(args[1]);
         int seed = parseSeed(args[2]);
-        TriggerBuildResult result = SeedModifierPreset.build(rom, seed);
+        Hotkey hotkey = parseOptionalHotkey(args, 5);
+        TriggerBuildResult result = SeedModifierPreset.build(rom, seed, hotkey);
         buildIntoWc3(result.ramScript(), Path.of(args[3]), Path.of(args[4]));
-        printSeedModifier(result, seed);
+        printSeedModifier(result, seed, hotkey);
+    }
+
+    private static Hotkey parseOptionalHotkey(String[] args, int baseLength) {
+        if (args.length == baseLength) return Hotkey.DEFAULT;
+        if (args.length != baseLength + 2 || !args[baseLength].equalsIgnoreCase("--hotkey")) {
+            throw new IllegalArgumentException("Optional hotkey syntax: --hotkey <held>-<pressed>, for example --hotkey r-b");
+        }
+        return Hotkey.parse(args[baseLength + 1]);
     }
 
     private static int parseSeed(String value) {
@@ -218,12 +228,13 @@ public final class Main {
         }
     }
 
-    private static void printSeedModifier(TriggerBuildResult result, int seed) {
+    private static void printSeedModifier(TriggerBuildResult result, int seed, Hotkey hotkey) {
         long predecessor = SeedModifierPreset.predecessor(seed);
         System.out.println();
         System.out.println("Seed Modifier preset:");
         System.out.println("  ROM:               " + result.rom().displayName());
-        System.out.println("  trigger:           R + SELECT");
+        System.out.println("  trigger:           " + hotkey.displayName());
+        System.out.println("  hotkey semantics:  hold " + hotkey.heldButton().displayName() + ", press " + hotkey.pressedButton().displayName());
         System.out.println("  prompt:            " + SeedModifierPreset.message(seed));
         System.out.printf("  desired seed:      0x%04X%n", seed);
         System.out.printf("  predecessor:       0x%08X%n", predecessor);
@@ -235,36 +246,39 @@ public final class Main {
     }
 
     private static void buildPartyIvViewerBin(String[] args) throws Exception {
-        if (args.length != 3) {
+        if (args.length != 3 && args.length != 5) {
             throw new IllegalArgumentException(
-                    "Usage: build-party-iv-viewer-bin <rom> <output.bin>"
+                    "Usage: build-party-iv-viewer-bin <rom> <output.bin> [--hotkey <held>-<pressed>]"
             );
         }
 
         RomProfile rom = RomProfile.fromId(args[1]);
-        TriggerBuildResult result = PartyIvViewerPreset.build(rom);
+        Hotkey hotkey = parseOptionalHotkey(args, 3);
+        TriggerBuildResult result = PartyIvViewerPreset.build(rom, hotkey);
         buildBinary(result.ramScript(), Path.of(args[2]));
-        printPartyIvViewer(result);
+        printPartyIvViewer(result, hotkey);
     }
 
     private static void buildPartyIvViewerWc3(String[] args) throws Exception {
-        if (args.length != 4) {
+        if (args.length != 4 && args.length != 6) {
             throw new IllegalArgumentException(
-                    "Usage: build-party-iv-viewer-wc3 <rom> <input.wc3> <output.wc3>"
+                    "Usage: build-party-iv-viewer-wc3 <rom> <input.wc3> <output.wc3> [--hotkey <held>-<pressed>]"
             );
         }
 
         RomProfile rom = RomProfile.fromId(args[1]);
-        TriggerBuildResult result = PartyIvViewerPreset.build(rom);
+        Hotkey hotkey = parseOptionalHotkey(args, 4);
+        TriggerBuildResult result = PartyIvViewerPreset.build(rom, hotkey);
         buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
-        printPartyIvViewer(result);
+        printPartyIvViewer(result, hotkey);
     }
 
-    private static void printPartyIvViewer(TriggerBuildResult result) {
+    private static void printPartyIvViewer(TriggerBuildResult result, Hotkey hotkey) {
         System.out.println();
         System.out.println("Party IV Viewer preset:");
         System.out.println("  ROM:               " + result.rom().displayName());
-        System.out.println("  trigger:           R + SELECT");
+        System.out.println("  trigger:           " + hotkey.displayName());
+        System.out.println("  hotkey semantics:  hold " + hotkey.heldButton().displayName() + ", press " + hotkey.pressedButton().displayName());
         System.out.println("  display:           continuous prompted IV pages for the whole party");
         System.out.println("  native installer:  " + PartyIvViewerPreset.selectedInstallerMode(result.rom()) + " (AUTO)");
         System.out.println("  payload bytes:     " + result.payloadBytes());
@@ -316,9 +330,9 @@ public final class Main {
     }
 
     private static void buildCustomPayloadBin(String[] args) throws Exception {
-        if (args.length != 5) {
+        if (args.length != 5 && args.length != 7) {
             throw new IllegalArgumentException(
-                    "Usage: build-custom-payload-bin <deliveryman|hotkey> <rom> <payload.bin> <output.bin>"
+                    "Usage: build-custom-payload-bin <deliveryman|hotkey> <rom> <payload.bin> <output.bin> [--hotkey <held>-<pressed>]"
             );
         }
 
@@ -326,20 +340,21 @@ public final class Main {
         RomProfile rom = RomProfile.fromId(args[2]);
         Path payloadPath = Path.of(args[3]);
         byte[] payload = Files.readAllBytes(payloadPath);
+        Hotkey hotkey = parseOptionalHotkey(args, 5);
 
-        TriggerBuildResult result = CustomPayloadComposer.compose(trigger, rom, payload);
+        TriggerBuildResult result = CustomPayloadComposer.compose(trigger, rom, payload, hotkey);
         buildBinary(result.ramScript(), Path.of(args[4]));
 
         System.out.println();
         System.out.println("Custom payload composed successfully.");
         System.out.println("Payload BIN:      " + payloadPath.toAbsolutePath());
-        printTriggerBuild(result);
+        printTriggerBuild(result, trigger == EventTrigger.HOTKEY_RUNTIME ? hotkey : null);
     }
 
     private static void buildCustomPayloadWc3(String[] args) throws Exception {
-        if (args.length != 6) {
+        if (args.length != 6 && args.length != 8) {
             throw new IllegalArgumentException(
-                    "Usage: build-custom-payload-wc3 <deliveryman|hotkey> <rom> <payload.bin> <input.wc3> <output.wc3>"
+                    "Usage: build-custom-payload-wc3 <deliveryman|hotkey> <rom> <payload.bin> <input.wc3> <output.wc3> [--hotkey <held>-<pressed>]"
             );
         }
 
@@ -347,50 +362,61 @@ public final class Main {
         RomProfile rom = RomProfile.fromId(args[2]);
         Path payloadPath = Path.of(args[3]);
         byte[] payload = Files.readAllBytes(payloadPath);
+        Hotkey hotkey = parseOptionalHotkey(args, 6);
 
-        TriggerBuildResult result = CustomPayloadComposer.compose(trigger, rom, payload);
+        TriggerBuildResult result = CustomPayloadComposer.compose(trigger, rom, payload, hotkey);
         buildIntoWc3(result.ramScript(), Path.of(args[4]), Path.of(args[5]));
 
         System.out.println();
         System.out.println("Custom payload composed successfully.");
         System.out.println("Payload BIN:      " + payloadPath.toAbsolutePath());
-        printTriggerBuild(result);
+        printTriggerBuild(result, trigger == EventTrigger.HOTKEY_RUNTIME ? hotkey : null);
     }
 
     private static void buildTriggerTestBin(String[] args) throws Exception {
-        if (args.length != 4) {
+        if (args.length != 4 && args.length != 6) {
             throw new IllegalArgumentException(
-                    "Usage: build-trigger-test-bin <deliveryman|hotkey> <rom> <output.bin>"
+                    "Usage: build-trigger-test-bin <deliveryman|hotkey> <rom> <output.bin> [--hotkey <held>-<pressed>]"
             );
         }
         EventTrigger trigger = EventTrigger.fromId(args[1]);
         RomProfile rom = RomProfile.fromId(args[2]);
+        Hotkey hotkey = parseOptionalHotkey(args, 4);
         TriggerBuildResult result = TriggerComposer.compose(
-                trigger, rom, TriggerTestPayloads.helloWonderCard()
+                trigger, rom, TriggerTestPayloads.helloWonderCard(), hotkey
         );
         buildBinary(result.ramScript(), Path.of(args[3]));
-        printTriggerBuild(result);
+        printTriggerBuild(result, trigger == EventTrigger.HOTKEY_RUNTIME ? hotkey : null);
     }
 
     private static void buildTriggerTestWc3(String[] args) throws Exception {
-        if (args.length != 5) {
+        if (args.length != 5 && args.length != 7) {
             throw new IllegalArgumentException(
-                    "Usage: build-trigger-test-wc3 <deliveryman|hotkey> <rom> <input.wc3> <output.wc3>"
+                    "Usage: build-trigger-test-wc3 <deliveryman|hotkey> <rom> <input.wc3> <output.wc3> [--hotkey <held>-<pressed>]"
             );
         }
         EventTrigger trigger = EventTrigger.fromId(args[1]);
         RomProfile rom = RomProfile.fromId(args[2]);
+        Hotkey hotkey = parseOptionalHotkey(args, 5);
         TriggerBuildResult result = TriggerComposer.compose(
-                trigger, rom, TriggerTestPayloads.helloWonderCard()
+                trigger, rom, TriggerTestPayloads.helloWonderCard(), hotkey
         );
         buildIntoWc3(result.ramScript(), Path.of(args[3]), Path.of(args[4]));
-        printTriggerBuild(result);
+        printTriggerBuild(result, trigger == EventTrigger.HOTKEY_RUNTIME ? hotkey : null);
     }
 
     private static void printTriggerBuild(TriggerBuildResult result) {
+        printTriggerBuild(result, result.trigger() == EventTrigger.HOTKEY_RUNTIME ? Hotkey.DEFAULT : null);
+    }
+
+    private static void printTriggerBuild(TriggerBuildResult result, Hotkey hotkey) {
         System.out.println();
         System.out.println("Trigger composition:");
         System.out.println("  trigger:          " + result.trigger());
+        if (hotkey != null) {
+            System.out.println("  hotkey:           " + hotkey.displayName());
+            System.out.println("  semantics:        hold " + hotkey.heldButton().displayName() + ", press " + hotkey.pressedButton().displayName());
+        }
         System.out.println("  ROM:              " + result.rom().displayName());
         System.out.println("  validation:       " + result.rom().validationStatus().label());
         System.out.println("  payload bytes:    " + result.payloadBytes());
@@ -735,10 +761,10 @@ public final class Main {
                 "  build-show-secret-id-*         deliveryman preset that displays the Secret ID"
         );
         System.out.println(
-                "  build-seed-modifier-*          R+SELECT RNG seed modifier with A confirmation"
+                "  build-seed-modifier-*          configurable-hotkey RNG seed modifier with A confirmation"
         );
         System.out.println(
-                "  build-party-iv-viewer-*        R+SELECT sequential party IV viewer"
+                "  build-party-iv-viewer-*        configurable-hotkey sequential party IV viewer"
         );
     }
 
@@ -806,10 +832,13 @@ public final class Main {
         System.out.println("Advanced presets:");
         System.out.println("  java -cp out Main build-show-secret-id-bin fr10 output.bin");
         System.out.println("  java -cp out Main build-show-secret-id-wc3 fr10 input.wc3 output.wc3");
-        System.out.println("  java -cp out Main build-seed-modifier-bin fr10 1234 output.bin");
-        System.out.println("  java -cp out Main build-seed-modifier-wc3 fr10 1234 input.wc3 output.wc3");
-        System.out.println("  java -cp out Main build-party-iv-viewer-bin fr10 output.bin");
-        System.out.println("  java -cp out Main build-party-iv-viewer-wc3 fr10 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-seed-modifier-bin fr10 1234 output.bin [--hotkey r-select]");
+        System.out.println("  java -cp out Main build-seed-modifier-wc3 fr10 1234 input.wc3 output.wc3 [--hotkey r-b]");
+        System.out.println("  java -cp out Main build-party-iv-viewer-bin fr10 output.bin [--hotkey r-select]");
+        System.out.println("  java -cp out Main build-party-iv-viewer-wc3 fr10 input.wc3 output.wc3 [--hotkey l-start]");
+        System.out.println("  hotkey syntax: <held>-<pressed>; first button is held, second is newly pressed");
+        System.out.println("  buttons: a b select start right left up down r l");
+        System.out.println("  default hotkey remains r-select");
         System.out.println();
         System.out.println("Legacy v5 build-* commands remain accepted for compatibility.");
     }

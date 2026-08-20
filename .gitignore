@@ -3,3 +3,5 @@ dummy-saves
 */out/
 *.class
 archive
+*/tests/
+*/docs/

@@ -64,3 +64,23 @@ Manual validations:
 - direct-install Party IV Viewer: FireRed English 1.0, passed;
 - CpuSet compact Party IV Viewer: FireRed English 1.0, passed;
 - nickname-enabled Party IV Viewer: pending emulator test.
+
+## 2026-08-19 Party IV Viewer V1 closeout
+
+Validated in-game on FireRed English 1.0:
+
+- CpuSet block installer transport;
+- nickname display;
+- continuous field message box across the whole party;
+- stock prompt-clear/down-arrow pagination;
+- final close only after the last occupied party slot.
+
+Current continuous build: 495-byte payload, 861 / 995 total with default HotkeyRuntimeV1, 134 bytes free.
+
+## Configurable hotkey checks
+
+The default `R + SELECT` API path remains byte-for-byte identical to the previously validated C5a runtime. Tests also verify custom two-button wrappers, parsing, checksum validity, and size neutrality.
+
+Custom chord semantics are ordered: first button held, second button newly pressed. Example: `r-b` means hold R and press B.
+
+Non-default chords still require an in-game smoke test before being marked runtime-validated.

@@ -28,8 +28,7 @@ copier is installed with `setptr`, and that copier uses GBA BIOS `CpuSet`
 This pays a fixed bootstrap cost but avoids the 6x expansion of larger helpers.
 
 The CpuSet copier was validated in-game on FireRed English 1.0 with the Party IV
-Viewer on 2026-08-19. The later nickname-enabled viewer was also validated on FR1.0;
-those builds use the same `NativeHelperInstaller` / CpuSet transport.
+Viewer on 2026-08-19. The later nickname-enabled and continuous-message viewers were also validated on FR1.0; those builds use the same `NativeHelperInstaller` / CpuSet transport.
 
 ### AUTO
 

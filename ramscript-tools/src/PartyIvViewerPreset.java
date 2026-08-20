@@ -4,10 +4,15 @@ final class PartyIvViewerPreset {
     private PartyIvViewerPreset() {}
 
     static TriggerBuildResult build(RomProfile rom) {
+        return build(rom, Hotkey.DEFAULT);
+    }
+
+    static TriggerBuildResult build(RomProfile rom, Hotkey hotkey) {
         return TriggerComposer.compose(
                 EventTrigger.HOTKEY_RUNTIME,
                 rom,
-                buildPayload(rom)
+                buildPayload(rom),
+                hotkey
         );
     }
 

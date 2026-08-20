@@ -42,3 +42,8 @@ User-created Field Scripts may execute directly through the deliveryman or be wr
 `NativeHelperInstaller` supports both direct byte-by-byte `setptr` staging and a compact BIOS CpuSet block-copy path, with `AUTO` selecting the smaller encoding. See `docs/NATIVE_HELPER_INSTALLER.md`.
 
 `PartyIvViewerPreset` uses the same installer abstraction and displays the current party Pokemon nickname plus its IVs across two pages. See `docs/PARTY_IV_VIEWER.md`.
+
+## Configurable hotkeys
+
+Advanced hotkey presets default to `R + SELECT`, but may append `--hotkey <held>-<pressed>`.
+For example, `--hotkey r-b` means hold R and press B. Supported names are `a`, `b`, `select`, `start`, `right`, `left`, `up`, `down`, `r`, and `l`.
