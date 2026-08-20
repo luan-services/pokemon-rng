@@ -45,3 +45,22 @@ Manual emulator test for repeatable gifts:
 5. leave/re-enter the Pokémon Center or otherwise refresh the map;
 6. confirm the deliveryman remains available;
 7. receive the item again.
+
+## Native helper installer / Party IV Viewer
+
+Automated tests also cover:
+
+- `NativeHelperInstaller.AUTO` chooses direct `setptr` for a representative
+  20-byte helper;
+- AUTO chooses CpuSet block installation for the Party IV helper;
+- raw helper data is skipped by relocatable `vgoto` and embedded word-aligned;
+- CpuSet copier word count and relocatable source literal are correct;
+- Party IV helper literals resolve to the expected FR/LG symbols;
+- Party IV Viewer uses the dynamic nickname message source;
+- all four ROM profiles fit inside the 995-byte RamScript limit.
+
+Manual validations:
+
+- direct-install Party IV Viewer: FireRed English 1.0, passed;
+- CpuSet compact Party IV Viewer: FireRed English 1.0, passed;
+- nickname-enabled Party IV Viewer: pending emulator test.

@@ -1,0 +1,1 @@
+public class SizeCheck { public static void main(String[] a) { for (RomProfile r: RomProfile.values()) { var x=PartyIvViewerPreset.build(r); System.out.println(r.id()+" payload="+x.payloadBytes()+" overhead="+x.runtimeOverheadBytes()+" total="+x.totalScriptBytes()+" free="+x.freeScriptBytes()); } } }

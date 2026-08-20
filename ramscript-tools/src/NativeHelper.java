@@ -39,9 +39,11 @@ final class NativeHelper {
         return Arrays.copyOf(code, code.length);
     }
 
+    RamScriptBuilder install(RamScriptBuilder builder) {
+        return builder.writeBytes(stagingAddress, code);
+    }
+
     RamScriptBuilder installAndCall(RamScriptBuilder builder) {
-        return builder
-                .writeBytes(stagingAddress, code)
-                .callNative(thumbEntryAddress());
+        return install(builder).callNative(thumbEntryAddress());
     }
 }

@@ -372,6 +372,17 @@ final class RamScriptBuilder {
         return this;
     }
 
+    RamScriptBuilder message(long address) {
+        opcode(0x67);
+        u32(address);
+        return this;
+    }
+
+    RamScriptBuilder closeMessage() {
+        opcode(0x68);
+        return this;
+    }
+
     RamScriptBuilder vMessage(String label) {
         opcode(0xBD);
         labelPointer(label);
@@ -452,6 +463,24 @@ final class RamScriptBuilder {
         label(label);
         byte[] encoded = Gen3TextCodec.encodeString(text);
         output.writeBytes(encoded);
+        return this;
+    }
+
+    /* Embeds inert data inside the relocatable payload. Control flow must skip
+       over these bytes; they are not interpreted as Field Script opcodes. */
+    RamScriptBuilder raw(byte[] data) {
+        if (data == null) {
+            throw new IllegalArgumentException("data must not be null");
+        }
+        output.writeBytes(data);
+        return this;
+    }
+
+    RamScriptBuilder padding(int count) {
+        if (count < 0) {
+            throw new IllegalArgumentException("padding count must be >= 0");
+        }
+        for (int i = 0; i < count; i++) output.write(0);
         return this;
     }
 

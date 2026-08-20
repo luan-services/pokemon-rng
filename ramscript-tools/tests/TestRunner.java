@@ -19,6 +19,7 @@ public final class TestRunner {
         testCustomPayloadComposition();
         testShowSecretIdPreset();
         testSeedModifierPreset();
+        testPartyIvViewerPreset();
 
         testHotkeyRuntimeV1();
 
@@ -425,6 +426,72 @@ public final class TestRunner {
     }
 
 
+    private static void testPartyIvViewerPreset() {
+        for (RomProfile rom : RomProfile.values()) {
+            TriggerBuildResult result = PartyIvViewerPreset.build(rom);
+            assertTrue(result.payloadBytes() == 495, "party IV viewer payload size for " + rom.id());
+            assertTrue(result.totalScriptBytes() <= RamScript.SCRIPT_SIZE, "party IV viewer must fit for " + rom.id());
+            assertTrue(result.totalScriptBytes() == 861, "party IV viewer total for " + rom.id());
+            assertTrue(result.freeScriptBytes() == 134, "party IV viewer free bytes for " + rom.id());
+            assertTrue(result.ramScript().isChecksumValid(), "party IV viewer checksum for " + rom.id());
+            assertTrue(PartyIvViewerPreset.selectedInstallerMode(rom) == NativeHelperInstaller.Mode.CPU_SET_BLOCK,
+                    "party IV viewer should auto-select CpuSet for " + rom.id());
+        }
+
+        NativeHelper rev0 = PartyMonDataNativeHelper.build(RomProfile.FIRE_RED_EN_10);
+        NativeHelper rev1 = PartyMonDataNativeHelper.build(RomProfile.FIRE_RED_EN_11);
+        assertTrue(rev0.size() == 296, "party message helper size");
+        assertTrue(rev0.stagingAddress() == 0x02021E58L, "party message helper staging");
+        assertTrue(readU32(rev0.codeCopy(), 0x11C) == 0x02024284L, "player party literal");
+        assertTrue(readU32(rev0.codeCopy(), 0x120) == 0x02021F98L, "dynamic message literal");
+        assertTrue(readU32(rev0.codeCopy(), 0x124) == 0x0803FBE9L, "FR1.0 GetMonData3 literal");
+        assertTrue(readU32(rev1.codeCopy(), 0x124) == 0x0803FBFDL, "FR1.1 GetMonData3 literal");
+        assertTrue(PartyMonDataNativeHelper.DYNAMIC_MESSAGE_DELTA + PartyMonDataNativeHelper.MAX_MESSAGE_BYTES <= 1000,
+                "worst-case party message must fit in gStringVar4");
+
+        long copierAddress = 0x02021E18L;
+        byte[] copier = CpuSetNativeHelperInstaller.copierBytes(
+                copierAddress, 0x0801000CL, rev0.size()
+        );
+        assertTrue(copier.length == 28, "compact CpuSet copier size");
+        assertTrue((copier[0x0E] & 0xFF) == 74 && (copier[0x0F] & 0xFF) == 0x32,
+                "compact CpuSet copier word count");
+        assertTrue(readU32(copier, 0x14) == 0x020370A8L, "compact copier sAddressOffset literal");
+        assertTrue(readU32(copier, 0x18) == 0x0801000CL, "compact copier virtual source literal");
+
+        // AUTO must keep tiny helpers on direct setptr but select CpuSet once
+        // the raw helper is large enough to amortize the 28-byte copier.
+        NativeHelper tiny = new NativeHelper(0x02022040L, new byte[20]);
+        assertTrue(NativeHelperInstaller.chooseMode(5, tiny, 0x02022000L)
+                        == NativeHelperInstaller.Mode.DIRECT_SET_PTR,
+                "AUTO should choose direct setptr for a 20-byte helper");
+        assertTrue(NativeHelperInstaller.chooseMode(5, rev0, copierAddress)
+                        == NativeHelperInstaller.Mode.CPU_SET_BLOCK,
+                "AUTO should choose CpuSet for the party message helper");
+        assertTrue(NativeHelperInstaller.directEncodingCost(20) == 120,
+                "direct helper encoding cost");
+
+        byte[] compactPayload = PartyIvViewerPreset.buildPayload(RomProfile.FIRE_RED_EN_10);
+        assertTrue((compactPayload[0] & 0xFF) == 0xB8, "IV payload begins with setvaddress");
+        assertTrue((compactPayload[5] & 0xFF) == 0xB9, "IV payload skips raw helper with vgoto");
+        assertTrue(readU32(compactPayload, 6) == 0x08010134L, "IV main label virtual pointer");
+        assertTrue(java.util.Arrays.equals(
+                        java.util.Arrays.copyOfRange(compactPayload, 0x0C, 0x0C + rev0.size()),
+                        PartyMonDataNativeHelper.buildAt(RomProfile.FIRE_RED_EN_10, 0x02021E58L).codeCopy()),
+                "IV payload embeds raw helper bytes");
+
+        byte[] dynamicMessageCommand = new byte[] {
+                0x67, (byte)0x98, 0x1F, 0x02, 0x02
+        };
+        assertTrue(indexOfSequence(compactPayload, dynamicMessageCommand) >= 0,
+                "party IV viewer should display the continuous dynamic party message");
+
+        // The helper embeds CHAR_PROMPT_CLEAR (0xFB), used by the stock text
+        // printer to show the down-arrow and clear the existing message window.
+        assertTrue(indexOfSequence(rev0.codeCopy(), new byte[] {(byte)0xFB, (byte)0xCD, (byte)0xCA, (byte)0xBB}) >= 0,
+                "party helper should embed prompt-clear before SPA page");
+    }
+
     private static void testHotkeyRuntimeV1() {
         for (RomProfile rom : RomProfile.values()) {
             byte[] hello = TriggerTestPayloads.helloWonderCard();
@@ -466,6 +533,13 @@ public final class TestRunner {
                         "generic payload checksum " + payload.length + " " + rom.id());
             }
         }
+    }
+
+    private static long readU32(byte[] data, int offset) {
+        return Byte.toUnsignedLong(data[offset])
+                | (Byte.toUnsignedLong(data[offset + 1]) << 8)
+                | (Byte.toUnsignedLong(data[offset + 2]) << 16)
+                | (Byte.toUnsignedLong(data[offset + 3]) << 24);
     }
 
     private static void assertTrue(boolean condition, String message) {

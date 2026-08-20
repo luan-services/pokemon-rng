@@ -17,7 +17,12 @@ enum RomProfile {
             0x08069AE5L,
             0x03000F9CL,
             0x0300500CL,
-            0x020370D0L
+            0x020370D0L,
+            0x02024284L,
+            0x02021D18L,
+            0x020370C0L,
+            0x020370C2L,
+            0x0803FBE9L
     ),
 
     LEAF_GREEN_EN_10(
@@ -38,7 +43,12 @@ enum RomProfile {
             0x08069AE5L,
             0x03000F9CL,
             0x0300500CL,
-            0x020370D0L
+            0x020370D0L,
+            0x02024284L,
+            0x02021D18L,
+            0x020370C0L,
+            0x020370C2L,
+            0x0803FBE9L
     ),
 
     FIRE_RED_EN_11(
@@ -59,7 +69,12 @@ enum RomProfile {
             0x08069AF9L,
             0x03000F9CL,
             0x0300500CL,
-            0x020370D0L
+            0x020370D0L,
+            0x02024284L,
+            0x02021D18L,
+            0x020370C0L,
+            0x020370C2L,
+            0x0803FBFDL
     ),
 
     LEAF_GREEN_EN_11(
@@ -80,7 +95,12 @@ enum RomProfile {
             0x08069AF9L,
             0x03000F9CL,
             0x0300500CL,
-            0x020370D0L
+            0x020370D0L,
+            0x02024284L,
+            0x02021D18L,
+            0x020370C0L,
+            0x020370C2L,
+            0x0803FBFDL
     );
 
     enum ValidationStatus {
@@ -125,6 +145,13 @@ enum RomProfile {
     final long saveBlock2Ptr;
     final long specialVarResult;
 
+    // Party / Pokemon data helpers used by advanced presets.
+    final long playerParty;
+    final long stringVar4;
+    final long specialVar8004;
+    final long specialVar8005;
+    final long getMonData3Thumb;
+
     RomProfile(
             String id,
             String displayName,
@@ -143,7 +170,12 @@ enum RomProfile {
             long scriptContextSetupThumb,
             long lockFieldControls,
             long saveBlock2Ptr,
-            long specialVarResult
+            long specialVarResult,
+            long playerParty,
+            long stringVar4,
+            long specialVar8004,
+            long specialVar8005,
+            long getMonData3Thumb
     ) {
         this.id = id;
         this.displayName = displayName;
@@ -163,6 +195,11 @@ enum RomProfile {
         this.lockFieldControls = lockFieldControls;
         this.saveBlock2Ptr = saveBlock2Ptr;
         this.specialVarResult = specialVarResult;
+        this.playerParty = playerParty;
+        this.stringVar4 = stringVar4;
+        this.specialVar8004 = specialVar8004;
+        this.specialVar8005 = specialVar8005;
+        this.getMonData3Thumb = getMonData3Thumb;
     }
 
     String id() {

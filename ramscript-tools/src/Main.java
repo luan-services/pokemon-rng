@@ -53,6 +53,8 @@ public final class Main {
                 case "build-show-secret-id-wc3" -> buildShowSecretIdWc3(args);
                 case "build-seed-modifier-bin" -> buildSeedModifierBin(args);
                 case "build-seed-modifier-wc3" -> buildSeedModifierWc3(args);
+                case "build-party-iv-viewer-bin" -> buildPartyIvViewerBin(args);
+                case "build-party-iv-viewer-wc3" -> buildPartyIvViewerWc3(args);
 
                 /* Compatibility aliases kept from the experimental v5 CLI. */
                 case "build-aurora" -> requireArgs(args, 3, () ->
@@ -226,6 +228,45 @@ public final class Main {
         System.out.printf("  desired seed:      0x%04X%n", seed);
         System.out.printf("  predecessor:       0x%08X%n", predecessor);
         System.out.printf("  after Random():    0x%08X%n", RngMath.nextState(predecessor));
+        System.out.println("  payload bytes:     " + result.payloadBytes());
+        System.out.println("  runtime overhead:  " + result.runtimeOverheadBytes());
+        System.out.println("  total script:      " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  free bytes:        " + result.freeScriptBytes());
+    }
+
+    private static void buildPartyIvViewerBin(String[] args) throws Exception {
+        if (args.length != 3) {
+            throw new IllegalArgumentException(
+                    "Usage: build-party-iv-viewer-bin <rom> <output.bin>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = PartyIvViewerPreset.build(rom);
+        buildBinary(result.ramScript(), Path.of(args[2]));
+        printPartyIvViewer(result);
+    }
+
+    private static void buildPartyIvViewerWc3(String[] args) throws Exception {
+        if (args.length != 4) {
+            throw new IllegalArgumentException(
+                    "Usage: build-party-iv-viewer-wc3 <rom> <input.wc3> <output.wc3>"
+            );
+        }
+
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = PartyIvViewerPreset.build(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        printPartyIvViewer(result);
+    }
+
+    private static void printPartyIvViewer(TriggerBuildResult result) {
+        System.out.println();
+        System.out.println("Party IV Viewer preset:");
+        System.out.println("  ROM:               " + result.rom().displayName());
+        System.out.println("  trigger:           R + SELECT");
+        System.out.println("  display:           continuous prompted IV pages for the whole party");
+        System.out.println("  native installer:  " + PartyIvViewerPreset.selectedInstallerMode(result.rom()) + " (AUTO)");
         System.out.println("  payload bytes:     " + result.payloadBytes());
         System.out.println("  runtime overhead:  " + result.runtimeOverheadBytes());
         System.out.println("  total script:      " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
@@ -696,6 +737,9 @@ public final class Main {
         System.out.println(
                 "  build-seed-modifier-*          R+SELECT RNG seed modifier with A confirmation"
         );
+        System.out.println(
+                "  build-party-iv-viewer-*        R+SELECT sequential party IV viewer"
+        );
     }
 
     private static String bytesToHex(byte[] data) {
@@ -764,6 +808,8 @@ public final class Main {
         System.out.println("  java -cp out Main build-show-secret-id-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-seed-modifier-bin fr10 1234 output.bin");
         System.out.println("  java -cp out Main build-seed-modifier-wc3 fr10 1234 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-party-iv-viewer-bin fr10 output.bin");
+        System.out.println("  java -cp out Main build-party-iv-viewer-wc3 fr10 input.wc3 output.wc3");
         System.out.println();
         System.out.println("Legacy v5 build-* commands remain accepted for compatibility.");
     }
