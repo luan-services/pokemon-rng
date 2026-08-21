@@ -51,3 +51,31 @@ For example, `--hotkey r-b` means hold R and press B. Supported names are `a`, `
 ## Repel hotkey
 
 `RepelHotkeyPreset` provides a lightweight configurable-hotkey shortcut that uses the longest-duration Repel currently available and does not stack while another Repel is active. The modern-style automatic `Use another?` behavior remains a future V2 idea. See `docs/REPEL_HOTKEY.md`.
+
+
+## Shared multi-hotkey combo
+
+The first two-hotkey shared-runtime build combines Seed Modifier and Repel Hotkey without duplicating the full runtime:
+
+```text
+R + SELECT -> Seed Modifier
+R + B      -> Repel Hotkey
+```
+
+Build example:
+
+```powershell
+java -cp out Main build-seed-repel-combo-wc3 fr10 1234 ../dummy-saves/custom-design.wc3 ../dummy-saves/seed-repel-combo.wc3 --seed-hotkey r-select --repel-hotkey r-b
+```
+
+This compact path is validated in-game on FireRed English 1.0. It intentionally preserves a restricted two-binding encoding rather than replacing the proven runtime with the failed generic-dispatch experiments. See `docs/MULTI_HOTKEY.md`.
+
+
+## Persistent storage research
+
+Save-layout research is tracked separately in `docs/PERSISTENCE_RESEARCH.md`.
+The first strong candidates are unused/filler bytes already inside the normal
+FR/LG save structures, including a 400-byte explicitly-unused region in
+`SaveBlock1` and a larger 1024-byte filler region in `SaveBlock2`. They are
+candidates only until a write -> normal save -> reset/reload -> verify probe is
+validated in-game.

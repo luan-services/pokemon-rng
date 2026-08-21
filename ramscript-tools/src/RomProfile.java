@@ -17,6 +17,7 @@ enum RomProfile {
             0x08069AE5L,
             0x03000F9CL,
             0x0300500CL,
+            0x03005008L,
             0x020370D0L,
             0x02024284L,
             0x02021D18L,
@@ -43,6 +44,7 @@ enum RomProfile {
             0x08069AE5L,
             0x03000F9CL,
             0x0300500CL,
+            0x03005008L,
             0x020370D0L,
             0x02024284L,
             0x02021D18L,
@@ -69,6 +71,7 @@ enum RomProfile {
             0x08069AF9L,
             0x03000F9CL,
             0x0300500CL,
+            0x03005008L,
             0x020370D0L,
             0x02024284L,
             0x02021D18L,
@@ -95,6 +98,7 @@ enum RomProfile {
             0x08069AF9L,
             0x03000F9CL,
             0x0300500CL,
+            0x03005008L,
             0x020370D0L,
             0x02024284L,
             0x02021D18L,
@@ -143,6 +147,7 @@ enum RomProfile {
 
     // Generic native-helper profile fields.
     final long saveBlock2Ptr;
+    final long saveBlock1Ptr;
     final long specialVarResult;
 
     // Party / Pokemon data helpers used by advanced presets.
@@ -170,6 +175,7 @@ enum RomProfile {
             long scriptContextSetupThumb,
             long lockFieldControls,
             long saveBlock2Ptr,
+            long saveBlock1Ptr,
             long specialVarResult,
             long playerParty,
             long stringVar4,
@@ -194,6 +200,7 @@ enum RomProfile {
         this.scriptContextSetupThumb = scriptContextSetupThumb;
         this.lockFieldControls = lockFieldControls;
         this.saveBlock2Ptr = saveBlock2Ptr;
+        this.saveBlock1Ptr = saveBlock1Ptr;
         this.specialVarResult = specialVarResult;
         this.playerParty = playerParty;
         this.stringVar4 = stringVar4;

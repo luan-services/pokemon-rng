@@ -84,3 +84,22 @@ The default `R + SELECT` API path remains byte-for-byte identical to the previou
 Custom chord semantics are ordered: first button held, second button newly pressed. Example: `r-b` means hold R and press B.
 
 Non-default chords still require an in-game smoke test before being marked runtime-validated.
+
+
+## 2026-08-21 Multi-hotkey V1 closeout
+
+Validated in-game on FireRed English 1.0:
+
+- one shared runtime;
+- `R + SELECT` -> Seed Modifier;
+- `R + B` -> Repel Hotkey;
+- both independent payloads execute correctly;
+- normal movement, Options and map transitions remain stable.
+
+The earlier 72-byte wrapper is rejected because it crossed the exact
+`UnusedVarNeededToMatch[8]` boundary at `03005330` and overwrote live
+`gCanvas*` state. Two generic RamScript-native dispatcher experiments are also
+rejected after input swallowing / freeze failures.
+
+The compact MultiHotkeyRuntimeV1 remains the validated two-binding path and is
+not to be replaced automatically by a future generic implementation.

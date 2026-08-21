@@ -22,6 +22,8 @@ public final class TestRunner {
         testPartyIvViewerPreset();
         testRepelHotkeyPreset();
         testHotkeyConfiguration();
+        testMultiHotkeyRuntimeV1();
+        testPersistenceProbeHelpers();
 
         testHotkeyRuntimeV1();
 
@@ -602,6 +604,79 @@ public final class TestRunner {
                 "custom Party IV hotkey must be size-neutral");
     }
 
+    private static void testMultiHotkeyRuntimeV1() {
+        Hotkey seedHotkey = Hotkey.DEFAULT;
+        Hotkey repelHotkey = new Hotkey(HotkeyButton.R, HotkeyButton.B);
+
+        for (RomProfile rom : RomProfile.values()) {
+            byte[] seedPayload = SeedModifierPreset.buildPayload(rom, 0x1234);
+            byte[] repelPayload = RepelHotkeyPreset.buildPayload();
+            TriggerBuildResult result = SeedRepelComboPreset.build(
+                    rom, 0x1234, seedHotkey, repelHotkey
+            );
+
+            assertTrue(result.ramScript().isChecksumValid(),
+                    "multi-hotkey checksum " + rom.id());
+            assertTrue(result.totalScriptBytes() <= RamScript.SCRIPT_SIZE,
+                    "multi-hotkey combo must fit " + rom.id());
+            assertTrue(result.payloadBytes() == seedPayload.length + repelPayload.length,
+                    "multi-hotkey payload accounting " + rom.id());
+
+            byte[] script = result.ramScript().scriptCopy();
+            int first = MultiHotkeyRuntimeV1.firstPayloadOffset();
+            int second = MultiHotkeyRuntimeV1.secondPayloadOffset(seedPayload);
+            assertTrue(Arrays.equals(
+                            Arrays.copyOfRange(script, first, first + seedPayload.length),
+                            seedPayload),
+                    "first multi payload preserved byte-for-byte " + rom.id());
+            assertTrue(Arrays.equals(
+                            Arrays.copyOfRange(script, second, second + repelPayload.length),
+                            repelPayload),
+                    "second multi payload preserved byte-for-byte " + rom.id());
+            assertTrue((script[0x0A] & 0xFF) == 0xA7 && (script[0x0B] & 0xFF) == 0,
+                    "multi runtime keeps format signature " + rom.id());
+        }
+
+        TriggerBuildResult fr = SeedRepelComboPreset.build(
+                RomProfile.FIRE_RED_EN_10, 0x1234, seedHotkey, repelHotkey
+        );
+        assertTrue(fr.totalScriptBytes() == 643,
+                "FR10 Seed+Repel shared runtime size regression");
+        assertTrue(fr.freeScriptBytes() == 352,
+                "FR10 Seed+Repel shared runtime free-space regression");
+
+        try {
+            SeedRepelComboPreset.build(
+                    RomProfile.FIRE_RED_EN_10, 0x1234, seedHotkey, seedHotkey
+            );
+            throw new AssertionError("duplicate multi-hotkey chord must be rejected");
+        } catch (IllegalArgumentException expected) {
+            // expected
+        }
+
+        try {
+            SeedRepelComboPreset.build(
+                    RomProfile.FIRE_RED_EN_10, 0x1234,
+                    new Hotkey(HotkeyButton.R, HotkeyButton.SELECT),
+                    new Hotkey(HotkeyButton.L, HotkeyButton.B)
+            );
+            throw new AssertionError("multi-hotkey V1 must reject different held buttons");
+        } catch (IllegalArgumentException expected) {
+            // expected
+        }
+
+        try {
+            SeedRepelComboPreset.build(
+                    RomProfile.FIRE_RED_EN_10, 0x1234,
+                    new Hotkey(HotkeyButton.R, HotkeyButton.SELECT),
+                    new Hotkey(HotkeyButton.R, HotkeyButton.A)
+            );
+            throw new AssertionError("multi-hotkey V1 must reject non-adjacent pressed bits");
+        } catch (IllegalArgumentException expected) {
+            // expected
+        }
+    }
+
     private static void testHotkeyRuntimeV1() {
         for (RomProfile rom : RomProfile.values()) {
             byte[] hello = TriggerTestPayloads.helloWonderCard();
@@ -650,6 +725,48 @@ public final class TestRunner {
                 | (Byte.toUnsignedLong(data[offset + 1]) << 8)
                 | (Byte.toUnsignedLong(data[offset + 2]) << 16)
                 | (Byte.toUnsignedLong(data[offset + 3]) << 24);
+    }
+
+
+    private static void testPersistenceProbeHelpers() {
+        NativeHelper writer = PersistenceProbeNativeHelper.buildWriter(RomProfile.FIRE_RED_EN_10);
+        byte[] writerCode = writer.codeCopy();
+        assertTrue(Byte.toUnsignedInt(writerCode[0x0C]) == 0x04 && Byte.toUnsignedInt(writerCode[0x0D]) == 0x49,
+                "persistence writer VERSION_MARKER literal load must target literal at 0x20");
+
+        NativeHelper checker = PersistenceProbeNativeHelper.buildChecker(RomProfile.FIRE_RED_EN_10);
+        byte[] checkerCode = checker.codeCopy();
+        assertTrue(Byte.toUnsignedInt(checkerCode[0x10]) == 0x07 && Byte.toUnsignedInt(checkerCode[0x11]) == 0x49,
+                "persistence checker VERSION_MARKER literal load must target literal at 0x30");
+        assertTrue(Byte.toUnsignedInt(checkerCode[0x1E]) == 0x05 && Byte.toUnsignedInt(checkerCode[0x1F]) == 0x49,
+                "persistence checker result literal load must target gSpecialVar_Result at 0x34");
+
+        NativeHelper fullWriter = PersistenceProbeNativeHelper.buildFullWriterAt(
+                RomProfile.FIRE_RED_EN_10, 0x02000100L);
+        assertTrue(fullWriter.size() == 36, "400-byte persistence writer helper size");
+
+        NativeHelper fullChecker = PersistenceProbeNativeHelper.buildFullCheckerAt(
+                RomProfile.FIRE_RED_EN_10, 0x02000100L);
+        byte[] fullCheckerCode = fullChecker.codeCopy();
+        assertTrue(fullChecker.size() == 60, "400-byte persistence checker helper size");
+        assertTrue(Binary.u32(fullCheckerCode, 0x2C) == RomProfile.FIRE_RED_EN_10.saveBlock1Ptr,
+                "400-byte checker SaveBlock1 pointer literal");
+        assertTrue(Binary.u32(fullCheckerCode, 0x30) == PersistenceProbeNativeHelper.STORAGE_OFFSET,
+                "400-byte checker storage offset literal");
+        assertTrue(Binary.u32(fullCheckerCode, 0x34) == PersistenceProbeNativeHelper.STORAGE_SIZE,
+                "400-byte checker storage size literal");
+        assertTrue(Binary.u32(fullCheckerCode, 0x38) == RomProfile.FIRE_RED_EN_10.specialVarResult,
+                "400-byte checker result pointer literal");
+        assertTrue(Byte.toUnsignedInt(fullCheckerCode[0x16]) == 0x09
+                        && Byte.toUnsignedInt(fullCheckerCode[0x17]) == 0x06
+                        && Byte.toUnsignedInt(fullCheckerCode[0x18]) == 0x09
+                        && Byte.toUnsignedInt(fullCheckerCode[0x19]) == 0x0E,
+                "400-byte checker must wrap expected pattern byte after 0xFF");
+
+        RamScript fullInstallScript = PersistenceFullRegionProbePreset.buildInstaller(RomProfile.FIRE_RED_EN_10);
+        RamScript fullCheckScript = PersistenceFullRegionProbePreset.buildChecker(RomProfile.FIRE_RED_EN_10);
+        assertTrue(fullInstallScript.isChecksumValid(), "400-byte persistence installer checksum");
+        assertTrue(fullCheckScript.isChecksumValid(), "400-byte persistence checker checksum");
     }
 
     private static void assertTrue(boolean condition, String message) {

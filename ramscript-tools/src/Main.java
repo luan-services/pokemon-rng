@@ -57,6 +57,12 @@ public final class Main {
                 case "build-party-iv-viewer-wc3" -> buildPartyIvViewerWc3(args);
                 case "build-repel-hotkey-bin" -> buildRepelHotkeyBin(args);
                 case "build-repel-hotkey-wc3" -> buildRepelHotkeyWc3(args);
+                case "build-seed-repel-combo-bin" -> buildSeedRepelComboBin(args);
+                case "build-seed-repel-combo-wc3" -> buildSeedRepelComboWc3(args);
+                case "build-persistence-probe-install-wc3" -> buildPersistenceProbeInstallWc3(args);
+                case "build-persistence-probe-check-wc3" -> buildPersistenceProbeCheckWc3(args);
+                case "build-persistence-400-install-wc3" -> buildPersistence400InstallWc3(args);
+                case "build-persistence-400-check-wc3" -> buildPersistence400CheckWc3(args);
 
                 /* Compatibility aliases kept from the experimental v5 CLI. */
                 case "build-aurora" -> requireArgs(args, 3, () ->
@@ -289,6 +295,68 @@ public final class Main {
         System.out.println("  free bytes:        " + result.freeScriptBytes());
     }
 
+
+    private static void buildSeedRepelComboBin(String[] args) throws Exception {
+        if (args.length != 4 && args.length != 8) {
+            throw new IllegalArgumentException(
+                    "Usage: build-seed-repel-combo-bin <rom> <seed-hex> <output.bin> [--seed-hotkey <held>-<pressed> --repel-hotkey <held>-<pressed>]"
+            );
+        }
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int seed = parseSeed(args[2]);
+        Hotkey seedHotkey = SeedRepelComboPreset.DEFAULT_SEED_HOTKEY;
+        Hotkey repelHotkey = SeedRepelComboPreset.DEFAULT_REPEL_HOTKEY;
+        if (args.length == 8) {
+            if (!args[4].equalsIgnoreCase("--seed-hotkey") || !args[6].equalsIgnoreCase("--repel-hotkey")) {
+                throw new IllegalArgumentException("Expected --seed-hotkey <hotkey> --repel-hotkey <hotkey>");
+            }
+            seedHotkey = Hotkey.parse(args[5]);
+            repelHotkey = Hotkey.parse(args[7]);
+        }
+        TriggerBuildResult result = SeedRepelComboPreset.build(rom, seed, seedHotkey, repelHotkey);
+        buildBinary(result.ramScript(), Path.of(args[3]));
+        printSeedRepelCombo(result, seed, seedHotkey, repelHotkey);
+    }
+
+    private static void buildSeedRepelComboWc3(String[] args) throws Exception {
+        if (args.length != 5 && args.length != 9) {
+            throw new IllegalArgumentException(
+                    "Usage: build-seed-repel-combo-wc3 <rom> <seed-hex> <input.wc3> <output.wc3> [--seed-hotkey <held>-<pressed> --repel-hotkey <held>-<pressed>]"
+            );
+        }
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int seed = parseSeed(args[2]);
+        Hotkey seedHotkey = SeedRepelComboPreset.DEFAULT_SEED_HOTKEY;
+        Hotkey repelHotkey = SeedRepelComboPreset.DEFAULT_REPEL_HOTKEY;
+        if (args.length == 9) {
+            if (!args[5].equalsIgnoreCase("--seed-hotkey") || !args[7].equalsIgnoreCase("--repel-hotkey")) {
+                throw new IllegalArgumentException("Expected --seed-hotkey <hotkey> --repel-hotkey <hotkey>");
+            }
+            seedHotkey = Hotkey.parse(args[6]);
+            repelHotkey = Hotkey.parse(args[8]);
+        }
+        TriggerBuildResult result = SeedRepelComboPreset.build(rom, seed, seedHotkey, repelHotkey);
+        buildIntoWc3(result.ramScript(), Path.of(args[3]), Path.of(args[4]));
+        printSeedRepelCombo(result, seed, seedHotkey, repelHotkey);
+    }
+
+    private static void printSeedRepelCombo(TriggerBuildResult result, int seed, Hotkey seedHotkey, Hotkey repelHotkey) {
+        int seedBytes = SeedModifierPreset.buildPayload(result.rom(), seed).length;
+        int repelBytes = RepelHotkeyPreset.buildPayload().length;
+        System.out.println();
+        System.out.println("Seed + Repel multi-hotkey combo:");
+        System.out.println("  ROM:               " + result.rom().displayName());
+        System.out.println("  seed hotkey:       " + seedHotkey.displayName());
+        System.out.println("  repel hotkey:      " + repelHotkey.displayName());
+        System.out.printf("  desired seed:      0x%04X%n", seed);
+        System.out.println("  seed payload:      " + seedBytes + " bytes @ +0x" + Integer.toHexString(MultiHotkeyRuntimeV1.firstPayloadOffset()).toUpperCase());
+        System.out.println("  repel payload:     " + repelBytes + " bytes @ +0x" + Integer.toHexString(MultiHotkeyRuntimeV1.secondPayloadOffset(SeedModifierPreset.buildPayload(result.rom(), seed))).toUpperCase());
+        System.out.println("  payload bytes:     " + result.payloadBytes());
+        System.out.println("  shared overhead:   " + result.runtimeOverheadBytes());
+        System.out.println("  total script:      " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  free bytes:        " + result.freeScriptBytes());
+        System.out.println("  status:            EXPERIMENTAL - requires in-game validation");
+    }
 
     private static void buildRepelHotkeyBin(String[] args) throws Exception {
         if (args.length != 3 && args.length != 5) {
@@ -834,6 +902,37 @@ public final class Main {
         action.run();
     }
 
+
+    private static void buildPersistenceProbeInstallWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-persistence-probe-install-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        RamScript script = PersistenceProbePreset.buildInstaller(rom);
+        buildIntoWc3(script, Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Persistence probe installer built: SaveBlock1 + 0x348C, 8 bytes only.");
+    }
+
+    private static void buildPersistenceProbeCheckWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-persistence-probe-check-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        RamScript script = PersistenceProbePreset.buildChecker(rom);
+        buildIntoWc3(script, Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Persistence probe checker built: reads SaveBlock1 + 0x348C.");
+    }
+
+    private static void buildPersistence400InstallWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-persistence-400-install-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        buildIntoWc3(PersistenceFullRegionProbePreset.buildInstaller(rom), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("400-byte persistence installer built: SaveBlock1 + 0x348C..0x361B.");
+    }
+
+    private static void buildPersistence400CheckWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-persistence-400-check-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        buildIntoWc3(PersistenceFullRegionProbePreset.buildChecker(rom), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("400-byte persistence checker built: verifies all 400 bytes.");
+    }
+
     private static void printUsage() {
         System.out.println("ramscript-tools");
         System.out.println();
@@ -876,6 +975,12 @@ public final class Main {
         System.out.println("  trigger: deliveryman | hotkey");
         System.out.println("  ROM: fr10 | lg10 | fr11 | lg11");
         System.out.println();
+        System.out.println("Persistence research:");
+        System.out.println("  java -cp out Main build-persistence-probe-install-wc3 fr10 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-persistence-probe-check-wc3 fr10 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-persistence-400-install-wc3 fr10 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-persistence-400-check-wc3 fr10 input.wc3 output.wc3");
+        System.out.println();
         System.out.println("Advanced presets:");
         System.out.println("  java -cp out Main build-show-secret-id-bin fr10 output.bin");
         System.out.println("  java -cp out Main build-show-secret-id-wc3 fr10 input.wc3 output.wc3");
@@ -885,6 +990,7 @@ public final class Main {
         System.out.println("  java -cp out Main build-party-iv-viewer-wc3 fr10 input.wc3 output.wc3 [--hotkey l-start]");
         System.out.println("  java -cp out Main build-repel-hotkey-bin fr10 output.bin [--hotkey r-select]");
         System.out.println("  java -cp out Main build-repel-hotkey-wc3 fr10 input.wc3 output.wc3 [--hotkey r-b]");
+        System.out.println("  java -cp out Main build-seed-repel-combo-wc3 fr10 1234 input.wc3 output.wc3 [--seed-hotkey r-select --repel-hotkey r-b]");
         System.out.println("  hotkey syntax: <held>-<pressed>; first button is held, second is newly pressed");
         System.out.println("  buttons: a b select start right left up down r l");
         System.out.println("  default hotkey remains r-select");

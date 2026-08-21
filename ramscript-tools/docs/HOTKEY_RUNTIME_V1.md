@@ -35,3 +35,9 @@ The custom wrapper keeps the same 32-byte resident size. It loads the adjacent `
 Custom chords are structurally tested and generate valid builds for all four ROM profiles, but each new chord should still receive an in-game smoke test before being called runtime-validated. The default `R + SELECT` path retains the previous validation status.
 
 Arbitrary payload lengths are supported: the bootstrap target is generated from the payload's actual aligned native-blob offset.
+
+## Shared two-hotkey experiment
+
+Multi-hotkey work is isolated in `MultiHotkeyRuntimeV1`; the validated single-hotkey runtime is not modified.
+
+The first 72-byte-wrapper experiment was rejected after FR1.0 testing showed memory corruption. The replacement compact runtime keeps the wrapper at exactly 32 bytes, uses only symbol-verified padding / unused storage, and the Seed+Repel `R+SELECT` / `R+B` combination is now validated in-game on FR1.0. The four supplied symbol maps identify the 32-byte wrapper region exactly as `UnusedVarNeededToMatch[8]`; live `gCanvas*` state starts immediately at `03005330`. See `docs/MULTI_HOTKEY.md` for the memory map, limitations and current 643/995 build.
