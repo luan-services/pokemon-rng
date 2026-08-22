@@ -27,6 +27,8 @@ public final class TestRunner {
 
         testHotkeyRuntimeV1();
 
+        testPayloadPlacementPlanner();
+        testPersistentStorageAreaModel();
         System.out.println("All tests passed.");
     }
 
@@ -777,6 +779,39 @@ public final class TestRunner {
         assertTrue(PersistenceSaveBlock2ProbePreset.buildInstaller(RomProfile.FIRE_RED_EN_10).isChecksumValid(), "1024-byte installer checksum");
         assertTrue(PersistenceSaveBlock2ProbePreset.buildChecker(RomProfile.FIRE_RED_EN_10).isChecksumValid(), "1024-byte checker checksum");
 
+        byte[] ptsImage = PersistentToolkitStorageV1.buildExecutionProofImage(RomProfile.FIRE_RED_EN_10);
+        assertTrue(ptsImage.length == 28, "PersistentToolkitStorage V1 image size");
+        assertTrue(Binary.u32(ptsImage, 0x00) == PersistentToolkitStorageV1.MAGIC, "PTS V1 magic");
+        assertTrue(Byte.toUnsignedInt(ptsImage[0x04]) == 1, "PTS V1 version");
+        assertTrue(Binary.u16(ptsImage, 0x08) == 0x10, "PTS V1 payload offset");
+        assertTrue(Binary.u16(ptsImage, 0x0A) == 12, "PTS V1 payload size");
+        byte[] ptsPayload = Arrays.copyOfRange(ptsImage, 0x10, 0x1C);
+        assertTrue(Binary.u16(ptsImage, 0x0C) == PersistentToolkitStorageV1.checksum16(ptsPayload),
+                "PTS V1 payload checksum");
+
+        NativeHelper ptsInstallerHelper = PersistentToolkitStorageNativeHelper.buildInstallerAt(
+                RomProfile.FIRE_RED_EN_10, 0x02000100L);
+        assertTrue(ptsInstallerHelper.size() == 64, "PTS V1 installer helper size");
+        assertTrue(Arrays.equals(Arrays.copyOfRange(ptsInstallerHelper.codeCopy(), 0x1C, 0x38), ptsImage),
+                "PTS V1 installer embeds exact persistent image");
+        assertTrue(Binary.u32(ptsInstallerHelper.codeCopy(), 0x38) == RomProfile.FIRE_RED_EN_10.saveBlock2Ptr,
+                "PTS V1 installer SaveBlock2 pointer");
+
+        NativeHelper ptsLauncherHelper = PersistentToolkitStorageNativeHelper.buildLauncherAt(
+                RomProfile.FIRE_RED_EN_10, 0x02000100L);
+        assertTrue(ptsLauncherHelper.size() == 120, "PTS V1 launcher helper size");
+        assertTrue(Binary.u32(ptsLauncherHelper.codeCopy(), 0x68) == RomProfile.FIRE_RED_EN_10.saveBlock2Ptr,
+                "PTS V1 launcher SaveBlock2 pointer");
+        assertTrue(Binary.u32(ptsLauncherHelper.codeCopy(), 0x70) == PersistentToolkitStorageV1.MAGIC,
+                "PTS V1 launcher magic literal");
+        assertTrue(Binary.u32(ptsLauncherHelper.codeCopy(), 0x74) == RomProfile.FIRE_RED_EN_10.specialVarResult,
+                "PTS V1 launcher result pointer");
+
+        RamScript ptsInstall = PersistentToolkitStoragePreset.buildInstaller(RomProfile.FIRE_RED_EN_10);
+        RamScript ptsLaunch = PersistentToolkitStoragePreset.buildLauncher(RomProfile.FIRE_RED_EN_10);
+        assertTrue(ptsInstall.isChecksumValid(), "PTS V1 installer checksum");
+        assertTrue(ptsLaunch.isChecksumValid(), "PTS V1 launcher checksum");
+
         RamScript fullInstallScript = PersistenceFullRegionProbePreset.buildInstaller(RomProfile.FIRE_RED_EN_10);
         RamScript fullCheckScript = PersistenceFullRegionProbePreset.buildChecker(RomProfile.FIRE_RED_EN_10);
         assertTrue(fullInstallScript.isChecksumValid(), "400-byte persistence installer checksum");
@@ -788,4 +823,43 @@ public final class TestRunner {
             throw new AssertionError(message);
         }
     }
+
+    private static void testPayloadPlacementPlanner() {
+        byte[] small = new byte[32];
+        byte[] medium = new byte[300];
+        byte[] large = new byte[900];
+
+        assertTrue(PayloadPlacementPlanner.place(small, PayloadPlacement.AUTO, 100).area() == PayloadStorageArea.RAMSCRIPT,
+                "AUTO should prefer remaining RamScript space");
+        assertTrue(PayloadPlacementPlanner.place(medium, PayloadPlacement.AUTO, 100).area() == PayloadStorageArea.SAVE_BLOCK1,
+                "AUTO should use SaveBlock1 for a small persistent spill");
+        assertTrue(PayloadPlacementPlanner.place(large, PayloadPlacement.AUTO, 100).area() == PayloadStorageArea.SAVE_BLOCK2,
+                "AUTO should use SaveBlock2 for a larger persistent spill");
+
+        assertTrue(PayloadPlacementPlanner.place(small, PayloadPlacement.SAVE_BLOCK2, 995).area() == PayloadStorageArea.SAVE_BLOCK2,
+                "explicit placement should be honored");
+
+        boolean failed = false;
+        try {
+            PayloadPlacementPlanner.place(new byte[401], PayloadPlacement.SAVE_BLOCK1, 995);
+        } catch (IllegalArgumentException expected) {
+            failed = true;
+        }
+        assertTrue(failed, "explicit SaveBlock1 overflow must fail");
+    }
+
+    private static void testPersistentStorageAreaModel() {
+        assertTrue(PayloadStorageArea.SAVE_BLOCK1.capacity() == 400, "SaveBlock1 storage capacity");
+        assertTrue(PayloadStorageArea.SAVE_BLOCK1.offset() == 0x348C, "SaveBlock1 storage offset");
+        assertTrue(PayloadStorageArea.SAVE_BLOCK2.capacity() == 0x400, "SaveBlock2 storage capacity");
+        assertTrue(PayloadStorageArea.SAVE_BLOCK2.offset() == 0x0B20, "SaveBlock2 storage offset");
+        assertTrue(PayloadStorageArea.SAVE_BLOCK1.persistent(), "SaveBlock1 area should be persistent");
+        assertTrue(PayloadStorageArea.SAVE_BLOCK2.persistent(), "SaveBlock2 area should be persistent");
+        assertTrue(PayloadStorageArea.RAMSCRIPT.persistent(), "RamScript survives reset while its Wonder Card remains installed");
+        assertTrue(PayloadStorageArea.SAVE_BLOCK1.pointerAddress(RomProfile.FIRE_RED_EN_10) == RomProfile.FIRE_RED_EN_10.saveBlock1Ptr,
+                "SaveBlock1 pointer source");
+        assertTrue(PayloadStorageArea.SAVE_BLOCK2.pointerAddress(RomProfile.FIRE_RED_EN_10) == RomProfile.FIRE_RED_EN_10.saveBlock2Ptr,
+                "SaveBlock2 pointer source");
+    }
+
 }

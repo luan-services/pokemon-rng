@@ -65,6 +65,8 @@ public final class Main {
                 case "build-persistence-400-check-wc3" -> buildPersistence400CheckWc3(args);
                 case "build-persistence-1024-install-wc3" -> buildPersistence1024InstallWc3(args);
                 case "build-persistence-1024-check-wc3" -> buildPersistence1024CheckWc3(args);
+                case "build-persistent-storage-v1-install-wc3" -> buildPersistentStorageV1InstallWc3(args);
+                case "build-persistent-storage-v1-launch-wc3" -> buildPersistentStorageV1LaunchWc3(args);
 
                 /* Compatibility aliases kept from the experimental v5 CLI. */
                 case "build-aurora" -> requireArgs(args, 3, () ->
@@ -949,6 +951,22 @@ public final class Main {
         System.out.println("1024-byte persistence checker built: verifies all 1024 bytes.");
     }
 
+
+
+    private static void buildPersistentStorageV1InstallWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-persistent-storage-v1-install-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        buildIntoWc3(PersistentToolkitStoragePreset.buildInstaller(rom), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("PersistentToolkitStorage V1 installer built: stores executable proof payload in SaveBlock2 + 0xB20.");
+    }
+
+    private static void buildPersistentStorageV1LaunchWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-persistent-storage-v1-launch-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        buildIntoWc3(PersistentToolkitStoragePreset.buildLauncher(rom), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("PersistentToolkitStorage V1 launcher built: validates and executes persistent Thumb payload.");
+    }
+
     private static void printUsage() {
         System.out.println("ramscript-tools");
         System.out.println();
@@ -998,6 +1016,8 @@ public final class Main {
         System.out.println("  java -cp out Main build-persistence-400-check-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-persistence-1024-install-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-persistence-1024-check-wc3 fr10 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-persistent-storage-v1-install-wc3 fr10 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-persistent-storage-v1-launch-wc3 fr10 input.wc3 output.wc3");
         System.out.println();
         System.out.println("Advanced presets:");
         System.out.println("  java -cp out Main build-show-secret-id-bin fr10 output.bin");
