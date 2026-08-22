@@ -51,6 +51,8 @@ public final class Main {
                 case "build-custom-payload-wc3" -> buildCustomPayloadWc3(args);
                 case "build-show-secret-id-bin" -> buildShowSecretIdBin(args);
                 case "build-show-secret-id-wc3" -> buildShowSecretIdWc3(args);
+                case "build-show-secret-id-persistent-install-wc3" -> buildShowSecretIdPersistentInstallWc3(args);
+                case "build-show-secret-id-persistent-launch-wc3" -> buildShowSecretIdPersistentLaunchWc3(args);
                 case "build-seed-modifier-bin" -> buildSeedModifierBin(args);
                 case "build-seed-modifier-wc3" -> buildSeedModifierWc3(args);
                 case "build-party-iv-viewer-bin" -> buildPartyIvViewerBin(args);
@@ -67,6 +69,15 @@ public final class Main {
                 case "build-persistence-1024-check-wc3" -> buildPersistence1024CheckWc3(args);
                 case "build-persistent-storage-v1-install-wc3" -> buildPersistentStorageV1InstallWc3(args);
                 case "build-persistent-storage-v1-launch-wc3" -> buildPersistentStorageV1LaunchWc3(args);
+                case "build-persistent-storage-v2-install-wc3" -> buildPersistentStorageV2InstallWc3(args);
+                case "build-persistent-storage-v2-launch-wc3" -> buildPersistentStorageV2LaunchWc3(args);
+                case "build-persistent-storage-v3-install-a-wc3" -> buildPersistentStorageV3InstallAWc3(args);
+                case "build-persistent-storage-v3-install-b-wc3" -> buildPersistentStorageV3InstallBWc3(args);
+                case "build-persistent-storage-v3-launch-wc3" -> buildPersistentStorageV3LaunchWc3(args);
+                case "build-cross-area-modules-install-wc3" -> buildCrossAreaModulesInstallWc3(args);
+                case "build-cross-area-modules-launch-wc3" -> buildCrossAreaModulesLaunchWc3(args);
+                case "build-real-modules-install-wc3" -> buildRealModulesInstallWc3(args);
+                case "build-real-modules-launch-wc3" -> buildRealModulesLaunchWc3(args);
 
                 /* Compatibility aliases kept from the experimental v5 CLI. */
                 case "build-aurora" -> requireArgs(args, 3, () ->
@@ -907,6 +918,22 @@ public final class Main {
     }
 
 
+
+    private static void buildShowSecretIdPersistentInstallWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-show-secret-id-persistent-install-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        buildIntoWc3(PersistentShowSecretIdPreset.buildInstaller(rom), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Persistent Show Secret ID installer built.");
+        System.out.println("Legacy/simple build-show-secret-id-wc3 remains unchanged and is still the default path.");
+    }
+
+    private static void buildShowSecretIdPersistentLaunchWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-show-secret-id-persistent-launch-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        buildIntoWc3(PersistentShowSecretIdPreset.buildLauncher(rom), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Persistent Show Secret ID launcher built.");
+    }
+
     private static void buildPersistenceProbeInstallWc3(String[] args) throws Exception {
         if (args.length != 4) throw new IllegalArgumentException("Usage: build-persistence-probe-install-wc3 <rom> <input.wc3> <output.wc3>");
         RomProfile rom = RomProfile.fromId(args[1]);
@@ -967,6 +994,73 @@ public final class Main {
         System.out.println("PersistentToolkitStorage V1 launcher built: validates and executes persistent Thumb payload.");
     }
 
+    private static void buildPersistentStorageV2InstallWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-persistent-storage-v2-install-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        buildIntoWc3(PersistentToolkitStorageV2Preset.buildInstaller(rom), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("PersistentToolkitStorage V2 installer built: module table + two Thumb proof modules.");
+    }
+
+    private static void buildPersistentStorageV2LaunchWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-persistent-storage-v2-launch-wc3 <rom> <module-id> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int moduleId = Integer.decode(args[2]);
+        buildIntoWc3(PersistentToolkitStorageV2Preset.buildLauncher(rom, moduleId), Path.of(args[3]), Path.of(args[4]));
+        System.out.println("PersistentToolkitStorage V2 launcher built for module " + moduleId + ".");
+    }
+
+    private static void buildPersistentStorageV3InstallAWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-persistent-storage-v3-install-a-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        buildIntoWc3(PersistentToolkitStorageV3Preset.buildInstallerA(rom), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("V3 installer A built: initializes storage with module 1.");
+    }
+
+    private static void buildPersistentStorageV3InstallBWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-persistent-storage-v3-install-b-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        buildIntoWc3(PersistentToolkitStorageV3Preset.buildInstallerB(rom), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("V3 installer B built: sparse-adds module 2 without rewriting module 1.");
+    }
+
+    private static void buildPersistentStorageV3LaunchWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-persistent-storage-v3-launch-wc3 <rom> <module-id> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int moduleId = Integer.decode(args[2]);
+        buildIntoWc3(PersistentToolkitStorageV3Preset.buildLauncher(rom, moduleId), Path.of(args[3]), Path.of(args[4]));
+        System.out.println("V3 launcher built for module " + moduleId + ".");
+    }
+
+    private static void buildCrossAreaModulesInstallWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-cross-area-modules-install-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        buildIntoWc3(PersistentCrossAreaDispatcherPreset.buildInstaller(rom), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Build 9 cross-area installer built: module 1 in SaveBlock1, module 2 in SaveBlock2.");
+    }
+
+    private static void buildCrossAreaModulesLaunchWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-cross-area-modules-launch-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        buildIntoWc3(PersistentCrossAreaDispatcherPreset.buildLauncher(rom), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Build 9 single dispatcher launcher built: tests both SaveBlock locations in one WC.");
+    }
+
+    private static void buildRealModulesInstallWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-real-modules-install-wc3 <rom> <seed> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int seed = Integer.parseInt(args[2], 16);
+        buildIntoWc3(PersistentRealPresetDispatcherPreset.buildInstaller(rom, seed), Path.of(args[3]), Path.of(args[4]));
+        System.out.println("Build 10 real-module installer built: SID in SaveBlock1, Seed Modifier core in SaveBlock2.");
+    }
+
+    private static void buildRealModulesLaunchWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-real-modules-launch-wc3 <rom> <seed> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int seed = Integer.parseInt(args[2], 16);
+        buildIntoWc3(PersistentRealPresetDispatcherPreset.buildLauncher(rom, seed), Path.of(args[3]), Path.of(args[4]));
+        System.out.println("Build 10 single dispatcher launcher built for SID + persistent Seed Modifier core.");
+    }
+
     private static void printUsage() {
         System.out.println("ramscript-tools");
         System.out.println();
@@ -1018,10 +1112,14 @@ public final class Main {
         System.out.println("  java -cp out Main build-persistence-1024-check-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-persistent-storage-v1-install-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-persistent-storage-v1-launch-wc3 fr10 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-persistent-storage-v2-install-wc3 fr10 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-persistent-storage-v2-launch-wc3 fr10 1 input.wc3 output.wc3");
         System.out.println();
         System.out.println("Advanced presets:");
         System.out.println("  java -cp out Main build-show-secret-id-bin fr10 output.bin");
         System.out.println("  java -cp out Main build-show-secret-id-wc3 fr10 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-show-secret-id-persistent-install-wc3 fr10 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-show-secret-id-persistent-launch-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-seed-modifier-bin fr10 1234 output.bin [--hotkey r-select]");
         System.out.println("  java -cp out Main build-seed-modifier-wc3 fr10 1234 input.wc3 output.wc3 [--hotkey r-b]");
         System.out.println("  java -cp out Main build-party-iv-viewer-bin fr10 output.bin [--hotkey r-select]");

@@ -3,7 +3,8 @@
 Compile and run:
 
 ```cmd
-javac -encoding UTF-8 -d out src\*.java tests\TestRunner.java
+$sources = Get-ChildItem src,tests -Recurse -Filter *.java
+javac -encoding UTF-8 -d out $sources.FullName
 java -cp out TestRunner
 ```
 

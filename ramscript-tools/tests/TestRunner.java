@@ -28,8 +28,114 @@ public final class TestRunner {
         testHotkeyRuntimeV1();
 
         testPayloadPlacementPlanner();
+        testDeploymentCompatibility();
+        testPersistentShowSecretIdModule();
+        testCrossAreaDispatcherBuild();
+        testRealPersistentModulesBuild();
         testPersistentStorageAreaModel();
+        PersistentToolkitStorageV2Test.run();
+        PersistentToolkitStorageV3Test.run();
         System.out.println("All tests passed.");
+    }
+
+
+    private static void testDeploymentCompatibility() throws Exception {
+        PresetPayload field = new PresetPayload("field", PresetPayloadKind.FIELD_SCRIPT, new byte[] {1,2,3});
+        PlacedPayload simple = PresetDeploymentPlanner.place(field, PresetDeploymentMode.SIMPLE_RAMSCRIPT, 16);
+        assertTrue(simple.area() == PayloadStorageArea.RAMSCRIPT, "simple deployment must remain in RamScript");
+
+        boolean rejected = false;
+        try {
+            PresetDeploymentPlanner.place(field, PresetDeploymentMode.PERSISTENT_MODULE, 16);
+        } catch (IllegalArgumentException expected) {
+            rejected = true;
+        }
+        assertTrue(rejected, "field scripts must not silently become persistent native modules");
+
+        // Strong compatibility guard: these are full 1004-byte RamScript binaries
+        // from Build 7a. Discovering persistent storage must not alter them.
+        assertSha256(ShowSecretIdPreset.build(RomProfile.FIRE_RED_EN_10).bytesCopy(),
+                "3c4901bb60250a61d85a904afe7d6b732dc1bf831ce7a100f708726cfc6899b5", "simple Show SID");
+        assertSha256(SeedModifierPreset.build(RomProfile.FIRE_RED_EN_10, 0x1234).ramScript().bytesCopy(),
+                "5324a548bab6a51a8eb7b035a17ecb1c7c847ada127f64fd05d3f6c79199f43d", "simple Seed Modifier");
+        assertSha256(RepelHotkeyPreset.build(RomProfile.FIRE_RED_EN_10).ramScript().bytesCopy(),
+                "d23e89e25cf38c1d7dfd17d1fe3f6ae78cdd7d38561370d79b8fa63fb4b44315", "simple Repel");
+        assertSha256(PartyIvViewerPreset.build(RomProfile.FIRE_RED_EN_10).ramScript().bytesCopy(),
+                "966d5c6a03875febd3a9c6d3216b2f6027b150a09158848b76db695d4f269036", "simple IV Viewer");
+    }
+
+    private static void testPersistentShowSecretIdModule() {
+        RomProfile rom = RomProfile.FIRE_RED_EN_10;
+        PresetPayload payload = PersistentShowSecretIdModule.payload(rom);
+        assertTrue(payload.kind() == PresetPayloadKind.THUMB, "persistent SID payload kind");
+        assertTrue(payload.bytes().length == 0x20, "persistent SID payload size");
+        byte[] image = PersistentToolkitStorageV4.buildImage(rom);
+        assertTrue(Byte.toUnsignedInt(image[4]) == PersistentToolkitStorageV4.VERSION, "V4 version");
+        assertTrue(Byte.toUnsignedInt(image[5]) == 1, "V4 module count");
+        assertTrue((image[PersistentToolkitStorageV4.ENTRY_OFFSET] & 0xFF) == PersistentShowSecretIdModule.MODULE_ID, "V4 SID module id");
+        assertTrue((image[PersistentToolkitStorageV4.ENTRY_OFFSET + 3] & 0xFF) == 2, "V4 SID physical area");
+        RamScript installer = PersistentShowSecretIdPreset.buildInstaller(rom);
+        RamScript launcher = PersistentShowSecretIdPreset.buildLauncher(rom);
+        assertTrue(installer.isChecksumValid(), "persistent SID installer checksum");
+        assertTrue(launcher.isChecksumValid(), "persistent SID launcher checksum");
+    }
+
+
+    private static void testCrossAreaDispatcherBuild() {
+        RomProfile rom = RomProfile.FIRE_RED_EN_10;
+        byte[] image = PersistentToolkitStorageV5.buildCatalogImage(rom);
+        assertTrue(Byte.toUnsignedInt(image[4]) == 5, "V5 version");
+        assertTrue(Byte.toUnsignedInt(image[5]) == 2, "V5 module count");
+        assertTrue(Byte.toUnsignedInt(image[PersistentToolkitStorageV5.ENTRY_1 + 3]) == 1, "V5 module 1 is SaveBlock1");
+        assertTrue(Byte.toUnsignedInt(image[PersistentToolkitStorageV5.ENTRY_2 + 3]) == 2, "V5 module 2 is SaveBlock2");
+        assertTrue(PersistentToolkitStorageV5.buildSaveBlock1Payload(rom).length == 0x20, "V5 SB1 payload length");
+        NativeHelper dispatcher = PersistentToolkitStorageV5NativeHelper.buildDispatcherAt(rom, 0x02030000L);
+        assertTrue(dispatcher.size() < 256, "cross-area dispatcher should stay compact");
+        RamScript installer = PersistentCrossAreaDispatcherPreset.buildInstaller(rom);
+        RamScript launcher = PersistentCrossAreaDispatcherPreset.buildLauncher(rom);
+        assertTrue(installer.isChecksumValid(), "cross-area installer checksum");
+        assertTrue(launcher.isChecksumValid(), "cross-area launcher checksum");
+        assertTrue(installer.scriptCopy().length <= RamScript.SCRIPT_SIZE, "cross-area installer fits RamScript");
+        assertTrue(launcher.scriptCopy().length <= RamScript.SCRIPT_SIZE, "cross-area launcher fits RamScript");
+    }
+
+    private static void testRealPersistentModulesBuild() {
+        RomProfile rom = RomProfile.FIRE_RED_EN_10;
+        int seed = 0x1234;
+        PresetPayload seedPayload = PersistentSeedModifierModule.payload(rom, seed);
+        assertTrue(seedPayload.kind() == PresetPayloadKind.THUMB, "persistent seed payload kind");
+        assertTrue(seedPayload.bytes().length == 0x1C, "persistent seed payload size");
+        byte[] seedBytes = seedPayload.bytes();
+        long predecessor = PersistentSeedModifierModule.predecessor(seed);
+        assertTrue(((seedBytes[0x0C] & 0xFF) | ((seedBytes[0x0D] & 0xFF) << 8)) == 0x4770, "persistent seed payload returns before literal pool");
+        assertTrue(readU32(seedBytes, 0x10) == rom.specialVarResult, "persistent seed result literal");
+        assertTrue(readU32(seedBytes, 0x14) == rom.rngValue, "persistent seed rng literal");
+        assertTrue(readU32(seedBytes, 0x18) == predecessor, "persistent seed predecessor literal");
+
+        byte[] image = PersistentToolkitStorageV6.buildCatalogImage(rom, seed);
+        assertTrue(Byte.toUnsignedInt(image[4]) == PersistentToolkitStorageV6.VERSION, "V6 version");
+        assertTrue(Byte.toUnsignedInt(image[5]) == 2, "V6 module count");
+        assertTrue(Byte.toUnsignedInt(image[PersistentToolkitStorageV6.ENTRY_1 + 3]) == 1, "V6 SID in SaveBlock1");
+        assertTrue(Byte.toUnsignedInt(image[PersistentToolkitStorageV6.ENTRY_2 + 3]) == 2, "V6 seed in SaveBlock2");
+        assertTrue((image[PersistentToolkitStorageV6.ENTRY_1] & 0xFF) == PersistentShowSecretIdModule.MODULE_ID, "V6 SID id");
+        assertTrue((image[PersistentToolkitStorageV6.ENTRY_2] & 0xFF) == PersistentSeedModifierModule.MODULE_ID, "V6 seed id");
+
+        NativeHelper dispatcher = PersistentToolkitStorageV6NativeHelper.buildDispatcherAt(rom, 0x02030000L);
+        assertTrue(dispatcher.size() < 256, "V6 dispatcher should stay compact");
+        RamScript installer = PersistentRealPresetDispatcherPreset.buildInstaller(rom, seed);
+        RamScript launcher = PersistentRealPresetDispatcherPreset.buildLauncher(rom, seed);
+        assertTrue(installer.isChecksumValid(), "real-module installer checksum");
+        assertTrue(launcher.isChecksumValid(), "real-module launcher checksum");
+        assertTrue(installer.scriptCopy().length <= RamScript.SCRIPT_SIZE, "real-module installer fits RamScript");
+        assertTrue(launcher.scriptCopy().length <= RamScript.SCRIPT_SIZE, "real-module launcher fits RamScript");
+    }
+
+    private static void assertSha256(byte[] bytes, String expected, String label) throws Exception {
+        java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+        byte[] hash = digest.digest(bytes);
+        StringBuilder hex = new StringBuilder();
+        for (byte b : hash) hex.append(String.format("%02x", b));
+        assertTrue(hex.toString().equals(expected), label + " regression hash");
     }
 
     private static void testOfficialScripts() {

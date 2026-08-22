@@ -79,3 +79,24 @@ FR/LG save structures, including a 400-byte explicitly-unused region in
 `SaveBlock1` and a larger 1024-byte filler region in `SaveBlock2`. They are
 candidates only until a write -> normal save -> reset/reload -> verify probe is
 validated in-game.
+
+## Build 6: PersistentToolkitStorage V2
+
+V2 replaces the Build 4/V1 fixed single-payload layout with a module table. The first runtime experiment installs two independent Thumb proof modules in the validated SaveBlock2 storage area and lets a separate launcher Wonder Card select one by module ID.
+
+Commands:
+
+    java -cp out Main build-persistent-storage-v2-install-wc3 fr10 ../dummy-saves/custom-design.wc3 ../dummy-saves/persistent-v2-install.wc3
+    java -cp out Main build-persistent-storage-v2-launch-wc3 fr10 1 ../dummy-saves/custom-design.wc3 ../dummy-saves/persistent-v2-launch-1.wc3
+    java -cp out Main build-persistent-storage-v2-launch-wc3 fr10 2 ../dummy-saves/custom-design.wc3 ../dummy-saves/persistent-v2-launch-2.wc3
+
+Expected runtime result after installing, saving, resetting, and replacing the WC:
+
+- launcher 1: `Persistent module 1 executed!`
+- launcher 2: `Persistent module 2 executed!`
+
+This is still a proof format. Both V2 proof modules live in SaveBlock2. Cross-area module allocation (RamScript + SaveBlock1 + SaveBlock2) is the next composer-level step after the table/lookup mechanism is validated in-game.
+
+## Build 10: real persistent presets
+
+The cross-area persistent dispatcher now has a validation build with two real modules: Show Secret ID in SaveBlock1 and a native Seed Modifier core in SaveBlock2. This path is opt-in; the original single-preset RamScript builders remain unchanged.
