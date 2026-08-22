@@ -390,12 +390,18 @@ final class MultiHotkeyRuntimeV1 {
         };
     }
 
+    static byte[] safetyGateBytesForTest() { return multiSafetyGate(); }
+
     private static byte[] multiSafetyGate() {
+        // Multi-hotkey wrapper is 2 bytes longer in code than the original
+        // single-hotkey wrapper, so its CB1_Overworld return thunk starts at
+        // 03005326 (not 03005324). The locked-input branch must target 03005326;
+        // targeting 03005324 loops back into the safety gate and freezes the game.
         return new byte[] {
                 0x10,0x78,
                 0x00,0x28,
                 0x00,(byte)0xD0,
-                0x73,(byte)0xE7,
+                0x74,(byte)0xE7,
                 0x21,(byte)0xE6,
                 0x12,(byte)0xBD              // validator-failure cleanup: pop {r1,r4,pc}
         };

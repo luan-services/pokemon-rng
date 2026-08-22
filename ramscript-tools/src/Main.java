@@ -78,6 +78,16 @@ public final class Main {
                 case "build-cross-area-modules-launch-wc3" -> buildCrossAreaModulesLaunchWc3(args);
                 case "build-real-modules-install-wc3" -> buildRealModulesInstallWc3(args);
                 case "build-real-modules-launch-wc3" -> buildRealModulesLaunchWc3(args);
+                case "build-persistent-hotkey-install-wc3" -> buildPersistentHotkeyInstallWc3(args);
+                case "build-persistent-hotkey-runtime-wc3" -> buildPersistentHotkeyRuntimeWc3(args);
+                case "build-direct-persistent-hotkey-install-wc3" -> buildDirectPersistentHotkeyInstallWc3(args);
+                case "build-direct-persistent-hotkey-runtime-wc3" -> buildDirectPersistentHotkeyRuntimeWc3(args);
+                case "build-deferred-persistent-hotkey-install-wc3" -> buildDeferredPersistentHotkeyInstallWc3(args);
+                case "build-deferred-persistent-hotkey-runtime-wc3" -> buildDeferredPersistentHotkeyRuntimeWc3(args);
+                case "build-persistent-field-hotkey-install-wc3" -> buildPersistentFieldHotkeyInstallWc3(args);
+                case "build-persistent-field-hotkey-runtime-wc3" -> buildPersistentFieldHotkeyRuntimeWc3(args);
+                case "build-persistent-gateway-hotkey-install-wc3" -> buildPersistentGatewayHotkeyInstallWc3(args);
+                case "build-persistent-gateway-hotkey-runtime-wc3" -> buildPersistentGatewayHotkeyRuntimeWc3(args);
 
                 /* Compatibility aliases kept from the experimental v5 CLI. */
                 case "build-aurora" -> requireArgs(args, 3, () ->
@@ -1061,6 +1071,123 @@ public final class Main {
         System.out.println("Build 10 single dispatcher launcher built for SID + persistent Seed Modifier core.");
     }
 
+    private static void buildPersistentHotkeyInstallWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-persistent-hotkey-install-wc3 <rom> <seed> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int seed = Integer.parseInt(args[2], 16);
+        buildIntoWc3(PersistentHotkeyRuntimePrototype.buildInstaller(rom, seed), Path.of(args[3]), Path.of(args[4]));
+        System.out.println("Build 11 persistent modules + dispatcher installed for hotkey prototype.");
+    }
+
+    private static void buildPersistentHotkeyRuntimeWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-persistent-hotkey-runtime-wc3 <rom> <seed> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int seed = Integer.parseInt(args[2], 16);
+        TriggerBuildResult result = PersistentHotkeyRuntimePrototype.buildRuntime(rom, seed);
+        buildIntoWc3(result.ramScript(), Path.of(args[3]), Path.of(args[4]));
+        System.out.println("Build 11 persistent hotkey runtime built.");
+        System.out.println("  IWRAM listener path: validated MultiHotkeyRuntimeV1 (unchanged)");
+        System.out.println("  RamScript total:     " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  RamScript free:      " + result.freeScriptBytes());
+        System.out.println("  hotkeys:             R+B -> SID, R+SELECT -> Seed Modifier");
+    }
+
+    private static void buildDeferredPersistentHotkeyInstallWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-deferred-persistent-hotkey-install-wc3 <rom> <seed> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int seed = Integer.parseInt(args[2], 16);
+        buildIntoWc3(PersistentDeferredHotkeyRuntime.buildInstaller(rom, seed), Path.of(args[3]), Path.of(args[4]));
+        System.out.println("Build 13 deferred persistent modules installed.");
+    }
+
+    private static void buildDeferredPersistentHotkeyRuntimeWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-deferred-persistent-hotkey-runtime-wc3 <rom> <seed> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int seed = Integer.parseInt(args[2], 16);
+        TriggerBuildResult result = PersistentDeferredHotkeyRuntime.buildRuntime(rom, seed);
+        buildIntoWc3(result.ramScript(), Path.of(args[3]), Path.of(args[4]));
+        System.out.println("Build 13 deferred persistent hotkey runtime built.");
+        System.out.println("  callback model: validated MultiHotkeyRuntimeV1 deferred SetupScript");
+        System.out.println("  new IWRAM claimed: none");
+        System.out.println("  deferred resolver: temporary reuse of validated STAGE2 (14 B)");
+        System.out.println("  RamScript total: " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  RamScript free:  " + result.freeScriptBytes());
+    }
+
+    private static void buildPersistentFieldHotkeyInstallWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-persistent-field-hotkey-install-wc3 <rom> <seed> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int seed = parseSeed(args[2]);
+        RamScript script = PersistentFieldScriptHotkeyRuntime.buildInstaller(rom, seed);
+        buildIntoWc3(script, Path.of(args[3]), Path.of(args[4]));
+        System.out.println("Build 14a persistent SB1 Field Script installer built.");
+        System.out.printf("  Repel: SB1+0x%04X (distance -0x%02X from RamScript)%n", PersistentFieldScriptHotkeyRuntime.REPEL_SB1_OFFSET, PersistentFieldScriptHotkeyRuntime.REPEL_DISTANCE);
+        System.out.printf("  Seed:  SB1+0x%04X (distance -0x%02X from RamScript)%n", PersistentFieldScriptHotkeyRuntime.SEED_SB1_OFFSET, PersistentFieldScriptHotkeyRuntime.SEED_DISTANCE);
+    }
+
+    private static void buildPersistentFieldHotkeyRuntimeWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-persistent-field-hotkey-runtime-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = PersistentFieldScriptHotkeyRuntime.buildRuntime(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Build 14a deferred persistent SB1 Field Script runtime built.");
+        System.out.println("  callback: validated SetupScript model");
+        System.out.println("  runtime native dispatcher: none");
+        System.out.println("  live IWRAM rewriting: none");
+        System.out.printf("  RamScript total: %d / %d%n", result.totalScriptBytes(), RamScript.SCRIPT_SIZE);
+        System.out.printf("  RamScript free:  %d%n", result.freeScriptBytes());
+        System.out.println("  selected module: validated u8 backward-distance table");
+    }
+
+    private static void buildPersistentGatewayHotkeyInstallWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-persistent-gateway-hotkey-install-wc3 <rom> <seed> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int seed = parseSeed(args[2]);
+        RamScript script = PersistentFieldScriptGatewayRuntime.buildInstaller(rom, seed);
+        buildIntoWc3(script, Path.of(args[3]), Path.of(args[4]));
+        System.out.println("Build 15a SB1 gateway -> SB2 Field Script installer built.");
+        System.out.printf("  Repel gateway: SB1+0x%04X -> payload SB2+0x%04X%n", PersistentFieldScriptGatewayRuntime.REPEL_ENTRY_SB1_OFFSET, PersistentFieldScriptGatewayRuntime.REPEL_SB2_OFFSET);
+        System.out.printf("  Seed gateway:  SB1+0x%04X -> payload SB2+0x%04X%n", PersistentFieldScriptGatewayRuntime.SEED_ENTRY_SB1_OFFSET, PersistentFieldScriptGatewayRuntime.SEED_SB2_OFFSET);
+        System.out.println("  gateway size: 10 bytes each (setvaddress + vgoto)");
+    }
+
+    private static void buildPersistentGatewayHotkeyRuntimeWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-persistent-gateway-hotkey-runtime-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = PersistentFieldScriptGatewayRuntime.buildRuntime(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Build 15a deferred SB1-gateway persistent hotkey runtime built.");
+        System.out.println("  callback: validated SetupScript model");
+        System.out.println("  IWRAM resolver: none");
+        System.out.println("  SB1 gateway: setvaddress + vgoto only");
+        System.out.println("  payload storage: validated 1024-byte SB2 region");
+        System.out.printf("  RamScript total: %d / %d%n", result.totalScriptBytes(), RamScript.SCRIPT_SIZE);
+        System.out.printf("  RamScript free:  %d%n", result.freeScriptBytes());
+    }
+
+    private static void buildDirectPersistentHotkeyInstallWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-direct-persistent-hotkey-install-wc3 <rom> <seed> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int seed = Integer.parseInt(args[2], 16);
+        buildIntoWc3(PersistentDirectHotkeyRuntime.buildInstaller(rom, seed), Path.of(args[3]), Path.of(args[4]));
+        System.out.println("Build 12 direct persistent modules + r1 dispatcher installed.");
+    }
+
+    private static void buildDirectPersistentHotkeyRuntimeWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-direct-persistent-hotkey-runtime-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = PersistentDirectHotkeyRuntime.buildRuntime(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Build 12 direct persistent hotkey runtime built.");
+        System.out.println("  temporary executable resolver: none");
+        System.out.println("  Field Script hotkey bridges:    none");
+        System.out.println("  RamScript total:                " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  RamScript free:                 " + result.freeScriptBytes());
+        System.out.println("  R+B -> SID module (check VAR_8004 at 020370C0)");
+        System.out.println("  R+SELECT -> Seed Modifier core");
+    }
+
+
     private static void printUsage() {
         System.out.println("ramscript-tools");
         System.out.println();
@@ -1127,6 +1254,12 @@ public final class Main {
         System.out.println("  java -cp out Main build-repel-hotkey-bin fr10 output.bin [--hotkey r-select]");
         System.out.println("  java -cp out Main build-repel-hotkey-wc3 fr10 input.wc3 output.wc3 [--hotkey r-b]");
         System.out.println("  java -cp out Main build-seed-repel-combo-wc3 fr10 1234 input.wc3 output.wc3 [--seed-hotkey r-select --repel-hotkey r-b]");
+        System.out.println("  java -cp out Main build-persistent-hotkey-install-wc3 fr10 1234 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-persistent-hotkey-runtime-wc3 fr10 1234 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-direct-persistent-hotkey-install-wc3 fr10 1234 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-direct-persistent-hotkey-runtime-wc3 fr10 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-persistent-field-hotkey-install-wc3 fr10 1234 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-persistent-field-hotkey-runtime-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  hotkey syntax: <held>-<pressed>; first button is held, second is newly pressed");
         System.out.println("  buttons: a b select start right left up down r l");
         System.out.println("  default hotkey remains r-select");

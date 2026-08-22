@@ -4,12 +4,15 @@ Build, inspect, compose, import and export FireRed/LeafGreen Wonder Card RamScri
 
 ## Production architecture
 
-- `RamScriptBuilder` / `FieldScriptWriter`: stock Field Script composition.
-- `EventTrigger` / `TriggerComposer`: choose classic deliveryman or hotkey execution.
-- `HotkeyRuntimeV1`: validated compact R+SELECT runtime promoted from Candidate 5a.
-- `RuntimeV1ResidentBlocks`: validated resident IWRAM image used by the hotkey runtime.
-- presets such as `ItemGiftPreset` and `RepeatableItemGiftPreset`: reusable event payloads.
-- `RomProfile`: ROM-specific symbols and validation status.
+Build 16 freezes the validated Build 15a Field Script path as the production baseline:
+
+- simple/local presets may remain directly in RamScript;
+- persistent hotkey Field Scripts use the validated deferred `MultiHotkeyRuntimeV1`;
+- each persistent entry uses a 10-byte SaveBlock1 gateway (`setvaddress + vgoto`);
+- the preset body lives in the validated 1024-byte SaveBlock2 region;
+- hotkeys are ignored while another Field Script/dialogue owns field controls.
+
+See `docs/ARCHITECTURE_BASELINE.md`. Rejected Build 11–14 implementations are preserved under `src/legacy/rejected/`, not deleted.
 
 The historical `native-ramscript-runtime-v1-multipart` repository remains a research/reference implementation and is not a runtime dependency.
 
@@ -18,7 +21,9 @@ The historical `native-ramscript-runtime-v1-multipart` repository remains a rese
 ```powershell
 Remove-Item -Recurse -Force out -ErrorAction SilentlyContinue
 New-Item -ItemType Directory out
-javac -encoding UTF-8 -d out src/*.java
+$sources = Get-ChildItem src,tests -Recurse -Filter *.java
+javac -encoding UTF-8 -d out $sources.FullName
+java -cp out TestRunner
 ```
 
 ## Trigger smoke test
@@ -100,3 +105,11 @@ This is still a proof format. Both V2 proof modules live in SaveBlock2. Cross-ar
 ## Build 10: real persistent presets
 
 The cross-area persistent dispatcher now has a validation build with two real modules: Show Secret ID in SaveBlock1 and a native Seed Modifier core in SaveBlock2. This path is opt-in; the original single-preset RamScript builders remain unchanged.
+
+
+## Build 13a
+Hotkey payloads now establish their own virtual address before any v* opcode. Build 13 is rejected.
+
+## Build 16: current persistent Field Script baseline
+
+The validated persistent Field Script composition path is the Build 15a deferred multi-hotkey runtime with 10-byte SaveBlock1 gateways into SaveBlock2 payloads. Build 16 consolidates this as the baseline without changing runtime bytes. See `BUILD-16-NOTES.md`, `docs/ARCHITECTURE_BASELINE.md`, and `docs/PERSISTENT_HOTKEY_RUNTIME.md`.

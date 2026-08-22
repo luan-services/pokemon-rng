@@ -151,6 +151,102 @@ final class PersistentToolkitStorageV6NativeHelper {
         return new NativeHelper(address,b.finish());
     }
 
+
+    /* Build 12 direct-IWRAM dispatcher entry.
+
+       Unlike buildDispatcherAt(), the desired module id arrives in r1 from the
+       resident hotkey runtime. This removes the need for a Field Script bridge
+       or a temporary executable resolver. The caller uses BL -> bx r4, so LR
+       points back to the resident stage2 cleanup.
+    */
+    static NativeHelper buildDispatcherFromR1At(RomProfile rom, long address) {
+        Thumb b = new Thumb();
+        b.emit(0xB432); // push {r1,r4,r5}; preserve desired id on stack
+        b.ldrLit(5,"sb2ptr");
+        b.emit(0x682D); // ldr r5,[r5]
+        b.ldrLit(0,"sb2off");
+        b.emit(0x182D); // adds r5,r5,r0 -> catalog base
+        b.emit(0x6828); // ldr r0,[r5]
+        b.ldrLit(1,"magic");
+        b.emit(0x4288); // cmp r0,r1
+        b.bCond(1,"fail");
+        b.emit(0x7928); // ldrb r0,[r5,#4]
+        b.emit(0x2800 | PersistentToolkitStorageV6.VERSION);
+        b.bCond(1,"fail");
+        b.emit(0x796B); // ldrb r3,[r5,#5] moduleCount
+        b.emit(0x2B00);
+        b.bCond(0,"fail");
+        b.emit(0x9900); // ldr r1,[sp,#0] desired module id saved by push
+        b.emit(0x1C2C);
+        b.emit(0x3410);
+        b.label("scan");
+        b.emit(0x8820);
+        b.emit(0x4288);
+        b.bCond(0,"found");
+        b.emit(0x3410);
+        b.emit(0x3B01);
+        b.bCond(1,"scan");
+        b.b("fail");
+
+        b.label("found");
+        b.emit(0x78A0);
+        b.emit(0x2801);
+        b.bCond(1,"fail");
+        b.emit(0x78E0);
+        b.emit(0x2801);
+        b.bCond(0,"area1");
+        b.emit(0x2802);
+        b.bCond(0,"area2");
+        b.b("fail");
+
+        b.label("area1");
+        b.ldrLit(2,"sb1ptr");
+        b.emit(0x6812);
+        b.ldrLit(0,"sb1off");
+        b.emit(0x1812);
+        b.b("gotbase");
+        b.label("area2");
+        b.emit(0x1C2A);
+        b.label("gotbase");
+        b.emit(0x88A0);
+        b.emit(0x1812);
+        b.emit(0x1C15);
+        b.emit(0x88E1);
+        b.emit(0x8923);
+        b.emit(0x2900);
+        b.bCond(0,"fail");
+        b.emit(0x2000);
+        b.label("sum");
+        b.emit(0x7814);
+        b.emit(0x1900);
+        b.emit(0x3201);
+        b.emit(0x3901);
+        b.bCond(1,"sum");
+        b.emit(0x0400);
+        b.emit(0x0C00);
+        b.emit(0x4298);
+        b.bCond(1,"fail");
+        b.emit(0x1C2B);
+        b.emit(0xBC32); // pop {r1,r4,r5}
+        b.emit(0x3301);
+        b.emit(0x4718); // tail-jump module; module bx lr returns to resident stage2
+
+        b.label("fail");
+        b.emit(0xBC32);
+        b.emit(0x2000);
+        b.ldrLit(1,"result");
+        b.emit(0x8008);
+        b.emit(0x4770);
+
+        b.literal("sb2ptr",rom.saveBlock2Ptr);
+        b.literal("sb2off",PayloadStorageArea.SAVE_BLOCK2.offset());
+        b.literal("magic",PersistentToolkitStorageV6.MAGIC);
+        b.literal("sb1ptr",rom.saveBlock1Ptr);
+        b.literal("sb1off",PayloadStorageArea.SAVE_BLOCK1.offset());
+        b.literal("result",rom.specialVarResult);
+        return new NativeHelper(address,b.finish());
+    }
+
     private static int align4(int n){ return (n+3)&~3; }
     private static void put16(byte[] b,int o,int v){b[o]=(byte)v;b[o+1]=(byte)(v>>>8);}
     private static int ldrLiteral(int rt,int insn,int literal){int base=(insn+4)&~3;int d=literal-base;if(d<0||(d&3)!=0||d/4>255)throw new IllegalArgumentException("literal out of range");return 0x4800|(rt<<8)|(d/4);}
