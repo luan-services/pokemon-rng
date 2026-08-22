@@ -3,5 +3,6 @@ dummy-saves
 */out/
 *.class
 archive
-*/tests/
-*/docs/
+ramscript-tools/tests/*
+ramscript-tools/docs/*
+ramscript-tools/*.md
