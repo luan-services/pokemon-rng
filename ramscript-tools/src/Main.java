@@ -63,6 +63,8 @@ public final class Main {
                 case "build-persistence-probe-check-wc3" -> buildPersistenceProbeCheckWc3(args);
                 case "build-persistence-400-install-wc3" -> buildPersistence400InstallWc3(args);
                 case "build-persistence-400-check-wc3" -> buildPersistence400CheckWc3(args);
+                case "build-persistence-1024-install-wc3" -> buildPersistence1024InstallWc3(args);
+                case "build-persistence-1024-check-wc3" -> buildPersistence1024CheckWc3(args);
 
                 /* Compatibility aliases kept from the experimental v5 CLI. */
                 case "build-aurora" -> requireArgs(args, 3, () ->
@@ -933,6 +935,20 @@ public final class Main {
         System.out.println("400-byte persistence checker built: verifies all 400 bytes.");
     }
 
+    private static void buildPersistence1024InstallWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-persistence-1024-install-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        buildIntoWc3(PersistenceSaveBlock2ProbePreset.buildInstaller(rom), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("1024-byte persistence installer built: SaveBlock2 + 0xB20..0xF1F.");
+    }
+
+    private static void buildPersistence1024CheckWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-persistence-1024-check-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        buildIntoWc3(PersistenceSaveBlock2ProbePreset.buildChecker(rom), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("1024-byte persistence checker built: verifies all 1024 bytes.");
+    }
+
     private static void printUsage() {
         System.out.println("ramscript-tools");
         System.out.println();
@@ -980,6 +996,8 @@ public final class Main {
         System.out.println("  java -cp out Main build-persistence-probe-check-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-persistence-400-install-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-persistence-400-check-wc3 fr10 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-persistence-1024-install-wc3 fr10 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-persistence-1024-check-wc3 fr10 input.wc3 output.wc3");
         System.out.println();
         System.out.println("Advanced presets:");
         System.out.println("  java -cp out Main build-show-secret-id-bin fr10 output.bin");

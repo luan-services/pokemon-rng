@@ -763,6 +763,20 @@ public final class TestRunner {
                         && Byte.toUnsignedInt(fullCheckerCode[0x19]) == 0x0E,
                 "400-byte checker must wrap expected pattern byte after 0xFF");
 
+        NativeHelper sb2Writer = PersistenceSaveBlock2ProbeNativeHelper.buildWriterAt(RomProfile.FIRE_RED_EN_10, 0x02000100L);
+        NativeHelper sb2Checker = PersistenceSaveBlock2ProbeNativeHelper.buildCheckerAt(RomProfile.FIRE_RED_EN_10, 0x02000100L);
+        assertTrue(Binary.u32(sb2Writer.codeCopy(), 0x1C) == RomProfile.FIRE_RED_EN_10.saveBlock2Ptr, "1024-byte writer SaveBlock2 pointer literal");
+        assertTrue(Binary.u32(sb2Writer.codeCopy(), 0x20) == 0x0B20, "1024-byte writer offset literal");
+        assertTrue(Binary.u32(sb2Writer.codeCopy(), 0x24) == 0x400, "1024-byte writer size literal");
+        assertTrue(Byte.toUnsignedInt(sb2Writer.codeCopy()[0x18]) == 0xF8
+                && Byte.toUnsignedInt(sb2Writer.codeCopy()[0x19]) == 0xD1,
+                "1024-byte writer loop must branch back to STRB at offset 0x0C");
+        assertTrue(Binary.u32(sb2Checker.codeCopy(), 0x2C) == RomProfile.FIRE_RED_EN_10.saveBlock2Ptr, "1024-byte checker SaveBlock2 pointer literal");
+        assertTrue(Binary.u32(sb2Checker.codeCopy(), 0x30) == 0x0B20, "1024-byte checker offset literal");
+        assertTrue(Binary.u32(sb2Checker.codeCopy(), 0x34) == 0x400, "1024-byte checker size literal");
+        assertTrue(PersistenceSaveBlock2ProbePreset.buildInstaller(RomProfile.FIRE_RED_EN_10).isChecksumValid(), "1024-byte installer checksum");
+        assertTrue(PersistenceSaveBlock2ProbePreset.buildChecker(RomProfile.FIRE_RED_EN_10).isChecksumValid(), "1024-byte checker checksum");
+
         RamScript fullInstallScript = PersistenceFullRegionProbePreset.buildInstaller(RomProfile.FIRE_RED_EN_10);
         RamScript fullCheckScript = PersistenceFullRegionProbePreset.buildChecker(RomProfile.FIRE_RED_EN_10);
         assertTrue(fullInstallScript.isChecksumValid(), "400-byte persistence installer checksum");
