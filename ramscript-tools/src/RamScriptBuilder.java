@@ -52,6 +52,17 @@ final class RamScriptBuilder {
         return this;
     }
 
+    /* Re-establish the same relocation offset from a non-zero position in
+       the script. ScrCmd_setvaddress computes addr2 - currentOpcodeAddress,
+       so a reset emitted at +N must embed virtualBase + N rather than the
+       script-start virtualBase. */
+    RamScriptBuilder setVAddressHere() {
+        int opcodeOffset = position();
+        opcode(0xB8);
+        u32((virtualBase + Integer.toUnsignedLong(opcodeOffset)) & 0xFFFF_FFFFL);
+        return this;
+    }
+
     RamScriptBuilder vGoto(String label) {
         opcode(0xB9);
         labelPointer(label);
@@ -61,6 +72,12 @@ final class RamScriptBuilder {
     RamScriptBuilder vCall(String label) {
         opcode(0xBA);
         labelPointer(label);
+        return this;
+    }
+
+    RamScriptBuilder vCallAddress(long virtualAddress) {
+        opcode(0xBA);
+        u32(virtualAddress);
         return this;
     }
 
@@ -396,6 +413,16 @@ final class RamScriptBuilder {
 
     RamScriptBuilder waitButtonPress() {
         opcode(0x6D);
+        return this;
+    }
+
+    /* FR/LG waitbuttonpress has Quest Log handling that may also accept held
+       field inputs when release/releaseall is the immediately following
+       command. Insert a NOP so callers that explicitly want A/B-only waiting
+       are not completed by a still-held hotkey modifier such as R. */
+    RamScriptBuilder waitButtonPressStrict() {
+        opcode(0x6D); // waitbuttonpress
+        opcode(0x00); // nop: prevents NextCommandEndsScript from seeing release/all
         return this;
     }
 

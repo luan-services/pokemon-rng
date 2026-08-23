@@ -97,6 +97,14 @@ public final class Main {
                 case "build-shared-party-iv-smoke-install-b-wc3" -> buildSharedPartyIvSmokeInstallBWc3(args);
                 case "build-shared-party-iv-smoke-install-c-wc3" -> buildSharedPartyIvSmokeInstallCWc3(args);
                 case "build-shared-party-iv-smoke-runtime-wc3" -> buildSharedPartyIvSmokeRuntimeWc3(args);
+                case "build-shared-native-install-a-wc3" -> buildSharedNativeInstallAWc3(args);
+                case "build-shared-dual-native-smoke-install-a-wc3" -> buildSharedNativeInstallAWc3(args);
+                case "build-shared-native-install-b-wc3" -> buildSharedNativeInstallBWc3(args);
+                case "build-shared-dual-native-smoke-install-b-wc3" -> buildSharedNativeInstallBWc3(args);
+                case "build-shared-native-install-c-wc3" -> buildSharedNativeInstallCWc3(args);
+                case "build-shared-dual-native-smoke-install-c-wc3" -> buildSharedNativeInstallCWc3(args);
+                case "build-shared-native-runtime-wc3" -> buildSharedNativeRuntimeWc3(args);
+                case "build-shared-dual-native-smoke-runtime-wc3" -> buildSharedNativeRuntimeWc3(args);
                 case "build-party-iv-staging-check-wc3" -> buildPartyIvStagingCheckWc3(args);
                 case "build-party-iv-direct-call-check-wc3" -> buildPartyIvDirectCallCheckWc3(args);
 
@@ -1282,6 +1290,37 @@ public final class Main {
         buildIntoWc3(result.ramScript(),Path.of(args[3]),Path.of(args[4]));
         System.out.println("Shared Party IV runtime: " + result.totalScriptBytes() + "/995 B; free " + result.freeScriptBytes() + " B");
         System.out.print(SharedHotkeyPartyIvSmokeTestPreset.report(rom,seed));
+    }
+
+    private static void buildSharedNativeInstallAWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-shared-native-install-a-wc3 <rom> <seed-hex> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]); int seed = Integer.parseUnsignedInt(args[2],16);
+        buildIntoWc3(SharedPersistentNativeComposition.buildInstallerA(rom,seed), Path.of(args[3]), Path.of(args[4]));
+        System.out.print(SharedPersistentNativeComposition.report(rom,seed));
+    }
+
+    private static void buildSharedNativeInstallBWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-shared-native-install-b-wc3 <rom> <seed-hex> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]); int seed = Integer.parseUnsignedInt(args[2],16);
+        buildIntoWc3(SharedPersistentNativeComposition.buildInstallerB(rom,seed), Path.of(args[3]), Path.of(args[4]));
+        System.out.print(SharedPersistentNativeComposition.report(rom,seed));
+    }
+
+    private static void buildSharedNativeInstallCWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-shared-native-install-c-wc3 <rom> <seed-hex> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]); int seed = Integer.parseUnsignedInt(args[2],16);
+        buildIntoWc3(SharedPersistentNativeComposition.buildInstallerC(rom,seed), Path.of(args[3]), Path.of(args[4]));
+        System.out.print(SharedPersistentNativeComposition.report(rom,seed));
+    }
+
+    private static void buildSharedNativeRuntimeWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-shared-native-runtime-wc3 <rom> <seed-hex> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]); int seed = Integer.parseUnsignedInt(args[2],16);
+        TriggerBuildResult result = SharedPersistentNativeComposition.buildRuntime(rom,seed);
+        buildIntoWc3(result.ramScript(), Path.of(args[3]), Path.of(args[4]));
+        System.out.println("Shared dual-native runtime: " + result.totalScriptBytes() + "/995 B; free " + result.freeScriptBytes() + " B");
+        System.out.println("  R+SELECT -> Seed | R+B -> Repel | R+A -> Party IV | R+START -> SID");
+        System.out.print(SharedPersistentNativeComposition.report(rom,seed));
     }
 
     private static void buildPartyIvStagingCheckWc3(String[] args) throws Exception {

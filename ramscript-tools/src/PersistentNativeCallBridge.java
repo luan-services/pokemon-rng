@@ -86,4 +86,37 @@ final class PersistentNativeCallBridge {
         return new Build(script, loader.size(), script.length, install.requiredScriptBaseAlignment());
     }
 
+    /* Shared-service path: the generic staging loader lives once in the
+       shared RamScript runtime. This bridge only selects a module, vcalls the
+       service, restores its own relocation state, and then uses stock
+       callnative on the staged module. */
+    static Build buildViaSharedStagingService(
+            RomProfile rom, int moduleId, long sharedServiceVirtualTarget, long moduleStagingAddress,
+            java.util.function.Consumer<RamScriptBuilder> beforeCall,
+            java.util.function.Consumer<RamScriptBuilder> onSuccess,
+            java.util.function.Consumer<RamScriptBuilder> onFailure) {
+        if (rom == null) throw new IllegalArgumentException("rom required");
+        if (moduleId < 0 || moduleId > 0xFFFF) throw new IllegalArgumentException("module id must be u16");
+        if (sharedServiceVirtualTarget < 0 || sharedServiceVirtualTarget > 0xFFFF_FFFFL) {
+            throw new IllegalArgumentException("shared service target must fit in u32");
+        }
+
+        RamScriptBuilder b = new RamScriptBuilder(VIRTUAL_BASE);
+        b.setVAddress();
+        b.lockAll().setVar(VAR_RESULT, 0).setVar(VAR_MODULE_ID, moduleId);
+        beforeCall.accept(b);
+        b.vCallAddress(sharedServiceVirtualTarget);
+        // The shared service executes setvaddress for its own RamScript base.
+        // Restore this bridge's original relocation offset from the CURRENT
+        // opcode position, not from script offset 0.
+        b.setVAddressHere();
+        b.compareVarToValue(VAR_RESULT, 1).vGotoIfNotEqual("native_fail");
+        b.callNative(moduleStagingAddress | 1L);
+        onSuccess.accept(b);
+        b.label("native_fail");
+        onFailure.accept(b);
+        byte[] script = b.buildScript();
+        return new Build(script, 0, script.length, 1);
+    }
+
 }

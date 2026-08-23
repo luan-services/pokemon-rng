@@ -10,7 +10,7 @@ import java.util.List;
      R+B      -> Repel
      R+A      -> Shared runtime probe message
 
-   The runtime WC then installs SharedHotkeyRuntimeCandidate, which dispatches
+   The runtime WC then installs SharedHotkeyRuntime, which dispatches
    those bindings through one shared deferred runtime.
 */
 final class SharedHotkeySmokeTestPreset {
@@ -69,7 +69,7 @@ final class SharedHotkeySmokeTestPreset {
                 new SharedHotkeyDispatcher.Entry(HotkeyButton.B, -a.get(1).gatewayDistanceFromRamScript()),
                 new SharedHotkeyDispatcher.Entry(HotkeyButton.A, -a.get(2).gatewayDistanceFromRamScript())
         );
-        return SharedHotkeyRuntimeCandidate.compose(rom, HotkeyButton.R, entries);
+        return SharedHotkeyRuntime.compose(rom, HotkeyButton.R, entries);
     }
 
 

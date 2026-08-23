@@ -96,7 +96,7 @@ final class SharedHotkeyNativeSmokeTestPreset {
                 new SharedHotkeyDispatcher.Entry(HotkeyButton.B, gatewayDelta(l.gatewayRepel())),
                 new SharedHotkeyDispatcher.Entry(HotkeyButton.A, gatewayDelta(l.gatewaySid()))
         );
-        return SharedHotkeyRuntimeCandidate.compose(rom, HotkeyButton.R, entries);
+        return SharedHotkeyRuntime.compose(rom, HotkeyButton.R, entries);
     }
 
     static String report(RomProfile rom, int seed) {

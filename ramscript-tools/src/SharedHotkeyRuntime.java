@@ -5,23 +5,14 @@ import java.util.List;
 import java.util.Set;
 
 /*
-   LAB / NOT YET IN-GAME VALIDATED.
+   Validated shared runtime for up to eight hotkeys with one common modifier
+   (R or L) and pressed buttons from the low byte of GBA key input.
 
-   Candidate shared runtime for up to eight hotkeys with one common modifier
-   (R or L) and pressed buttons from the low byte of GBA key input:
-   A, B, SELECT, START, RIGHT, LEFT, UP, DOWN.
-
-   callback1 does only:
-     - common-modifier test
-     - low-byte newKeysRaw extraction
-     - store selected mask in toolkit-private gSaveUnusedVar
-     - existing safety gate
-     - existing deferred Runtime-v1 stage1/stage2
-
-   All N-way dispatch is a Field Script at RamScript+0x0C and therefore runs
-   later through the normal ScriptContext engine.
+   callback1 stays lightweight: recognize/select the binding, apply the safety
+   gate and defer functional work to the normal Field Script engine. N-way
+   dispatch is performed later from RamScript+0x0C.
 */
-final class SharedHotkeyRuntimeCandidate {
+final class SharedHotkeyRuntime {
     static final int PAYLOAD_OFFSET = HotkeyRuntimeV1.PAYLOAD_OFFSET;
     static final long SELECTED_KEY_BYTE = SharedHotkeyDispatcher.SELECTED_KEY_BYTE;
 
@@ -30,19 +21,35 @@ final class SharedHotkeyRuntimeCandidate {
     private static final int BLOCK_COUNT = 13;
     private static final int TABLE_SIZE = BLOCK_COUNT * 4;
 
-    private SharedHotkeyRuntimeCandidate() {}
+    private SharedHotkeyRuntime() {}
 
     static TriggerBuildResult compose(
             RomProfile rom,
             HotkeyButton modifier,
             List<SharedHotkeyDispatcher.Entry> entries
     ) {
+        return compose(rom, modifier, entries, new byte[0], 1);
+    }
+
+    static TriggerBuildResult compose(
+            RomProfile rom,
+            HotkeyButton modifier,
+            List<SharedHotkeyDispatcher.Entry> entries,
+            byte[] sharedSupport,
+            int sharedSupportAlignment
+    ) {
         validate(rom, modifier, entries);
+        if (sharedSupport == null) throw new IllegalArgumentException("sharedSupport must not be null");
+        if (sharedSupportAlignment < 1 || (sharedSupportAlignment & (sharedSupportAlignment - 1)) != 0) {
+            throw new IllegalArgumentException("sharedSupportAlignment must be a positive power of two");
+        }
         byte[] dispatcher = SharedHotkeyDispatcher.build(entries);
         byte[] nativeBlob = nativeInstallerBlob(rom, modifier);
 
         int afterDispatcher = PAYLOAD_OFFSET + dispatcher.length;
-        int nativeBlobOffset = align4(afterDispatcher);
+        int sharedSupportOffset = align(afterDispatcher, sharedSupportAlignment);
+        int afterSupport = sharedSupportOffset + sharedSupport.length;
+        int nativeBlobOffset = align4(afterSupport);
         byte[] bootstrap = HotkeyRuntimeV1.bootstrapBytes(rom, nativeBlobOffset);
         int fieldInstallerOffset = nativeBlobOffset + nativeBlob.length;
 
@@ -75,6 +82,10 @@ final class SharedHotkeyRuntimeCandidate {
         if (p != PAYLOAD_OFFSET) throw new IllegalStateException("dispatcher offset mismatch");
         System.arraycopy(dispatcher, 0, script, p, dispatcher.length);
         p += dispatcher.length;
+
+        while (p < sharedSupportOffset) script[p++] = 0;
+        System.arraycopy(sharedSupport, 0, script, p, sharedSupport.length);
+        p += sharedSupport.length;
 
         while (p < nativeBlobOffset) script[p++] = 0;
         System.arraycopy(nativeBlob, 0, script, p, nativeBlob.length);
@@ -251,6 +262,11 @@ final class SharedHotkeyRuntimeCandidate {
 
     private static int align4(int value) {
         return (value + 3) & ~3;
+    }
+
+    private static int align(int value, int alignment) {
+        if (alignment <= 1) return value;
+        return (value + alignment - 1) & ~(alignment - 1);
     }
 
     private static int thumbLsrsImm(int rd, int rm, int shift) {

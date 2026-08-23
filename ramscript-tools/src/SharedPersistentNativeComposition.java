@@ -1,28 +1,28 @@
 import java.util.ArrayList;
 import java.util.List;
 
-/* Validated Build-24 shared composition (historical class/CLI name retained):
+/* Validated shared persistent-native composition baseline (Build 28).
    R+SELECT -> Seed Modifier (pure Field Script)
    R+B      -> Repel (pure Field Script)
-   R+A      -> Party IV Viewer (persistent native module in SB2)
+   R+A      -> Party IV Viewer (persistent native module)
+   R+START  -> Show Secret ID (persistent native module)
 
-   FireRed 1.0 in-game validation includes repeated Party IV use and multiple
-   party members. The shared hotkey runtime remains the validated 419-byte
-   Build-19/20 core.
+   Party IV and SID share one staging service in the RamScript package and one
+   EWRAM staging destination. Only one module is staged/executed at a time.
 */
-final class SharedHotkeyPartyIvSmokeTestPreset {
+final class SharedPersistentNativeComposition {
     private static final long VIRTUAL_BASE = HotkeyRuntimeV1.VIRTUAL_BASE;
     private static final int CATALOG_OFFSET = PayloadStorageArea.SAVE_BLOCK2.offset();
     private static final int VAR_RESULT = 0x800D;
-    private static final int BINDING_COUNT = 3;
+    private static final int BINDING_COUNT = 4;
     private static final long STATIC_SB1 = 0x0202552CL;
     private static final long STATIC_SB2 = 0x02024588L;
     private static final int RAMSCRIPT_OFFSET_IN_SB1 = 0x3624;
 
-    private SharedHotkeyPartyIvSmokeTestPreset() {}
+    private SharedPersistentNativeComposition() {}
 
     static Layout layout(RomProfile rom, int seed) {
-        byte[] catalog = buildPartyCatalog(rom);
+        byte[] catalog = buildNativeCatalog(rom);
         byte[] seedBody = SeedModifierPreset.buildPayload(rom, seed);
         byte[] repelBody = RepelHotkeyPreset.buildPayload();
 
@@ -32,36 +32,39 @@ final class SharedHotkeyPartyIvSmokeTestPreset {
         int repelOffset = cursor;
         cursor += repelBody.length;
 
-        // Build 26 moves the expensive generic staging-loader service out of
-        // every persistent native bridge and stores it once in the shared
-        // RamScript runtime. The SB2 bridge now only vcalls that shared service.
-        int partyBridgeOffset = cursor;
         int serviceOffset = sharedNativeServiceOffset();
-        long serviceTarget = virtualTargetFromSb2ToRamScript(partyBridgeOffset, serviceOffset);
-        PersistentNativeCallBridge.Build partyBridgeBuild = buildPartyBridge(rom, serviceTarget);
-        byte[] partyBridge = partyBridgeBuild.fieldScript();
+
+        int partyBridgeOffset = cursor;
+        long partyServiceTarget = virtualTargetFromSb2ToRamScript(partyBridgeOffset, serviceOffset);
+        byte[] partyBridge = buildPartyBridge(rom, partyServiceTarget).fieldScript();
         cursor += partyBridge.length;
+
+        int sidBridgeOffset = cursor;
+        long sidServiceTarget = virtualTargetFromSb2ToRamScript(sidBridgeOffset, serviceOffset);
+        byte[] sidBridge = buildSidBridge(rom, sidServiceTarget).fieldScript();
+        cursor += sidBridge.length;
 
         int end = CATALOG_OFFSET + PayloadStorageArea.SAVE_BLOCK2.capacity();
         if (cursor > end) {
-            throw new IllegalArgumentException("shared Party IV composition does not fit SB2: needs " +
+            throw new IllegalArgumentException("shared persistent-native composition does not fit SB2: needs " +
                     (cursor - CATALOG_OFFSET) + "/" + PayloadStorageArea.SAVE_BLOCK2.capacity() + " bytes");
         }
 
         int gwSeed = 0x3612;
         int gwRepel = 0x3608;
         int gwParty = 0x35FE;
-        return new Layout(catalog, seedBody, repelBody, partyBridge,
-                seedOffset, repelOffset, partyBridgeOffset,
-                gwSeed, gwRepel, gwParty, cursor - CATALOG_OFFSET);
+        int gwSid = 0x35F4;
+        return new Layout(catalog, seedBody, repelBody, partyBridge, sidBridge,
+                seedOffset, repelOffset, partyBridgeOffset, sidBridgeOffset,
+                gwSeed, gwRepel, gwParty, gwSid, cursor - CATALOG_OFFSET);
     }
 
     static RamScript buildInstallerA(RomProfile rom, int seed) {
         Layout l = layout(rom, seed);
         List<CopySpec> copies = new ArrayList<>();
         addChunked(copies, false, CATALOG_OFFSET, l.catalog());
-        return buildInstallerForCopies(rom, copies, "party_iv_shared_install_a",
-                "Party IV native installed.\\nSave, then install part B.");
+        return buildInstallerForCopies(rom, copies, "dual_native_shared_install_a",
+                "Party IV + SID natives installed.\\nSave, then install part B.");
     }
 
     static RamScript buildInstallerB(RomProfile rom, int seed) {
@@ -70,9 +73,10 @@ final class SharedHotkeyPartyIvSmokeTestPreset {
         copies.add(new CopySpec(true, l.gatewaySeed(), gatewayFor(l.seedOffset(), l.gatewaySeed())));
         copies.add(new CopySpec(true, l.gatewayRepel(), gatewayFor(l.repelOffset(), l.gatewayRepel())));
         copies.add(new CopySpec(true, l.gatewayParty(), gatewayFor(l.partyBridgeOffset(), l.gatewayParty())));
+        copies.add(new CopySpec(true, l.gatewaySid(), gatewayFor(l.sidBridgeOffset(), l.gatewaySid())));
         addChunked(copies, false, l.seedOffset(), l.seedBody());
         addChunked(copies, false, l.repelOffset(), l.repelBody());
-        return buildInstallerForCopies(rom, copies, "party_iv_shared_install_b",
+        return buildInstallerForCopies(rom, copies, "dual_native_shared_install_b",
                 "Field modules installed.\\nSave, then install part C.");
     }
 
@@ -80,8 +84,9 @@ final class SharedHotkeyPartyIvSmokeTestPreset {
         Layout l = layout(rom, seed);
         List<CopySpec> copies = new ArrayList<>();
         addChunked(copies, false, l.partyBridgeOffset(), l.partyBridge());
-        return buildInstallerForCopies(rom, copies, "party_iv_shared_install_c",
-                "Party IV bridge installed.\\nSave, then install runtime.");
+        addChunked(copies, false, l.sidBridgeOffset(), l.sidBridge());
+        return buildInstallerForCopies(rom, copies, "dual_native_shared_install_c",
+                "Native bridges installed.\\nSave, then install runtime.");
     }
 
     static TriggerBuildResult buildRuntime(RomProfile rom, int seed) {
@@ -89,7 +94,8 @@ final class SharedHotkeyPartyIvSmokeTestPreset {
         List<SharedHotkeyDispatcher.Entry> entries = List.of(
                 new SharedHotkeyDispatcher.Entry(HotkeyButton.SELECT, gatewayDelta(l.gatewaySeed())),
                 new SharedHotkeyDispatcher.Entry(HotkeyButton.B, gatewayDelta(l.gatewayRepel())),
-                new SharedHotkeyDispatcher.Entry(HotkeyButton.A, gatewayDelta(l.gatewayParty()))
+                new SharedHotkeyDispatcher.Entry(HotkeyButton.A, gatewayDelta(l.gatewayParty())),
+                new SharedHotkeyDispatcher.Entry(HotkeyButton.START, gatewayDelta(l.gatewaySid()))
         );
         int serviceOffset = sharedNativeServiceOffset();
         SharedPersistentNativeStagingService.Build service = SharedPersistentNativeStagingService.build(
@@ -101,47 +107,53 @@ final class SharedHotkeyPartyIvSmokeTestPreset {
     static String report(RomProfile rom, int seed) {
         Layout l = layout(rom, seed);
         return String.format(
-                "  native catalog/Party IV SB2+0x%04X..0x%04X (%d B; module %d B)%n" +
-                "  seed                    SB2+0x%04X, %d B -> gateway SB1+0x%04X%n" +
-                "  repel                   SB2+0x%04X, %d B -> gateway SB1+0x%04X%n" +
-                "  Party IV bridge         SB2+0x%04X, %d B -> gateway SB1+0x%04X%n" +
-                "  SB2 used/free:          %d / %d B%n",
+                "  native catalog Party IV+SID SB2+0x%04X..0x%04X (%d B; modules %d + %d B)%n" +
+                "  seed                       SB2+0x%04X, %d B -> gateway SB1+0x%04X%n" +
+                "  repel                      SB2+0x%04X, %d B -> gateway SB1+0x%04X%n" +
+                "  Party IV bridge            SB2+0x%04X, %d B -> gateway SB1+0x%04X%n" +
+                "  SID bridge                 SB2+0x%04X, %d B -> gateway SB1+0x%04X%n" +
+                "  SB2 used/free:             %d / %d B%n",
                 CATALOG_OFFSET, CATALOG_OFFSET + l.catalog().length - 1, l.catalog().length,
-                PersistentPartyIvViewerModule.payload(rom).length,
+                PersistentPartyIvViewerModule.payload(rom).length, PersistentSecretIdModule.payload(rom).length,
                 l.seedOffset(), l.seedBody().length, l.gatewaySeed(),
                 l.repelOffset(), l.repelBody().length, l.gatewayRepel(),
                 l.partyBridgeOffset(), l.partyBridge().length, l.gatewayParty(),
+                l.sidBridgeOffset(), l.sidBridge().length, l.gatewaySid(),
                 l.sb2Used(), PayloadStorageArea.SAVE_BLOCK2.capacity() - l.sb2Used());
     }
 
     private static PersistentNativeCallBridge.Build buildPartyBridge(RomProfile rom, long sharedServiceVirtualTarget) {
-        PersistentNativeCallBridge.Build bridge = PersistentNativeCallBridge.buildViaSharedStagingService(
-                rom,
-                PersistentPartyIvViewerModule.MODULE_ID,
-                sharedServiceVirtualTarget,
-                rom.stringVar4 + 0x140L,
-                b -> {},
+        return PersistentNativeCallBridge.buildViaSharedStagingService(
+                rom, PersistentPartyIvViewerModule.MODULE_ID, sharedServiceVirtualTarget,
+                rom.stringVar4 + 0x140L, b -> {},
                 b -> b.message(PartyMonDataNativeHelper.dynamicMessageAddress(rom))
-                        .waitMessage()
-                        .releaseAll()
-                        .end(),
-                b -> b.vMessage("badmsg")
-                        .waitMessage()
-                        .waitButtonPress()
-                        .releaseAll()
-                        .end()
-                        .text("badmsg", "Persistent Party IV module invalid.")
+                        .waitMessage().releaseAll().end(),
+                b -> b.vMessage("party_bad").waitMessage().waitButtonPress().releaseAll().end()
+                        .text("party_bad", "Persistent Party IV module invalid.")
         );
-        return bridge;
     }
 
-    private static byte[] buildPartyCatalog(RomProfile rom) {
+    private static PersistentNativeCallBridge.Build buildSidBridge(RomProfile rom, long sharedServiceVirtualTarget) {
+        return PersistentNativeCallBridge.buildViaSharedStagingService(
+                rom, PersistentSecretIdModule.MODULE_ID, sharedServiceVirtualTarget,
+                rom.stringVar4 + 0x140L, b -> {},
+                b -> b.bufferNumberString(0, VAR_RESULT)
+                        .vMessage("sid_msg").waitMessage().waitButtonPressStrict().releaseAll().end()
+                        .text("sid_msg", "Your Secret ID is {STR_VAR_1}."),
+                b -> b.vMessage("sid_bad").waitMessage().waitButtonPressStrict().releaseAll().end()
+                        .text("sid_bad", "Persistent SID module invalid.")
+        );
+    }
+
+    private static byte[] buildNativeCatalog(RomProfile rom) {
         return PersistentNativeModuleCatalog.build(
                 CATALOG_OFFSET,
-                List.of(new PersistentNativeModuleSpec(
-                        PersistentPartyIvViewerModule.MODULE_ID,
-                        PersistentPartyIvViewerModule.payload(rom)
-                ))
+                List.of(
+                        new PersistentNativeModuleSpec(PersistentPartyIvViewerModule.MODULE_ID,
+                                PersistentPartyIvViewerModule.payload(rom)),
+                        new PersistentNativeModuleSpec(PersistentSecretIdModule.MODULE_ID,
+                                PersistentSecretIdModule.payload(rom))
+                )
         ).bytes();
     }
 
@@ -198,14 +210,18 @@ final class SharedHotkeyPartyIvSmokeTestPreset {
         return RamScript.createWonderCard(b.buildScript());
     }
 
-    record Layout(byte[] catalog, byte[] seedBody, byte[] repelBody, byte[] partyBridge,
-                  int seedOffset, int repelOffset, int partyBridgeOffset,
-                  int gatewaySeed, int gatewayRepel, int gatewayParty, int sb2Used) {
-        Layout { catalog=catalog.clone(); seedBody=seedBody.clone(); repelBody=repelBody.clone(); partyBridge=partyBridge.clone(); }
+    record Layout(byte[] catalog, byte[] seedBody, byte[] repelBody, byte[] partyBridge, byte[] sidBridge,
+                  int seedOffset, int repelOffset, int partyBridgeOffset, int sidBridgeOffset,
+                  int gatewaySeed, int gatewayRepel, int gatewayParty, int gatewaySid, int sb2Used) {
+        Layout {
+            catalog=catalog.clone(); seedBody=seedBody.clone(); repelBody=repelBody.clone();
+            partyBridge=partyBridge.clone(); sidBridge=sidBridge.clone();
+        }
         @Override public byte[] catalog(){return catalog.clone();}
         @Override public byte[] seedBody(){return seedBody.clone();}
         @Override public byte[] repelBody(){return repelBody.clone();}
         @Override public byte[] partyBridge(){return partyBridge.clone();}
+        @Override public byte[] sidBridge(){return sidBridge.clone();}
     }
 
     private record CopySpec(boolean saveBlock1, int offset, byte[] data) {
