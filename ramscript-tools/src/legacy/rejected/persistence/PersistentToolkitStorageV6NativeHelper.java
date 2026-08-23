@@ -152,6 +152,236 @@ final class PersistentToolkitStorageV6NativeHelper {
     }
 
 
+    /* Staged persistent-native dispatcher.
+
+       This keeps the module payload persistent in SB2, but executes it from a
+       known EWRAM scratch address. The Party IV viewer was previously validated
+       in-game at gStringVar4 + 0x140; staging avoids making direct-SaveBlock
+       execution a requirement for larger helpers with PC-relative literal/ADR
+       sequences.
+    */
+    static NativeHelper buildStagingDispatcherAt(RomProfile rom, long address, long stagingAddress, int stagingCapacity) {
+        if ((stagingAddress & 3L) != 0) throw new IllegalArgumentException("native staging address must be word-aligned");
+        if (stagingCapacity <= 0 || stagingCapacity > 0xFFFF) throw new IllegalArgumentException("invalid native staging capacity");
+        Thumb b = new Thumb();
+        b.emit(0xB470); // push {r4,r5,r6}; preserve caller LR for module return
+        b.ldrLit(5,"sb2ptr");
+        b.emit(0x682D); // ldr r5,[r5]
+        b.ldrLit(0,"sb2off");
+        b.emit(0x182D); // catalog base
+        b.emit(0x6828);
+        b.ldrLit(1,"magic");
+        b.emit(0x4288);
+        b.bCond(1,"fail");
+        b.emit(0x7928);
+        b.emit(0x2800 | PersistentToolkitStorageV6.VERSION);
+        b.bCond(1,"fail");
+        b.emit(0x796B);
+        b.emit(0x2B00);
+        b.bCond(0,"fail");
+        b.ldrLit(0,"desired");
+        b.emit(0x8801);
+        b.emit(0x1C2C);
+        b.emit(0x3410);
+        b.label("scan");
+        b.emit(0x8820);
+        b.emit(0x4288);
+        b.bCond(0,"found");
+        b.emit(0x3410);
+        b.emit(0x3B01);
+        b.bCond(1,"scan");
+        b.b("fail");
+
+        b.label("found");
+        b.emit(0x78A0);
+        b.emit(0x2801);
+        b.bCond(1,"fail");
+        b.emit(0x78E0);
+        b.emit(0x2802); // staged production catalog requires SB2 module
+        b.bCond(1,"fail");
+        b.emit(0x1C2A); // r2 = catalog base
+        b.emit(0x88A0); // payload offset
+        b.emit(0x1812); // payload address
+        b.emit(0x1C15); // r5 = payload start
+        b.emit(0x88E1); // r1 = payload size
+        b.emit(0x8923); // r3 = expected checksum while r4 is still the entry pointer
+        b.emit(0x2900);
+        b.bCond(0,"fail");
+        b.ldrLit(0,"capacity");
+        b.emit(0x4281); // cmp r1,r0
+        b.bCond(8,"fail"); // bhi: payload > staging capacity
+        b.emit(0x1C0E); // r6 = payload size
+        b.emit(0x2000); // checksum sum
+        b.label("sum");
+        b.emit(0x7814); // r4 is scratch from here onward
+        b.emit(0x1900);
+        b.emit(0x3201);
+        b.emit(0x3901);
+        b.bCond(1,"sum");
+        b.emit(0x0400);
+        b.emit(0x0C00);
+        b.emit(0x4298); // compare computed sum against saved expected checksum in r3
+        b.bCond(1,"fail");
+
+        // Copy the validated module bytes into stable EWRAM scratch.
+        b.emit(0x1C28); // r0 = r5 source
+        b.ldrLit(2,"stage");
+        b.emit(0x1C31); // r1 = r6 size
+        b.label("copy");
+        b.emit(0x7803); // ldrb r3,[r0]
+        b.emit(0x7013); // strb r3,[r2]
+        b.emit(0x3001);
+        b.emit(0x3201);
+        b.emit(0x3901);
+        b.bCond(1,"copy");
+        b.ldrLit(3,"stageThumb");
+        b.emit(0xBC70); // restore r4-r6, retain caller LR
+        b.emit(0x4718); // module returns directly to ScrCmd_callnative via LR
+
+        b.label("fail");
+        b.emit(0xBC70);
+        b.emit(0x2000);
+        b.ldrLit(1,"result");
+        b.emit(0x8008);
+        b.emit(0x4770);
+
+        b.literal("sb2ptr",rom.saveBlock2Ptr);
+        b.literal("sb2off",PayloadStorageArea.SAVE_BLOCK2.offset());
+        b.literal("magic",PersistentToolkitStorageV6.MAGIC);
+        b.literal("desired",rom.specialVar8005);
+        b.literal("capacity",stagingCapacity);
+        b.literal("stage",stagingAddress);
+        b.literal("stageThumb",stagingAddress | 1L);
+        b.literal("result",rom.specialVarResult);
+        return new NativeHelper(address,b.finish());
+    }
+
+
+    /* Production staged loader: validate a persistent SB2 module, copy it to
+       stable EWRAM scratch, report success, and RETURN. The Field Script owns
+       the subsequent stock callnative into the staged module. */
+    static NativeHelper buildStagingLoaderAt(RomProfile rom, long address, long stagingAddress, int stagingCapacity) {
+        if ((stagingAddress & 3L) != 0) throw new IllegalArgumentException("native staging address must be word-aligned");
+        if (stagingCapacity <= 0 || stagingCapacity > 0xFFFF) throw new IllegalArgumentException("invalid native staging capacity");
+        Thumb b = new Thumb();
+        b.emit(0xB470); // push {r4,r5,r6}
+        b.ldrLit(5,"sb2ptr"); b.emit(0x682D);
+        b.ldrLit(0,"sb2off"); b.emit(0x182D);
+        b.emit(0x6828); b.ldrLit(1,"magic"); b.emit(0x4288); b.bCond(1,"fail");
+        b.emit(0x7928); b.emit(0x2800 | PersistentToolkitStorageV6.VERSION); b.bCond(1,"fail");
+        b.emit(0x796B); b.emit(0x2B00); b.bCond(0,"fail");
+        b.ldrLit(0,"desired"); b.emit(0x8801);
+        b.emit(0x1C2C); b.emit(0x3410);
+        b.label("scan");
+        b.emit(0x8820); b.emit(0x4288); b.bCond(0,"found");
+        b.emit(0x3410); b.emit(0x3B01); b.bCond(1,"scan"); b.b("fail");
+        b.label("found");
+        b.emit(0x78A0); b.emit(0x2801); b.bCond(1,"fail");
+        b.emit(0x78E0); b.emit(0x2802); b.bCond(1,"fail");
+        b.emit(0x1C2A); b.emit(0x88A0); b.emit(0x1812); // r2 = payload source
+        b.emit(0x1C15); // r5 = source start
+        b.emit(0x88E1); // r1 = size
+        b.emit(0x8923); // r3 = expected checksum
+        b.emit(0x2900); b.bCond(0,"fail");
+        b.ldrLit(0,"capacity"); b.emit(0x4281); b.bCond(8,"fail");
+        b.emit(0x1C0E); // r6 = size
+        b.emit(0x2000);
+        b.label("sum");
+        b.emit(0x7814); b.emit(0x1900); b.emit(0x3201); b.emit(0x3901); b.bCond(1,"sum");
+        b.emit(0x0400); b.emit(0x0C00); b.emit(0x4298); b.bCond(1,"fail");
+        b.emit(0x1C28); b.ldrLit(2,"stage"); b.emit(0x1C31);
+        b.label("copy");
+        b.emit(0x7803); b.emit(0x7013); b.emit(0x3001); b.emit(0x3201); b.emit(0x3901); b.bCond(1,"copy");
+        b.emit(0x2001); b.ldrLit(1,"result"); b.emit(0x8008);
+        b.emit(0xBC70); b.emit(0x4770);
+        b.label("fail");
+        b.emit(0x2000); b.ldrLit(1,"result"); b.emit(0x8008);
+        b.emit(0xBC70); b.emit(0x4770);
+        b.literal("sb2ptr",rom.saveBlock2Ptr);
+        b.literal("sb2off",PayloadStorageArea.SAVE_BLOCK2.offset());
+        b.literal("magic",PersistentToolkitStorageV6.MAGIC);
+        b.literal("desired",rom.specialVar8005);
+        b.literal("capacity",stagingCapacity);
+        b.literal("stage",stagingAddress);
+        b.literal("result",rom.specialVarResult);
+        return new NativeHelper(address,b.finish());
+    }
+
+    /* Diagnostic staged-copy checker.
+       Resolves a persistent SB2 module, verifies the persistent checksum,
+       copies it into EWRAM staging, then independently verifies the staged
+       bytes. It never executes the module. VAR_RESULT=1 means source and
+       staged copies both match the catalog checksum. */
+    static NativeHelper buildStagingCopyCheckAt(RomProfile rom, long address, long stagingAddress, int stagingCapacity) {
+        if ((stagingAddress & 3L) != 0) throw new IllegalArgumentException("native staging address must be word-aligned");
+        if (stagingCapacity <= 0 || stagingCapacity > 0xFFFF) throw new IllegalArgumentException("invalid native staging capacity");
+        Thumb b = new Thumb();
+        b.emit(0xB470); // push {r4,r5,r6}
+        b.ldrLit(5,"sb2ptr"); b.emit(0x682D);
+        b.ldrLit(0,"sb2off"); b.emit(0x182D); // r5 = catalog base
+        b.emit(0x6828); b.ldrLit(1,"magic"); b.emit(0x4288); b.bCond(1,"fail");
+        b.emit(0x7928); b.emit(0x2800 | PersistentToolkitStorageV6.VERSION); b.bCond(1,"fail");
+        b.emit(0x796B); b.emit(0x2B00); b.bCond(0,"fail");
+        b.ldrLit(0,"desired"); b.emit(0x8801);
+        b.emit(0x1C2C); b.emit(0x3410); // r4 = first entry
+        b.label("scan");
+        b.emit(0x8820); b.emit(0x4288); b.bCond(0,"found");
+        b.emit(0x3410); b.emit(0x3B01); b.bCond(1,"scan"); b.b("fail");
+        b.label("found");
+        b.emit(0x78A0); b.emit(0x2801); b.bCond(1,"fail");
+        b.emit(0x78E0); b.emit(0x2802); b.bCond(1,"fail");
+        b.emit(0x1C2A);          // r2 = catalog base
+        b.emit(0x88A0); b.emit(0x1812); // r2 = payload source
+        b.emit(0x1C15);          // r5 = payload source
+        b.emit(0x88E1);          // r1 = size
+        b.emit(0x8926);          // r6 = expected checksum
+        b.emit(0x2900); b.bCond(0,"fail");
+        b.ldrLit(0,"capacity"); b.emit(0x4281); b.bCond(8,"fail");
+        b.emit(0x1C0C);          // r4 = size (entry pointer no longer needed)
+
+        // Validate persistent source bytes.
+        b.emit(0x2000);          // sum = 0
+        b.label("sumSrc");
+        b.emit(0x7813);          // ldrb r3,[r2]
+        b.emit(0x18C0);          // adds r0,r0,r3
+        b.emit(0x3201); b.emit(0x3901); b.bCond(1,"sumSrc");
+        b.emit(0x0400); b.emit(0x0C00); b.emit(0x42B0); b.bCond(1,"fail"); // cmp r0,r6
+
+        // Copy persistent bytes into the same staging slot used by standalone Party IV.
+        b.emit(0x1C28);          // r0 = source
+        b.ldrLit(2,"stage");     // r2 = destination
+        b.emit(0x1C21);          // r1 = size
+        b.label("copy");
+        b.emit(0x7803); b.emit(0x7013);
+        b.emit(0x3001); b.emit(0x3201); b.emit(0x3901); b.bCond(1,"copy");
+
+        // Independently checksum the staged copy.
+        b.ldrLit(2,"stage");
+        b.emit(0x1C21);          // r1 = size
+        b.emit(0x2000);          // sum = 0
+        b.label("sumStage");
+        b.emit(0x7813); b.emit(0x18C0);
+        b.emit(0x3201); b.emit(0x3901); b.bCond(1,"sumStage");
+        b.emit(0x0400); b.emit(0x0C00); b.emit(0x42B0); b.bCond(1,"fail");
+
+        b.emit(0x2001);          // success
+        b.ldrLit(1,"result"); b.emit(0x8008);
+        b.emit(0xBC70); b.emit(0x4770);
+        b.label("fail");
+        b.emit(0x2000); b.ldrLit(1,"result"); b.emit(0x8008);
+        b.emit(0xBC70); b.emit(0x4770);
+
+        b.literal("sb2ptr",rom.saveBlock2Ptr);
+        b.literal("sb2off",PayloadStorageArea.SAVE_BLOCK2.offset());
+        b.literal("magic",PersistentToolkitStorageV6.MAGIC);
+        b.literal("desired",rom.specialVar8005);
+        b.literal("capacity",stagingCapacity);
+        b.literal("stage",stagingAddress);
+        b.literal("result",rom.specialVarResult);
+        return new NativeHelper(address,b.finish());
+    }
+
+
     /* Build 12 direct-IWRAM dispatcher entry.
 
        Unlike buildDispatcherAt(), the desired module id arrives in r1 from the

@@ -116,59 +116,40 @@ final class SharedHotkeyNativeSmokeTestPreset {
     }
 
     private static byte[] buildSidBridge(RomProfile rom) {
-        long copier = rom.stringVar4 + 0x100L;
-        long helperAddress = CpuSetNativeHelperInstaller.helperDestination(copier);
-        NativeHelper dispatcher = PersistentToolkitStorageV6NativeHelper.buildDispatcherAt(rom, helperAddress);
-
-        RamScriptBuilder b = new RamScriptBuilder(VIRTUAL_BASE);
-        b.setVAddress();
-        NativeHelperInstaller.Plan install = NativeHelperInstaller.prepare(
-                b, VIRTUAL_BASE, dispatcher, copier, "shared_native_sid_dispatch", NativeHelperInstaller.Mode.AUTO
+        PersistentNativeCallBridge.Build bridge = PersistentNativeCallBridge.build(
+                rom,
+                PersistentShowSecretIdModule.MODULE_ID,
+                PersistentShowSecretIdModule.SUCCESS_VALUE,
+                b -> b.setVar(VAR_8004, 0),
+                b -> b.bufferNumberString(STRING_VAR_1, VAR_8004)
+                        .vMessage("good")
+                        .waitMessage()
+                        .waitButtonPress()
+                        .releaseAll()
+                        .end(),
+                b -> b.vMessage("badmsg")
+                        .waitMessage()
+                        .waitButtonPress()
+                        .releaseAll()
+                        .end()
+                        .text("good", "SID persistent native: {STR_VAR_1}.")
+                        .text("badmsg", "Persistent SID module invalid.")
         );
-
-        b.lockAll()
-                .setVar(VAR_RESULT, 0)
-                .setVar(VAR_8004, 0)
-                .setVar(VAR_8005, PersistentShowSecretIdModule.MODULE_ID);
-        install.installAndCall(b);
-        return b.compareVarToValue(VAR_RESULT, PersistentShowSecretIdModule.SUCCESS_VALUE)
-                .vGotoIfNotEqual("bad_path")
-                .bufferNumberString(STRING_VAR_1, VAR_8004)
-                .vMessage("good")
-                .waitMessage()
-                .waitButtonPress()
-                .releaseAll()
-                .end()
-                .label("bad_path")
-                .vMessage("badmsg")
-                .waitMessage()
-                .waitButtonPress()
-                .releaseAll()
-                .end()
-                .text("good", "SID persistent native: {STR_VAR_1}.")
-                .text("badmsg", "Persistent SID module invalid.")
-                .buildScript();
+        return bridge.fieldScript();
     }
 
     private static byte[] buildSidCatalog(RomProfile rom) {
-        byte[] sid = PersistentShowSecretIdModule.payload(rom).bytes();
-        if (sid.length != 0x20) throw new IllegalStateException("unexpected SID native size");
-        byte[] image = new byte[CATALOG_SIZE];
-        PersistentToolkitStorageV2.putU32(image, 0, PersistentToolkitStorageV6.MAGIC);
-        image[4] = (byte) PersistentToolkitStorageV6.VERSION;
-        image[5] = 1;
-        PersistentToolkitStorageV2.putU16(image, 6, PersistentToolkitStorageV6.HEADER_SIZE);
-        PersistentToolkitStorageV2.putU16(image, 8, image.length);
-        int e = PersistentToolkitStorageV6.ENTRY_1;
-        PersistentToolkitStorageV2.putU16(image, e, PersistentShowSecretIdModule.MODULE_ID);
-        image[e + 2] = (byte) PersistentModule.KIND_THUMB;
-        image[e + 3] = 2; // SaveBlock2
-        PersistentToolkitStorageV2.putU16(image, e + 4, SID_NATIVE_REL);
-        PersistentToolkitStorageV2.putU16(image, e + 6, sid.length);
-        PersistentToolkitStorageV2.putU16(image, e + 8, PersistentToolkitStorageV2.checksum16(sid));
-        PersistentToolkitStorageV2.putU16(image, e + 0x0A, 1);
-        System.arraycopy(sid, 0, image, SID_NATIVE_REL, sid.length);
-        return image;
+        PersistentNativeModuleCatalog.Image image = PersistentNativeModuleCatalog.build(
+                CATALOG_OFFSET,
+                List.of(new PersistentNativeModuleSpec(
+                        PersistentShowSecretIdModule.MODULE_ID,
+                        PersistentShowSecretIdModule.payload(rom).bytes()
+                ))
+        );
+        if (image.bytes().length != CATALOG_SIZE) {
+            throw new IllegalStateException("unexpected SID native catalog size");
+        }
+        return image.bytes();
     }
 
     private static byte[] gatewayFor(int sb2TargetOffset, int gatewayOffset) {

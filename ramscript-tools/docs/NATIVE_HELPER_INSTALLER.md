@@ -59,3 +59,9 @@ when it is already optimal.
 The helper's behavior is unchanged by the installation mode. `HotkeyRuntimeV1`
 is also unchanged. The installer only changes how native bytes move from the
 RamScript into the helper's staging address.
+
+## Persistent-placement alignment
+
+`CPU_SET_BLOCK` has an additional requirement when the containing Field Script is moved out of the normally aligned RamScript area: the **Field Script base itself must be word-aligned**. The installer aligns the embedded raw helper relative to the script, but final physical alignment is `scriptBase + rawOffset`.
+
+`NativeHelperInstaller.Plan.requiredScriptBaseAlignment()` reports this requirement (`4` for `CPU_SET_BLOCK`, `1` for `DIRECT_SET_PTR`). Persistent placement must honor it. Build 24 validated this rule in-game with the shared Party IV Viewer after the previous bridge at `SB2+0x0D5F` produced a misaligned CpuSet source.

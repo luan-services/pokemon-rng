@@ -49,6 +49,14 @@ final class NativeHelperInstaller {
             return encodedInstallBytes;
         }
 
+        /* CPU_SET_BLOCK resolves an embedded raw source relative to the script
+           base and copies it as 32-bit words. Therefore the containing Field
+           Script itself must start word-aligned. DIRECT_SET_PTR has no such
+           requirement. */
+        int requiredScriptBaseAlignment() {
+            return mode == Mode.CPU_SET_BLOCK ? 4 : 1;
+        }
+
         RamScriptBuilder install(RamScriptBuilder builder) {
             if (mode == Mode.DIRECT_SET_PTR) {
                 return builder.writeBytes(helper.stagingAddress(), helper.codeCopy());

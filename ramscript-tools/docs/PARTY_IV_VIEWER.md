@@ -6,10 +6,12 @@ Compact party IV viewer preset.
 
 `HotkeyRuntimeV1` with a configurable two-button chord. The default remains `R + SELECT`.
 
-The current runtime supports one hotkey/payload at a time. A future shared
-multi-hotkey runtime can combine smaller presets without duplicating the
-runtime. The IV Viewer is still relatively large and is treated as a standalone
-hotkey preset for now.
+Two validated trigger/deployment paths now exist:
+
+- standalone `HotkeyRuntimeV1`, preserving the original single-preset path;
+- shared persistent deployment (Build 24), where `R+A` runs Party IV alongside `R+B` Repel and `R+SELECT` Seed through one shared runtime.
+
+The standalone path remains first-class for simple/single-preset use. The shared path amortizes hotkey infrastructure across multiple presets.
 
 ## Display flow
 
@@ -141,3 +143,12 @@ java -cp out Main build-party-iv-viewer-wc3 fr10 ../dummy-saves/custom-design.wc
 ```
 
 Supported ROM profiles: `fr10`, `lg10`, `fr11`, `lg11`.
+
+
+## Shared persistent validation (Build 24)
+
+The Party IV native body remains 296 bytes and is stored in the SB2 native catalog. The shared path uses a persistent Field Script bridge that stages the body at `gStringVar4+0x140`, returns to the Field Script, then invokes the stock `callnative` command.
+
+Build 24 fixed a concrete `CPU_SET_BLOCK` alignment bug by moving the bridge from `SB2+0x0D5F` to word-aligned `SB2+0x0D60`. It was then validated in-game on FireRed English 1.0, including multiple captured Pokemon and complete IV display for the party.
+
+Stress-composition memory (Party IV + Seed + Repel): SB2 1022/1024 B, SB1 30 B gateways, shared RamScript runtime 419/995 B. This is **not** the intrinsic Party IV size; it includes catalog, two other presets, the persistent bridge and one alignment byte.

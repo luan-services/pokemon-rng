@@ -93,6 +93,12 @@ public final class Main {
                 case "build-shared-native-smoke-install-a-wc3" -> buildSharedNativeSmokeInstallAWc3(args);
                 case "build-shared-native-smoke-install-b-wc3" -> buildSharedNativeSmokeInstallBWc3(args);
                 case "build-shared-native-smoke-runtime-wc3" -> buildSharedNativeSmokeRuntimeWc3(args);
+                case "build-shared-party-iv-smoke-install-a-wc3" -> buildSharedPartyIvSmokeInstallAWc3(args);
+                case "build-shared-party-iv-smoke-install-b-wc3" -> buildSharedPartyIvSmokeInstallBWc3(args);
+                case "build-shared-party-iv-smoke-install-c-wc3" -> buildSharedPartyIvSmokeInstallCWc3(args);
+                case "build-shared-party-iv-smoke-runtime-wc3" -> buildSharedPartyIvSmokeRuntimeWc3(args);
+                case "build-party-iv-staging-check-wc3" -> buildPartyIvStagingCheckWc3(args);
+                case "build-party-iv-direct-call-check-wc3" -> buildPartyIvDirectCallCheckWc3(args);
 
                 /* Compatibility aliases kept from the experimental v5 CLI. */
                 case "build-aurora" -> requireArgs(args, 3, () ->
@@ -1244,6 +1250,55 @@ public final class Main {
         System.out.println("  R+SELECT -> Seed Modifier core");
     }
 
+
+    private static void buildSharedPartyIvSmokeInstallAWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-shared-party-iv-smoke-install-a-wc3 <rom> <seed-hex> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]); int seed = Integer.parseUnsignedInt(args[2],16);
+        RamScript script = SharedHotkeyPartyIvSmokeTestPreset.buildInstallerA(rom,seed);
+        buildIntoWc3(script,Path.of(args[3]),Path.of(args[4]));
+        System.out.print(SharedHotkeyPartyIvSmokeTestPreset.report(rom,seed));
+    }
+
+    private static void buildSharedPartyIvSmokeInstallBWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-shared-party-iv-smoke-install-b-wc3 <rom> <seed-hex> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]); int seed = Integer.parseUnsignedInt(args[2],16);
+        RamScript script = SharedHotkeyPartyIvSmokeTestPreset.buildInstallerB(rom,seed);
+        buildIntoWc3(script,Path.of(args[3]),Path.of(args[4]));
+        System.out.print(SharedHotkeyPartyIvSmokeTestPreset.report(rom,seed));
+    }
+
+    private static void buildSharedPartyIvSmokeInstallCWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-shared-party-iv-smoke-install-c-wc3 <rom> <seed-hex> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]); int seed = Integer.parseUnsignedInt(args[2],16);
+        RamScript script = SharedHotkeyPartyIvSmokeTestPreset.buildInstallerC(rom,seed);
+        buildIntoWc3(script,Path.of(args[3]),Path.of(args[4]));
+        System.out.print(SharedHotkeyPartyIvSmokeTestPreset.report(rom,seed));
+    }
+
+    private static void buildSharedPartyIvSmokeRuntimeWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-shared-party-iv-smoke-runtime-wc3 <rom> <seed-hex> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]); int seed = Integer.parseUnsignedInt(args[2],16);
+        TriggerBuildResult result = SharedHotkeyPartyIvSmokeTestPreset.buildRuntime(rom,seed);
+        buildIntoWc3(result.ramScript(),Path.of(args[3]),Path.of(args[4]));
+        System.out.println("Shared Party IV runtime: " + result.totalScriptBytes() + "/995 B; free " + result.freeScriptBytes() + " B");
+        System.out.print(SharedHotkeyPartyIvSmokeTestPreset.report(rom,seed));
+    }
+
+    private static void buildPartyIvStagingCheckWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-party-iv-staging-check-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        RamScript script = PartyIvStagingDiagnostic.build(rom);
+        buildIntoWc3(script, Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Build 22E Party IV staging-copy diagnostic built (module is NOT executed).");
+    }
+
+    private static void buildPartyIvDirectCallCheckWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-party-iv-direct-call-check-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        RamScript script = PartyIvDirectCallDiagnostic.build(rom);
+        buildIntoWc3(script, Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Build 22F Party IV direct-call diagnostic built (persistent module staged, then called directly by Field Script).");
+    }
 
     private static void printUsage() {
         System.out.println("ramscript-tools");
