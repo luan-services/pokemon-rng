@@ -88,6 +88,11 @@ public final class Main {
                 case "build-persistent-field-hotkey-runtime-wc3" -> buildPersistentFieldHotkeyRuntimeWc3(args);
                 case "build-persistent-gateway-hotkey-install-wc3" -> buildPersistentGatewayHotkeyInstallWc3(args);
                 case "build-persistent-gateway-hotkey-runtime-wc3" -> buildPersistentGatewayHotkeyRuntimeWc3(args);
+                case "build-shared-hotkey-smoke-install-wc3" -> buildSharedHotkeySmokeInstallWc3(args);
+                case "build-shared-hotkey-smoke-runtime-wc3" -> buildSharedHotkeySmokeRuntimeWc3(args);
+                case "build-shared-native-smoke-install-a-wc3" -> buildSharedNativeSmokeInstallAWc3(args);
+                case "build-shared-native-smoke-install-b-wc3" -> buildSharedNativeSmokeInstallBWc3(args);
+                case "build-shared-native-smoke-runtime-wc3" -> buildSharedNativeSmokeRuntimeWc3(args);
 
                 /* Compatibility aliases kept from the experimental v5 CLI. */
                 case "build-aurora" -> requireArgs(args, 3, () ->
@@ -1161,6 +1166,58 @@ public final class Main {
         System.out.println("  IWRAM resolver: none");
         System.out.println("  SB1 gateway: setvaddress + vgoto only");
         System.out.println("  payload storage: validated 1024-byte SB2 region");
+        System.out.printf("  RamScript total: %d / %d%n", result.totalScriptBytes(), RamScript.SCRIPT_SIZE);
+        System.out.printf("  RamScript free:  %d%n", result.freeScriptBytes());
+    }
+
+
+
+    private static void buildSharedNativeSmokeInstallAWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-shared-native-smoke-install-a-wc3 <rom> <seed-hex> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int seed = Integer.parseInt(args[2], 16);
+        buildIntoWc3(SharedHotkeyNativeSmokeTestPreset.buildInstallerA(rom, seed), Path.of(args[3]), Path.of(args[4]));
+        System.out.println("Build 20 LAB native smoke installer A built.");
+        System.out.print(SharedHotkeyNativeSmokeTestPreset.report(rom, seed));
+    }
+
+    private static void buildSharedNativeSmokeInstallBWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-shared-native-smoke-install-b-wc3 <rom> <seed-hex> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int seed = Integer.parseInt(args[2], 16);
+        buildIntoWc3(SharedHotkeyNativeSmokeTestPreset.buildInstallerB(rom, seed), Path.of(args[3]), Path.of(args[4]));
+        System.out.println("Build 20 LAB native smoke installer B built.");
+    }
+
+    private static void buildSharedNativeSmokeRuntimeWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-shared-native-smoke-runtime-wc3 <rom> <seed-hex> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int seed = Integer.parseInt(args[2], 16);
+        TriggerBuildResult result = SharedHotkeyNativeSmokeTestPreset.buildRuntime(rom, seed);
+        buildIntoWc3(result.ramScript(), Path.of(args[3]), Path.of(args[4]));
+        System.out.println("Build 20 LAB shared native runtime built.");
+        System.out.printf("RamScript total/free: %d / %d B%n", result.totalScriptBytes(), result.freeScriptBytes());
+    }
+    private static void buildSharedHotkeySmokeInstallWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-shared-hotkey-smoke-install-wc3 <rom> <seed-hex> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int seed = parseSeed(args[2]);
+        RamScript script = SharedHotkeySmokeTestPreset.buildInstaller(rom, seed);
+        buildIntoWc3(script, Path.of(args[3]), Path.of(args[4]));
+        System.out.println("Build 19 LAB shared-hotkey smoke installer built.");
+        System.out.print(SharedHotkeySmokeTestPreset.placementReport(rom, seed));
+        System.out.println("  bindings after runtime install: R+SELECT=Seed, R+B=Repel, R+A=Probe");
+    }
+
+    private static void buildSharedHotkeySmokeRuntimeWc3(String[] args) throws Exception {
+        if (args.length != 5) throw new IllegalArgumentException("Usage: build-shared-hotkey-smoke-runtime-wc3 <rom> <seed-hex> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int seed = parseSeed(args[2]);
+        TriggerBuildResult result = SharedHotkeySmokeTestPreset.buildRuntime(rom, seed);
+        buildIntoWc3(result.ramScript(), Path.of(args[3]), Path.of(args[4]));
+        System.out.println("Build 19 LAB shared-hotkey runtime built.");
+        System.out.println("  bindings: R+SELECT -> Seed, R+B -> Repel, R+A -> Probe");
+        System.out.println("  dispatcher: Field Script, deferred after callback1");
         System.out.printf("  RamScript total: %d / %d%n", result.totalScriptBytes(), RamScript.SCRIPT_SIZE);
         System.out.printf("  RamScript free:  %d%n", result.freeScriptBytes());
     }
