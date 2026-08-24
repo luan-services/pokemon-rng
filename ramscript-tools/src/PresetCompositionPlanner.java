@@ -147,7 +147,12 @@ final class PresetCompositionPlanner {
                     rom, HotkeyButton.R, entries, support, supportAlignment).totalScriptBytes();
         }
 
-        int sb2 = calculateSb2(chosen, nativeCount);
+        int sb2Payload = calculateSb2(chosen, nativeCount);
+        boolean persistentInstall = chosen.stream().anyMatch(item -> isSharedPersistent(item.deployment().kind()));
+        if (persistentInstall && sb2Payload > InstallationManifest.OFFSET - PayloadStorageArea.SAVE_BLOCK2.offset()) {
+            throw new IllegalArgumentException("SB2 payload capacity exceeded after reserving installation manifest");
+        }
+        int sb2 = sb2Payload + (persistentInstall ? InstallationManifest.SIZE : 0);
         if (ramScript > RamScript.SCRIPT_SIZE) throw new IllegalArgumentException("RamScript capacity exceeded");
         if (sb2 > PayloadStorageArea.SAVE_BLOCK2.capacity()) throw new IllegalArgumentException("SB2 capacity exceeded");
 

@@ -21,6 +21,11 @@ final class CompositionArtifactBuilder {
         ConcreteCompositionLayout layout = plan.concreteLayout();
         Map<String, byte[]> components = new HashMap<>();
 
+        boolean persistentInstall = plan.selections().stream().anyMatch(item ->
+                item.deployment().kind() == PresetDeploymentKind.SHARED_PERSISTENT_FIELD_SCRIPT
+                        || item.deployment().kind() == PresetDeploymentKind.SHARED_PERSISTENT_NATIVE);
+        if (persistentInstall) components.put("installation-manifest", InstallationManifest.build(plan));
+
         if (layout.hasNativeCatalog()) {
             components.put("native-catalog", buildNativeCatalog(plan));
         }

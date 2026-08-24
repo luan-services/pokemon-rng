@@ -36,6 +36,7 @@ public final class Main {
                 case "plan-presets" -> planPresets(args);
                 case "plan-installation" -> planInstallation(args);
                 case "build-planned-installation-wc3" -> buildPlannedInstallationWc3(args);
+                case "build-toolkit-cleaner-wc3" -> buildToolkitCleanerWc3(args);
 
                 case "build-preset-bin" -> buildPresetBin(args);
                 case "build-preset-wc3" -> buildPresetWc3(args);
@@ -211,6 +212,18 @@ public final class Main {
         }
         System.out.println();
         System.out.print(plan.report());
+    }
+
+
+    private static void buildToolkitCleanerWc3(String[] args) throws Exception {
+        if (args.length != 4) {
+            throw new IllegalArgumentException("Usage: build-toolkit-cleaner-wc3 <rom> <input.wc3> <output.wc3>");
+        }
+        RomProfile rom = RomProfile.fromId(args[1]);
+        RamScript cleaner = ToolkitCleanerPreset.build(rom);
+        buildIntoWc3(cleaner, Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Toolkit Cleaner generated: " + Path.of(args[3]));
+        System.out.println("Cleaner only removes Build-34+ manifest-tagged installations and refuses while the hotkey runtime is active.");
     }
 
     private static void extractBinary(Path inputWc3, Path outputBin) throws Exception {

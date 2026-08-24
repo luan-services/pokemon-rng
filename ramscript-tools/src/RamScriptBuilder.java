@@ -125,6 +125,11 @@ final class RamScriptBuilder {
         return this;
     }
 
+    RamScriptBuilder nop() {
+        opcode(0x00);
+        return this;
+    }
+
     /* --- Variables / comparisons / flags --- */
 
     RamScriptBuilder setVar(int variable, int value) {

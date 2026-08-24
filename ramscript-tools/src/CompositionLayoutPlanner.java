@@ -85,8 +85,8 @@ final class CompositionLayoutPlanner {
 
         int sb1Start = PayloadStorageArea.SAVE_BLOCK1.offset();
         if (nextGateway + SB1_GATEWAY_SIZE < sb1Start) throw new IllegalArgumentException("SB1 gateway capacity exceeded");
-        int sb2End = sb2Start + PayloadStorageArea.SAVE_BLOCK2.capacity();
-        if (sb2Cursor > sb2End) throw new IllegalArgumentException("SB2 capacity exceeded by concrete layout");
+        int sb2End = InstallationManifest.OFFSET;
+        if (sb2Cursor > sb2End) throw new IllegalArgumentException("SB2 payload capacity exceeded after reserving installation manifest");
 
         return new ConcreteCompositionLayout(allocations, bindingPlan, nativeCatalogOffset, nativeCatalogSize);
     }

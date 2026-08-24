@@ -216,3 +216,12 @@ For the validated four-preset layout, this currently generates:
 
 The persistent bytes and runtime are equivalent to the Build-27b/28 baseline;
 the new two-installer grouping still requires in-game validation.
+
+
+## Build 34 lifecycle support
+
+Planner-generated persistent installations now carry a 32-byte `RSPK` manifest at `SB2+0x0F00`.
+Use `build-toolkit-cleaner-wc3` to generate a conservative deliveryman Cleaner that only erases a recognized
+manifest-tagged toolkit installation and refuses to run while the resident hotkey runtime is active.
+
+See `docs/INSTALLATION_MANIFEST_AND_CLEANER.md` and `docs/PRESET_VALIDATION_MATRIX.md`.

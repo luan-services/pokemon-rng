@@ -50,6 +50,9 @@ final class CompositionInstallationPlanner {
         ConcreteCompositionLayout layout = composition.concreteLayout();
         List<InstallationWrite> out = new ArrayList<>();
 
+        // Manifest is written last logically so a partial installation is never
+        // mistaken for a complete toolkit installation by Cleaner.
+
         if (layout.hasNativeCatalog()) {
             out.add(new InstallationWrite("native-catalog", InstallationTarget.SAVE_BLOCK2,
                     layout.nativeCatalogOffset(), layout.nativeCatalogSize()));
@@ -71,6 +74,8 @@ final class CompositionInstallationPlanner {
                         allocation.sb2FieldScriptOffset(), allocation.sb2FieldScriptSize()));
             }
         }
+        out.add(new InstallationWrite("installation-manifest", InstallationTarget.SAVE_BLOCK2,
+                InstallationManifest.OFFSET, InstallationManifest.SIZE));
         return List.copyOf(out);
     }
 
