@@ -38,6 +38,8 @@ final class HotkeyBindingComposer {
                         new HotkeyPayload(second.binding().hotkey(), second.entryPayload())
                 );
             }
+            case SHARED_HOTKEY_RUNTIME -> throw new IllegalArgumentException(
+                    "generic shared-runtime materialization requires concrete placement; use PresetCompositionPlanner/installation planner");
             case NONE -> throw new IllegalStateException("non-empty payload list cannot select NONE runtime");
         };
     }

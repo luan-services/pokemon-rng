@@ -2,62 +2,49 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/*
-   Architecture-aware hotkey binding selection for the validated runtime paths.
-
-   This class deliberately does NOT invent a generic IWRAM decoder. It chooses
-   only among execution paths that already have in-game validation:
-
-   0 bindings -> no hotkey runtime
-   1 binding  -> HotkeyRuntimeV1
-   2 compatible bindings -> MultiHotkeyRuntimeV1
-
-   More bindings, duplicate chords, or an incompatible two-binding pair are
-   rejected with an explicit diagnostic. That keeps the old simple runtime
-   paths first-class instead of silently routing everything through an
-   experimental generic dispatcher.
-*/
+/* Chooses/validates one of the hotkey runtimes that has reached production.
+   plan() prefers the smallest legacy runtime when possible. planShared() is
+   used by persistent multi-preset compositions that explicitly require the
+   validated SharedHotkeyRuntime. */
 final class HotkeyBindingAllocator {
     private HotkeyBindingAllocator() {}
 
     static HotkeyBindingPlan plan(List<HotkeyBinding> bindings) {
-        if (bindings == null) throw new IllegalArgumentException("bindings must not be null");
-        List<HotkeyBinding> copy = List.copyOf(bindings);
-        validateUnique(copy);
-
-        if (copy.isEmpty()) {
-            return new HotkeyBindingPlan(copy, HotkeyBindingRuntime.NONE, "no hotkey runtime required");
-        }
-
+        List<HotkeyBinding> copy = validate(bindings);
+        if (copy.isEmpty()) return new HotkeyBindingPlan(copy, HotkeyBindingRuntime.NONE, "no hotkey runtime required");
         if (copy.size() == 1) {
-            return new HotkeyBindingPlan(
-                    copy,
-                    HotkeyBindingRuntime.SINGLE_HOTKEY_V1,
-                    "uses validated HotkeyRuntimeV1"
-            );
+            return new HotkeyBindingPlan(copy, HotkeyBindingRuntime.SINGLE_HOTKEY_V1, "uses validated HotkeyRuntimeV1");
         }
+        if (copy.size() == 2 && isMultiV1Compatible(copy.get(0).hotkey(), copy.get(1).hotkey())) {
+            return new HotkeyBindingPlan(copy, HotkeyBindingRuntime.MULTI_HOTKEY_V1,
+                    "uses validated MultiHotkeyRuntimeV1 compact adjacent-bit decoder");
+        }
+        return sharedPlan(copy);
+    }
 
-        if (copy.size() == 2) {
-            Hotkey first = copy.get(0).hotkey();
-            Hotkey second = copy.get(1).hotkey();
-            if (!isMultiV1Compatible(first, second)) {
-                throw new IllegalArgumentException(
-                        "two bindings are not encodable by validated MultiHotkeyRuntimeV1: "
-                                + first.displayName() + " and " + second.displayName()
-                                + "; they must share the held button and use adjacent pressed-button bits"
-                );
+    static HotkeyBindingPlan planShared(List<HotkeyBinding> bindings) {
+        List<HotkeyBinding> copy = validate(bindings);
+        if (copy.isEmpty()) throw new IllegalArgumentException("shared hotkey runtime needs at least one binding");
+        return sharedPlan(copy);
+    }
+
+    private static HotkeyBindingPlan sharedPlan(List<HotkeyBinding> copy) {
+        if (copy.size() > 8) throw new IllegalArgumentException("SharedHotkeyRuntime supports at most eight bindings");
+        HotkeyButton modifier = copy.get(0).hotkey().heldButton();
+        if (modifier != HotkeyButton.R && modifier != HotkeyButton.L) {
+            throw new IllegalArgumentException("SharedHotkeyRuntime modifier must be R or L");
+        }
+        for (HotkeyBinding binding : copy) {
+            Hotkey hotkey = binding.hotkey();
+            if (hotkey.heldButton() != modifier) {
+                throw new IllegalArgumentException("shared bindings must use the same held modifier");
             }
-            return new HotkeyBindingPlan(
-                    copy,
-                    HotkeyBindingRuntime.MULTI_HOTKEY_V1,
-                    "uses validated MultiHotkeyRuntimeV1 compact adjacent-bit decoder"
-            );
+            if (hotkey.pressedButton().bit() > 7) {
+                throw new IllegalArgumentException("shared runtime pressed button must be A/B/SELECT/START/direction");
+            }
         }
-
-        throw new IllegalArgumentException(
-                "validated hotkey runtimes currently support at most two bindings; requested " + copy.size()
-                        + ". A generic 3+ binding decoder is a separate runtime milestone."
-        );
+        return new HotkeyBindingPlan(copy, HotkeyBindingRuntime.SHARED_HOTKEY_RUNTIME,
+                "uses validated SharedHotkeyRuntime generic low-byte dispatcher");
     }
 
     static boolean isMultiV1Compatible(Hotkey first, Hotkey second) {
@@ -66,10 +53,12 @@ final class HotkeyBindingAllocator {
         return Math.abs(first.pressedButton().bit() - second.pressedButton().bit()) == 1;
     }
 
-    private static void validateUnique(List<HotkeyBinding> bindings) {
+    private static List<HotkeyBinding> validate(List<HotkeyBinding> bindings) {
+        if (bindings == null) throw new IllegalArgumentException("bindings must not be null");
+        List<HotkeyBinding> copy = List.copyOf(bindings);
         Set<String> presetIds = new HashSet<>();
         Set<Hotkey> hotkeys = new HashSet<>();
-        for (HotkeyBinding binding : bindings) {
+        for (HotkeyBinding binding : copy) {
             if (binding == null) throw new IllegalArgumentException("binding must not be null");
             if (!presetIds.add(binding.presetId())) {
                 throw new IllegalArgumentException("preset has more than one hotkey binding: " + binding.presetId());
@@ -78,5 +67,6 @@ final class HotkeyBindingAllocator {
                 throw new IllegalArgumentException("duplicate hotkey binding: " + binding.hotkey().displayName());
             }
         }
+        return copy;
     }
 }

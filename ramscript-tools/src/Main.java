@@ -32,6 +32,10 @@ public final class Main {
 
                 case "commands" -> requireArgs(args, 1, Main::printBuilderCatalog);
                 case "presets" -> requireArgs(args, 1, Main::printPresets);
+                case "preset-metadata" -> requireArgs(args, 2, () -> System.out.print(PresetCatalog.report(RomProfile.fromId(args[1]))));
+                case "plan-presets" -> planPresets(args);
+                case "plan-installation" -> planInstallation(args);
+                case "build-planned-installation-wc3" -> buildPlannedInstallationWc3(args);
 
                 case "build-preset-bin" -> buildPresetBin(args);
                 case "build-preset-wc3" -> buildPresetWc3(args);
@@ -150,6 +154,63 @@ public final class Main {
             System.err.println("Error: " + exception.getMessage());
             System.exit(1);
         }
+    }
+
+
+    private static void planPresets(String[] args) {
+        if (args.length < 3) {
+            throw new IllegalArgumentException("Usage: plan-presets <rom> <preset-id> [preset-id ...]");
+        }
+        RomProfile rom = RomProfile.fromId(args[1]);
+        java.util.List<String> ids = java.util.Arrays.asList(args).subList(2, args.length);
+        System.out.print(PresetCompositionPlanner.plan(rom, ids).report());
+    }
+
+    private static void planInstallation(String[] args) {
+        if (args.length < 3) {
+            throw new IllegalArgumentException("Usage: plan-installation <rom> <preset-id> [preset-id ...]");
+        }
+        RomProfile rom = RomProfile.fromId(args[1]);
+        List<String> ids = java.util.Arrays.asList(args).subList(2, args.length);
+        PresetCompositionPlan composition = PresetCompositionPlanner.plan(rom, ids);
+        InstallationPlan installation = CompositionInstallationPlanner.plan(composition);
+        System.out.print(composition.report());
+        System.out.println();
+        System.out.print(installation.report());
+    }
+
+
+    private static void buildPlannedInstallationWc3(String[] args) throws Exception {
+        if (args.length < 6) {
+            throw new IllegalArgumentException("Usage: build-planned-installation-wc3 <rom> <seed-hex> <input.wc3> <output-prefix> <preset-id> [preset-id ...]");
+        }
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int seed = Integer.parseUnsignedInt(args[2], 16);
+        Path input = Path.of(args[3]);
+        String prefix = args[4];
+        List<String> ids = java.util.Arrays.asList(args).subList(5, args.length);
+        PresetCompositionPlan composition = PresetCompositionPlanner.plan(rom, ids);
+        InstallationPlan plan = CompositionInstallationPlanner.plan(composition);
+        InstallationEmitter.EmittedInstallation emitted = InstallationEmitter.emit(plan, seed);
+
+        if (plan.localOnly()) {
+            Path output = Path.of(prefix + "-local.wc3");
+            buildIntoWc3(emitted.persistentStages().get(0).ramScript(), input, output);
+            System.out.println("Generated: " + output);
+        } else {
+            for (InstallationEmitter.EmittedStage stage : emitted.persistentStages()) {
+                Path output = Path.of(prefix + "-" + stage.name() + ".wc3");
+                buildIntoWc3(stage.ramScript(), input, output);
+                System.out.println("Generated: " + output);
+            }
+            if (emitted.runtime() != null) {
+                Path output = Path.of(prefix + "-runtime.wc3");
+                buildIntoWc3(emitted.runtime(), input, output);
+                System.out.println("Generated: " + output);
+            }
+        }
+        System.out.println();
+        System.out.print(plan.report());
     }
 
     private static void extractBinary(Path inputWc3, Path outputBin) throws Exception {

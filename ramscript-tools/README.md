@@ -1,3 +1,13 @@
+# Build 32 — automatic installation planning
+
+Build 32 adds a dry-run installation planner on top of the validated composition/placement baseline. It converts concrete SB1/SB2 writes into <=255-byte copy chunks, greedily packs temporary Wonder Card installer stages under the 995-byte RamScript limit, and keeps the shared runtime as a final stage. It does not emit new installer WC3s yet; see `BUILD-32-NOTES.md`.
+
+Example:
+
+```text
+java -cp out Main plan-installation fr10 seed-modifier repel party-iv-viewer show-secret-id
+```
+
 # ramscript-tools
 
 Build, inspect, compose, import and export FireRed/LeafGreen Wonder Card RamScripts.
@@ -164,3 +174,45 @@ java -cp out Main build-shared-native-runtime-wc3 fr10 1234 ../dummy-saves/custo
 ```
 
 The historical `build-shared-dual-native-smoke-*` names remain accepted as compatibility aliases.
+
+
+## Build 29: preset metadata catalog
+
+Build 29 adds planner-facing `PresetDefinition` / `PresetCatalog` metadata for Seed Modifier, Repel, Party IV Viewer and Show Secret ID. It separates per-preset byte costs from shared infrastructure requirements and preserves simpler deployment paths.
+
+Inspect metadata for a ROM profile:
+
+```powershell
+java -cp out Main preset-metadata fr10
+```
+
+See `BUILD-29-NOTES.md` and `docs/PRESET_CATALOG.md`. The next phase is the automatic composition/placement planner.
+
+## Build 30 planning layer
+
+`PresetCompositionPlanner` can now choose deployment modes and report memory/shared-infrastructure costs without changing runtime bytes. Use `plan-presets <rom> <preset-id>...` for a dry-run plan. See `docs/AUTOMATIC_COMPOSITION_PLANNER.md`.
+
+
+## Build 31 planning milestone
+
+`plan-presets` now reports both deployment/memory decisions and concrete default hotkeys + SB1/SB2 offsets. This remains dry-run planning; installation/WC generation from the plan is the next milestone.
+
+## Build 33 — Automatic installation emission
+
+`InstallationPlan` can now be emitted as real WC3 RamScripts using
+`InstallationEmitter` / `CompositionArtifactBuilder`.
+
+Example:
+
+```text
+java -cp out Main build-planned-installation-wc3 fr10 1234 input.wc3 output-prefix seed-modifier repel party-iv-viewer show-secret-id
+```
+
+For the validated four-preset layout, this currently generates:
+
+- `output-prefix-install-1.wc3`
+- `output-prefix-install-2.wc3`
+- `output-prefix-runtime.wc3`
+
+The persistent bytes and runtime are equivalent to the Build-27b/28 baseline;
+the new two-installer grouping still requires in-game validation.
