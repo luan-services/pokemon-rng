@@ -17,21 +17,35 @@ record PresetDefinition(
         Hotkey defaultHotkey,
         Set<RomProfile> supportedRoms,
         List<PresetDeploymentDefinition> deployments,
+        List<PresetValidationEntry> validationMatrix,
         String notes
 ) {
     PresetDefinition {
         if (id == null || id.isBlank()) throw new IllegalArgumentException("preset id must not be blank");
         if (displayName == null || displayName.isBlank()) throw new IllegalArgumentException("preset name must not be blank");
-        if (payloadType == null || supportedRoms == null || deployments == null) {
+        if (payloadType == null || supportedRoms == null || deployments == null || validationMatrix == null) {
             throw new IllegalArgumentException("preset definition fields must not be null");
         }
         supportedRoms = Set.copyOf(supportedRoms);
         deployments = List.copyOf(deployments);
+        validationMatrix = List.copyOf(validationMatrix);
         if (supportedRoms.isEmpty()) throw new IllegalArgumentException("preset must support at least one ROM profile");
         if (deployments.isEmpty()) throw new IllegalArgumentException("preset must expose at least one deployment mode");
         if (hotkeyCapable && defaultHotkey == null) throw new IllegalArgumentException("hotkey-capable preset needs a default hotkey");
         if (!hotkeyCapable && defaultHotkey != null) throw new IllegalArgumentException("non-hotkey preset must not declare a default hotkey");
         notes = notes == null ? "" : notes;
+    }
+
+
+    PresetValidationStatus validationStatus(PresetUsageMode usageMode, RomProfile rom) {
+        for (PresetValidationEntry entry : validationMatrix) {
+            if (entry.usageMode() == usageMode && entry.rom() == rom) return entry.status();
+        }
+        return PresetValidationStatus.UNSUPPORTED;
+    }
+
+    boolean isValidated(PresetUsageMode usageMode, RomProfile rom) {
+        return validationStatus(usageMode, rom) == PresetValidationStatus.VALIDATED_IN_GAME;
     }
 
     boolean supports(RomProfile rom) {

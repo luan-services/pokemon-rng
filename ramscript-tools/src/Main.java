@@ -33,6 +33,7 @@ public final class Main {
                 case "commands" -> requireArgs(args, 1, Main::printBuilderCatalog);
                 case "presets" -> requireArgs(args, 1, Main::printPresets);
                 case "preset-metadata" -> requireArgs(args, 2, () -> System.out.print(PresetCatalog.report(RomProfile.fromId(args[1]))));
+                case "preset-validation" -> requireArgs(args, 2, () -> System.out.print(PresetCatalog.validationReport(RomProfile.fromId(args[1]))));
                 case "plan-presets" -> planPresets(args);
                 case "plan-installation" -> planInstallation(args);
                 case "build-planned-installation-wc3" -> buildPlannedInstallationWc3(args);

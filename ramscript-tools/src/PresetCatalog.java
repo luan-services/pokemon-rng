@@ -14,6 +14,28 @@ final class PresetCatalog {
 
     private PresetCatalog() {}
 
+    private static List<PresetValidationEntry> validationMatrix(
+            Set<PresetUsageMode> supportedModes,
+            Set<PresetUsageMode> fr10ValidatedModes
+    ) {
+        java.util.ArrayList<PresetValidationEntry> out = new java.util.ArrayList<>();
+        for (RomProfile rom : RomProfile.values()) {
+            for (PresetUsageMode mode : PresetUsageMode.values()) {
+                PresetValidationStatus status;
+                if (!supportedModes.contains(mode)) {
+                    status = PresetValidationStatus.UNSUPPORTED;
+                } else if (rom == RomProfile.FIRE_RED_EN_10 && fr10ValidatedModes.contains(mode)) {
+                    status = PresetValidationStatus.VALIDATED_IN_GAME;
+                } else {
+                    status = PresetValidationStatus.SUPPORTED_NOT_TESTED;
+                }
+                out.add(new PresetValidationEntry(mode, rom, status, ""));
+            }
+        }
+        return List.copyOf(out);
+    }
+
+
     static List<PresetDefinition> all() {
         return List.of(seedModifier(), repel(), partyIvViewer(), showSecretId());
     }
@@ -57,6 +79,9 @@ final class PresetCatalog {
                                 "Validated as pure Field Script in SB2 through a 10-byte SB1 gateway."
                         )
                 ),
+                validationMatrix(
+                        Set.of(PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY),
+                        Set.of(PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY)),
                 "Seed value is a build parameter; catalog sizing uses representative 0x1234 and is invariant for this preset."
         );
     }
@@ -90,6 +115,9 @@ final class PresetCatalog {
                                 "Validated as pure Field Script in SB2."
                         )
                 ),
+                validationMatrix(
+                        Set.of(PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY),
+                        Set.of(PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY)),
                 "Pure Field Script; does not require the shared native staging service."
         );
     }
@@ -131,6 +159,9 @@ final class PresetCatalog {
                                 "Build-27b/28 baseline: native body in SB2, small bridge in SB2, one shared staging service."
                         )
                 ),
+                validationMatrix(
+                        Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY),
+                        Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY)),
                 "Complex native preset used to validate alignment, staging and shared-native composition."
         );
     }
@@ -172,6 +203,9 @@ final class PresetCatalog {
                                 "Validated with R+START in the dual-native shared-loader baseline."
                         )
                 ),
+                validationMatrix(
+                        Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SHARED_N_HOTKEY),
+                        Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SHARED_N_HOTKEY)),
                 "Deliveryman/local remains cheaper for a standalone SID request; persistent-native becomes useful in shared compositions."
         );
     }
@@ -200,4 +234,19 @@ final class PresetCatalog {
         }
         return out.toString();
     }
+
+    static String validationReport(RomProfile rom) {
+        if (rom == null) throw new IllegalArgumentException("ROM profile must not be null");
+        StringBuilder out = new StringBuilder();
+        out.append("Preset validation matrix for ").append(rom.displayName()).append("\n");
+        for (PresetDefinition preset : all()) {
+            out.append("\n").append(preset.id()).append(" — ").append(preset.displayName()).append("\n");
+            for (PresetUsageMode mode : PresetUsageMode.values()) {
+                out.append("  ").append(mode).append(": ")
+                        .append(preset.validationStatus(mode, rom)).append("\n");
+            }
+        }
+        return out.toString();
+    }
+
 }
