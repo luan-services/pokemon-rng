@@ -24,7 +24,11 @@ enum RomProfile {
             0x020370C0L,
             0x020370C2L,
             0x0803FBE9L,
-            0x02036DFCL
+            0x02036DFCL,
+            0x08042EC5L,
+            0x080CDDA9L,
+            0x0300537CL,
+            0x080568C5L
     ),
 
     LEAF_GREEN_EN_10(
@@ -52,7 +56,11 @@ enum RomProfile {
             0x020370C0L,
             0x020370C2L,
             0x0803FBE9L,
-            0x02036DFCL
+            0x02036DFCL,
+            0x08042EC5L,
+            0x080CDD7DL,
+            0x0300537CL,
+            0x080568C5L
     ),
 
     FIRE_RED_EN_11(
@@ -80,7 +88,11 @@ enum RomProfile {
             0x020370C0L,
             0x020370C2L,
             0x0803FBFDL,
-            0x02036DFCL
+            0x02036DFCL,
+            0x08042ED9L,
+            0x080CDDBDL,
+            0x0300537CL,
+            0x080568D9L
     ),
 
     LEAF_GREEN_EN_11(
@@ -108,7 +120,11 @@ enum RomProfile {
             0x020370C0L,
             0x020370C2L,
             0x0803FBFDL,
-            0x02036DFCL
+            0x02036DFCL,
+            0x08042ED9L,
+            0x080CDD91L,
+            0x0300537CL,
+            0x080568D9L
     );
 
     enum ValidationStatus {
@@ -162,6 +178,12 @@ enum RomProfile {
     final long getMonData3Thumb;
     final long mapHeader;
 
+    // Trade-evolution event helpers.
+    final long getEvolutionTargetSpeciesThumb;
+    final long beginEvolutionSceneThumb;
+    final long cb2AfterEvolution;
+    final long cb2ReturnToFieldContinueScriptThumb;
+
     RomProfile(
             String id,
             String displayName,
@@ -187,7 +209,11 @@ enum RomProfile {
             long specialVar8004,
             long specialVar8005,
             long getMonData3Thumb,
-            long mapHeader
+            long mapHeader,
+            long getEvolutionTargetSpeciesThumb,
+            long beginEvolutionSceneThumb,
+            long cb2AfterEvolution,
+            long cb2ReturnToFieldContinueScriptThumb
     ) {
         this.id = id;
         this.displayName = displayName;
@@ -214,6 +240,10 @@ enum RomProfile {
         this.specialVar8005 = specialVar8005;
         this.getMonData3Thumb = getMonData3Thumb;
         this.mapHeader = mapHeader;
+        this.getEvolutionTargetSpeciesThumb = getEvolutionTargetSpeciesThumb;
+        this.beginEvolutionSceneThumb = beginEvolutionSceneThumb;
+        this.cb2AfterEvolution = cb2AfterEvolution;
+        this.cb2ReturnToFieldContinueScriptThumb = cb2ReturnToFieldContinueScriptThumb;
     }
 
     String id() {

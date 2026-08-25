@@ -66,6 +66,18 @@ public final class Main {
                 case "build-party-iv-viewer-deliveryman-wc3" -> buildPartyIvViewerDeliverymanWc3(args);
                 case "build-party-ev-viewer-bin" -> buildPartyEvViewerBin(args);
                 case "build-party-ev-viewer-wc3" -> buildPartyEvViewerWc3(args);
+                case "build-trade-evolution-wc3" -> buildTradeEvolutionWc3(args);
+                case "build-party-selector-harness-wc3" -> buildPartySelectorHarnessWc3(args);
+                case "build-party-single-continuation-harness-wc3" -> buildPartySingleContinuationHarnessWc3(args);
+                case "build-party-callback-probe-wc3" -> buildPartyCallbackProbeWc3(args);
+                case "build-party-ramscript-resolve-probe-wc3" -> buildPartyRamScriptResolveProbeWc3(args);
+                case "build-party-scriptcontext-resume-probe-wc3" -> buildPartyScriptContextResumeProbeWc3(args);
+                case "build-trade-evolution-target-probe-wc3" -> buildTradeEvolutionTargetProbeWc3(args);
+                case "build-trade-evolution-scene-probe-wc3" -> buildTradeEvolutionSceneProbeWc3(args);
+                case "build-trade-evolution-scene-probe-47a-wc3" -> buildTradeEvolutionSceneProbe47aWc3(args);
+                case "build-trade-evolution-scene-probe-47b-wc3" -> buildTradeEvolutionSceneProbe47bWc3(args);
+                case "build-trade-evolution-scene-probe-47c-wc3" -> buildTradeEvolutionSceneProbe47cWc3(args);
+                case "build-trade-evolution-npc-wc3" -> buildTradeEvolutionNpcWc3(args);
                 case "build-party-ev-viewer-hotkey-wc3" -> buildPartyEvViewerHotkeyWc3(args);
                 case "build-lead-iv-viewer-wc3" -> buildLeadIvViewerWc3(args);
                 case "build-lead-iv-viewer-hotkey-wc3" -> buildLeadIvViewerHotkeyWc3(args);
@@ -440,6 +452,193 @@ public final class Main {
         TriggerBuildResult result = PartyEvViewerPreset.buildDeliveryman(rom);
         buildBinary(result.ramScript(), Path.of(args[2]));
         printPartyEvViewer(result);
+    }
+
+    private static void buildPartySelectorHarnessWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-party-selector-harness-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = PartySelectorHarnessPreset.buildDeliveryman(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Build 44 Party Selector Harness:");
+        System.out.println("  ROM: " + rom.displayName());
+        System.out.println("  payload bytes: " + result.payloadBytes());
+        System.out.println("  total script: " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  native helper: none");
+        System.out.println("  resident IWRAM: 0 B");
+        System.out.println("  success marker: VAR_0x8005 = 0x4402 after menu return");
+        System.out.println("  selection result: VAR_0x8006 copies VAR_RESULT");
+    }
+
+    private static void buildPartyCallbackProbeWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-party-callback-probe-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = PartyCallbackProbePreset.buildDeliveryman(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Build 45a Party Callback Probe:");
+        System.out.println("  ROM: " + rom.displayName());
+        System.out.println("  payload bytes: " + result.payloadBytes());
+        System.out.println("  total script: " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  IWRAM callback: marker-only at 03005310");
+        System.out.println("  callback marker: VAR_0x8005 = 0x45A1");
+        System.out.println("  no GetSavedRamScriptIfValid / no ScriptContext_SetupScript");
+    }
+
+    private static void buildPartyRamScriptResolveProbeWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-party-ramscript-resolve-probe-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = PartyRamScriptResolveProbePreset.buildDeliveryman(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Build 45b RamScript Resolve Probe:");
+        System.out.println("  ROM: " + rom.displayName());
+        System.out.println("  payload bytes: " + result.payloadBytes());
+        System.out.println("  total script: " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  callback calls GetSavedRamScriptIfValid only");
+        System.out.println("  marker 0x45B1: valid RamScript resolved");
+        System.out.println("  marker 0x45BF: resolver returned NULL");
+        System.out.println("  frozen-looking overworld is expected; ScriptContext is not resumed");
+    }
+
+    private static void buildPartyScriptContextResumeProbeWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-party-scriptcontext-resume-probe-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = PartyScriptContextResumeProbePreset.buildDeliveryman(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Build 45c ScriptContext Resume Probe:");
+        System.out.println("  ROM: " + rom.displayName());
+        System.out.println("  payload bytes: " + result.payloadBytes());
+        System.out.println("  total script: " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  corrected IWRAM literal loads: 03005358 / 0300535C");
+        System.out.println("  callback: resolve current RamScript -> +0x0C -> ScriptContext_SetupScript");
+        System.out.println("  success marker: VAR_0x8005 = 0x45C2");
+        System.out.println("  selected slot copy: VAR_0x8006 = VAR_0x8004");
+    }
+
+    private static void buildTradeEvolutionTargetProbeWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-trade-evolution-target-probe-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = TradeEvolutionTargetProbePreset.buildDeliveryman(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Build 46 Trade Evolution Target Probe:");
+        System.out.println("  ROM: " + rom.displayName());
+        System.out.println("  payload bytes: " + result.payloadBytes());
+        System.out.println("  total script: " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  success marker: VAR_0x8005 = 0x4602");
+        System.out.println("  selected slot: VAR_0x8006 = VAR_0x8004");
+        System.out.println("  trade target species: VAR_0x8007 = VAR_RESULT");
+        System.out.println("  target 0 means no stock trade evolution");
+    }
+
+
+    private static void buildTradeEvolutionNpcWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-trade-evolution-npc-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = TradeEvolutionNpcPreset.buildDeliveryman(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Build 48 Trade Evolution NPC:");
+        System.out.println("  ROM: " + rom.displayName());
+        System.out.println("  payload bytes: " + result.payloadBytes());
+        System.out.println("  total script: " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  dedicated Deliveryman preset; uses the validated 32-byte IWRAM continuation bridge");
+    }
+
+    private static void buildTradeEvolutionSceneProbe47cWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-trade-evolution-scene-probe-47c-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = TradeEvolutionSceneProbe47cPreset.buildDeliveryman(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Build 47c Trade Evolution Scene Probe (relocation base refreshed at both continuations):");
+        System.out.println("  ROM: " + rom.displayName());
+        System.out.println("  payload bytes: " + result.payloadBytes());
+        System.out.println("  total script: " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  0x47C1 = before Party; 0x47C2 = trade target checked");
+        System.out.println("  0x47C3 = evolution scene returned through the second relocation bridge");
+        System.out.println("  0x47C0 = selected Pokemon has no stock trade evolution");
+        System.out.println("  0x47CC = Party selection was cancelled/invalid");
+        System.out.println("  slot: VAR_0x8006; target: VAR_0x8007");
+    }
+
+    private static void buildTradeEvolutionSceneProbe47bWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-trade-evolution-scene-probe-47b-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = TradeEvolutionSceneProbe47bPreset.buildDeliveryman(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Build 47b Trade Evolution Scene Probe (two relocation bridges + no-target guard):");
+        System.out.println("  ROM: " + rom.displayName());
+        System.out.println("  payload bytes: " + result.payloadBytes());
+        System.out.println("  total script: " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  0x47B1 = before Party; 0x47B2 = trade target checked");
+        System.out.println("  0x47B3 = evolution scene returned through the second relocation bridge");
+        System.out.println("  0x47B0 = selected Pokemon has no stock trade evolution");
+        System.out.println("  0x47BC = Party selection was cancelled/invalid");
+        System.out.println("  slot: VAR_0x8006; target: VAR_0x8007");
+    }
+
+    private static void buildTradeEvolutionSceneProbe47aWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-trade-evolution-scene-probe-47a-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = TradeEvolutionSceneProbe47aPreset.buildDeliveryman(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Build 47a Trade Evolution Scene Probe (r3-preserving thunk):");
+        System.out.println("  ROM: " + rom.displayName());
+        System.out.println("  payload bytes: " + result.payloadBytes());
+        System.out.println("  total script: " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  0x47A1 = before Party; 0x47A2 = before evolution scene");
+        System.out.println("  0x47A3 = evolution completed and script resumed");
+        System.out.println("  slot: VAR_0x8006");
+    }
+
+    private static void buildTradeEvolutionSceneProbeWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-trade-evolution-scene-probe-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = TradeEvolutionSceneProbePreset.buildDeliveryman(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Build 47 Trade Evolution Scene Probe:");
+        System.out.println("  ROM: " + rom.displayName());
+        System.out.println("  payload bytes: " + result.payloadBytes());
+        System.out.println("  total script: " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  0x4701 = before Party; 0x4702 = before evolution scene");
+        System.out.println("  0x4703 = evolution completed and script resumed");
+        System.out.println("  0x47F0 = no stock trade evolution");
+        System.out.println("  slot: VAR_0x8006; target: VAR_0x8007");
+    }
+
+    private static void buildPartySingleContinuationHarnessWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-party-single-continuation-harness-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = PartySingleSelectContinuationHarnessPreset.buildDeliveryman(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Build 45 Single-select Continuation Harness:");
+        System.out.println("  ROM: " + rom.displayName());
+        System.out.println("  payload bytes: " + result.payloadBytes());
+        System.out.println("  total script: " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  dedicated IWRAM callback: 32 B at 03005310");
+        System.out.println("  success marker: VAR_0x8005 = 0x4502 after relocation-safe return");
+        System.out.println("  selected slot copy: VAR_0x8006 = VAR_0x8004");
+    }
+
+    private static void buildTradeEvolutionWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-trade-evolution-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = TradeEvolutionPreset.buildDeliveryman(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Trade Evolution prototype:");
+        System.out.println("  ROM: " + rom.displayName());
+        System.out.println("  payload bytes: " + result.payloadBytes());
+        System.out.println("  total script: " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  resident IWRAM: 0 B");
+        System.out.println("  trigger: deliveryman (prototype)");
     }
 
     private static void buildPartyEvViewerWc3(String[] args) throws Exception {

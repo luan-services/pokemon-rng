@@ -352,6 +352,11 @@ final class RamScriptBuilder {
         return this;
     }
 
+    RamScriptBuilder waitState() {
+        opcode(0x27);
+        return this;
+    }
+
     /* These use absolute function addresses and are therefore ROM-build dependent.
        They are primitives for later native-code research; normal custom events
        should prefer regular script commands or special/specialvar. */
