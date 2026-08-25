@@ -16,6 +16,10 @@ final class PartyIvViewerPreset {
         );
     }
 
+    static TriggerBuildResult buildDeliveryman(RomProfile rom) {
+        return TriggerComposer.compose(EventTrigger.DELIVERYMAN, rom, buildPayload(rom));
+    }
+
     static byte[] buildPayload(RomProfile rom) {
         long copierAddress = rom.stringVar4 + 0x100L;
         long helperAddress = CpuSetNativeHelperInstaller.helperDestination(copierAddress);

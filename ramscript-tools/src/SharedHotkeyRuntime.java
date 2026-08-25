@@ -21,6 +21,14 @@ final class SharedHotkeyRuntime {
     private static final int BLOCK_COUNT = 13;
     private static final int TABLE_SIZE = BLOCK_COUNT * 4;
 
+    record ResidentMaintenance(byte[] code, int offset) {
+        ResidentMaintenance {
+            if (code == null || code.length == 0) throw new IllegalArgumentException("maintenance code must not be empty");
+            if (offset < PAYLOAD_OFFSET) throw new IllegalArgumentException("maintenance offset must be inside RamScript payload area");
+            code = code.clone();
+        }
+    }
+
     private SharedHotkeyRuntime() {}
 
     static TriggerBuildResult compose(
@@ -28,7 +36,7 @@ final class SharedHotkeyRuntime {
             HotkeyButton modifier,
             List<SharedHotkeyDispatcher.Entry> entries
     ) {
-        return compose(rom, modifier, entries, new byte[0], 1);
+        return compose(rom, modifier, entries, new byte[0], 1, null);
     }
 
     static TriggerBuildResult compose(
@@ -38,19 +46,32 @@ final class SharedHotkeyRuntime {
             byte[] sharedSupport,
             int sharedSupportAlignment
     ) {
+        return compose(rom, modifier, entries, sharedSupport, sharedSupportAlignment, null);
+    }
+
+    static TriggerBuildResult compose(
+            RomProfile rom,
+            HotkeyButton modifier,
+            List<SharedHotkeyDispatcher.Entry> entries,
+            byte[] sharedSupport,
+            int sharedSupportAlignment,
+            ResidentMaintenance maintenance
+    ) {
         validate(rom, modifier, entries);
         if (sharedSupport == null) throw new IllegalArgumentException("sharedSupport must not be null");
         if (sharedSupportAlignment < 1 || (sharedSupportAlignment & (sharedSupportAlignment - 1)) != 0) {
             throw new IllegalArgumentException("sharedSupportAlignment must be a positive power of two");
         }
         byte[] dispatcher = SharedHotkeyDispatcher.build(entries);
-        byte[] nativeBlob = nativeInstallerBlob(rom, modifier);
+        byte[] nativeBlob = nativeInstallerBlob(rom, modifier, maintenance != null);
 
         int afterDispatcher = PAYLOAD_OFFSET + dispatcher.length;
         int sharedSupportOffset = align(afterDispatcher, sharedSupportAlignment);
         int afterSupport = sharedSupportOffset + sharedSupport.length;
         int nativeBlobOffset = align4(afterSupport);
-        byte[] bootstrap = HotkeyRuntimeV1.bootstrapBytes(rom, nativeBlobOffset);
+        byte[] bootstrap = maintenance == null
+                ? HotkeyRuntimeV1.bootstrapBytes(rom, nativeBlobOffset)
+                : maintenanceBootstrapBytes(nativeBlobOffset, maintenance.offset());
         int fieldInstallerOffset = nativeBlobOffset + nativeBlob.length;
 
         byte[] fieldInstaller = new FieldScriptWriter()
@@ -147,27 +168,31 @@ final class SharedHotkeyRuntime {
     }
 
     static int nativeBlobSize(RomProfile rom, HotkeyButton modifier) {
-        return nativeInstallerBlob(rom, modifier).length;
+        return nativeInstallerBlob(rom, modifier, false).length;
     }
 
     static int dispatcherSize(int bindings) {
         return SharedHotkeyDispatcher.sizeForBindings(bindings);
     }
 
-    private static byte[] nativeInstallerBlob(RomProfile rom, HotkeyButton modifier) {
-        List<RuntimeV1ResidentBlocks.Block> blocks = residentBlocks(rom, modifier);
+    private static byte[] nativeInstallerBlob(RomProfile rom, HotkeyButton modifier, boolean maintenance) {
+        List<RuntimeV1ResidentBlocks.Block> blocks = residentBlocks(rom, modifier, maintenance);
         int residentBytes = totalResidentBytes(blocks);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         // Same byte copier / atomic VBlank hook as validated Runtime v1.
-        // 13 records => table is 52 B and resident data starts at blob+108.
+        // Maintenance reuses the existing VBlank tail literal, so that literal is
+        // dynamically patched by the temporary bootstrap and omitted from the
+        // resident copy table. No new IWRAM block is reserved.
+        int blockCount = blocks.size();
+        int residentDataOffset = NATIVE_CODE_AND_LITERALS_SIZE + blockCount * 4;
         byte[] codeAndLiterals = new byte[] {
                 (byte)0xF0,(byte)0xB4,
                 0x0D,(byte)0xA4,
-                0x19,(byte)0xA6,             // data at blob+108
+                0x00,(byte)0xA6,             // adr r6,data (patched below)
                 0x03,0x27,
                 0x3F,0x06,
-                0x0D,0x25,                   // 13 resident blocks
+                0x00,0x25,                   // resident block count (patched below)
                 0x21,(byte)0x88,
                 0x62,(byte)0x88,
                 0x04,0x34,
@@ -192,6 +217,12 @@ final class SharedHotkeyRuntime {
         if (codeAndLiterals.length != NATIVE_CODE_AND_LITERALS_SIZE) {
             throw new IllegalStateException("shared native copier size mismatch");
         }
+        int adrImm = (residentDataOffset - 8) / 4;
+        if (residentDataOffset < 8 || ((residentDataOffset - 8) & 3) != 0 || adrImm > 255) {
+            throw new IllegalStateException("shared resident data offset cannot be encoded by Thumb ADR");
+        }
+        putU16(codeAndLiterals, 0x04, 0xA600 | adrImm);
+        codeAndLiterals[0x0A] = (byte)blockCount;
         out.writeBytes(codeAndLiterals);
 
         for (RuntimeV1ResidentBlocks.Block block : blocks) {
@@ -204,17 +235,20 @@ final class SharedHotkeyRuntime {
         for (RuntimeV1ResidentBlocks.Block block : blocks) out.writeBytes(block.data());
 
         byte[] blob = out.toByteArray();
-        int expected = NATIVE_CODE_AND_LITERALS_SIZE + TABLE_SIZE + residentBytes;
+        int expected = NATIVE_CODE_AND_LITERALS_SIZE + blockCount * 4 + residentBytes;
         if (blob.length != expected) throw new IllegalStateException("shared native blob size mismatch");
         return blob;
     }
 
-    private static List<RuntimeV1ResidentBlocks.Block> residentBlocks(RomProfile rom, HotkeyButton modifier) {
+    private static List<RuntimeV1ResidentBlocks.Block> residentBlocks(RomProfile rom, HotkeyButton modifier, boolean maintenance) {
         // Start from the exact single-hotkey V1 blocks so stage1/stage2,
         // validator, supervisor, thunks and their addresses stay unchanged.
         List<RuntimeV1ResidentBlocks.Block> base = RuntimeV1ResidentBlocks.build(rom, Hotkey.DEFAULT);
         List<RuntimeV1ResidentBlocks.Block> out = new ArrayList<>();
         for (RuntimeV1ResidentBlocks.Block block : base) {
+            if (maintenance && block.address() == RuntimeV1ResidentBlocks.ORIGINAL_VBLANK_LITERAL) {
+                continue;
+            }
             if (block.address() == RuntimeV1ResidentBlocks.WRAPPER) {
                 out.add(new RuntimeV1ResidentBlocks.Block(block.address(), wrapperBytesForTest(rom, modifier)));
             } else if (block.address() == RuntimeV1ResidentBlocks.SAFETY_GATE) {
@@ -231,8 +265,41 @@ final class SharedHotkeyRuntime {
         putU32(pool, 6, rom.cb1OverworldThumb); // 0300535C
         out.add(new RuntimeV1ResidentBlocks.Block(SHARED_LITERAL_POOL, pool));
 
-        if (out.size() != BLOCK_COUNT) throw new IllegalStateException("shared runtime block count mismatch");
+        int expectedBlocks = maintenance ? BLOCK_COUNT - 1 : BLOCK_COUNT;
+        if (out.size() != expectedBlocks) throw new IllegalStateException("shared runtime block count mismatch");
         return List.copyOf(out);
+    }
+
+    private static byte[] maintenanceBootstrapBytes(
+            int nativeBlobOffset,
+            int maintenanceOffset
+    ) {
+        int delta = nativeBlobOffset - maintenanceOffset;
+        if (delta < 0 || delta > 255) {
+            throw new IllegalArgumentException("maintenance code must be within 255 bytes before native blob");
+        }
+        byte[] out = new byte[] {
+                0x03,0x48,
+                0x00,0x68,
+                0x03,0x49,
+                0x00,0x22,
+                0x00,0x00,
+                0x03,0x4B,
+                0x00,0x00,
+                0x08,0x47,
+                0,0,0,0,
+                0,0,0,0,
+                0,0,0,0
+        };
+        out[0x06] = (byte)(delta & 0xFF);
+        out[0x07] = 0x22;                    // movs r2,#delta
+        putU16(out, 0x08, 0x1A8A);          // subs r2,r1,r2
+        putU16(out, 0x0C, 0x601A);          // str  r2,[r3]
+        putU32(out, 0x10, HotkeyRuntimeV1.S_ADDRESS_OFFSET);
+        putU32(out, 0x14, HotkeyRuntimeV1.VIRTUAL_BASE + nativeBlobOffset + 1L);
+        putU32(out, 0x18, RuntimeV1ResidentBlocks.ORIGINAL_VBLANK_LITERAL);
+        if (out.length > 32) throw new IllegalStateException("maintenance bootstrap exceeds WRAPPER staging slot");
+        return out;
     }
 
     private static int totalResidentBytes(List<RuntimeV1ResidentBlocks.Block> blocks) {
@@ -274,14 +341,14 @@ final class SharedHotkeyRuntime {
         return 0x0800 | (shift << 6) | (rm << 3) | rd;
     }
 
-    private static void u16(ByteArrayOutputStream out, int value) {
-        out.write(value & 0xFF);
-        out.write((value >>> 8) & 0xFF);
-    }
-
     private static void putU16(byte[] data, int offset, int value) {
         data[offset] = (byte)value;
         data[offset + 1] = (byte)(value >>> 8);
+    }
+
+    private static void u16(ByteArrayOutputStream out, int value) {
+        out.write(value & 0xFF);
+        out.write((value >>> 8) & 0xFF);
     }
 
     private static void putU32(byte[] data, int offset, long value) {

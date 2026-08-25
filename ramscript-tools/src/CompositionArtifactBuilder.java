@@ -59,13 +59,20 @@ final class CompositionArtifactBuilder {
         var item = plan.selections().get(0);
         return switch (item.deployment().kind()) {
             case DELIVERYMAN_LOCAL -> switch (item.preset().id()) {
+                case "party-iv-viewer" -> PartyIvViewerPreset.buildDeliveryman(plan.rom()).ramScript();
                 case "show-secret-id" -> RamScript.createWonderCard(ShowSecretIdPreset.buildScript(plan.rom()));
+                case "party-ev-viewer" -> PartyEvViewerPreset.buildDeliveryman(plan.rom()).ramScript();
+                case "lead-iv-viewer" -> LeadIvViewerPreset.buildDeliveryman(plan.rom()).ramScript();
+                case "lead-ev-viewer" -> LeadEvViewerPreset.buildDeliveryman(plan.rom()).ramScript();
                 default -> throw unsupported(item.preset().id(), item.deployment().kind());
             };
             case HOTKEY_LOCAL -> switch (item.preset().id()) {
                 case "seed-modifier" -> HotkeyRuntimeV1.build(plan.rom(), SeedModifierPreset.buildPayload(plan.rom(), seed));
                 case "repel" -> HotkeyRuntimeV1.build(plan.rom(), RepelHotkeyPreset.buildPayload());
                 case "party-iv-viewer" -> HotkeyRuntimeV1.build(plan.rom(), PartyIvViewerPreset.buildPayload(plan.rom()));
+                case "party-ev-viewer" -> HotkeyRuntimeV1.build(plan.rom(), PartyEvViewerPreset.buildPayload(plan.rom()));
+                case "lead-iv-viewer" -> HotkeyRuntimeV1.build(plan.rom(), LeadIvViewerPreset.buildPayload(plan.rom()));
+                case "lead-ev-viewer" -> HotkeyRuntimeV1.build(plan.rom(), LeadEvViewerPreset.buildPayload(plan.rom()));
                 default -> throw unsupported(item.preset().id(), item.deployment().kind());
             };
             default -> throw new IllegalArgumentException("composition is not local-only");
@@ -81,6 +88,12 @@ final class CompositionArtifactBuilder {
                         PersistentPartyIvViewerModule.MODULE_ID, PersistentPartyIvViewerModule.payload(plan.rom()));
                 case "show-secret-id" -> new PersistentNativeModuleSpec(
                         PersistentSecretIdModule.MODULE_ID, PersistentSecretIdModule.payload(plan.rom()));
+                case "party-ev-viewer" -> new PersistentNativeModuleSpec(
+                        PersistentPartyEvViewerModule.MODULE_ID, PersistentPartyEvViewerModule.payload(plan.rom()));
+                case "lead-iv-viewer" -> new PersistentNativeModuleSpec(
+                        PersistentLeadIvViewerModule.MODULE_ID, PersistentLeadIvViewerModule.payload(plan.rom()));
+                case "lead-ev-viewer" -> new PersistentNativeModuleSpec(
+                        PersistentLeadEvViewerModule.MODULE_ID, PersistentLeadEvViewerModule.payload(plan.rom()));
                 default -> throw unsupported(item.preset().id(), item.deployment().kind());
             });
         }
@@ -101,6 +114,37 @@ final class CompositionArtifactBuilder {
                                 .waitMessage().releaseAll().end(),
                         b -> b.vMessage("party_bad").waitMessage().waitButtonPress().releaseAll().end()
                                 .text("party_bad", "Persistent Party IV module invalid.")
+                ).fieldScript();
+            }
+
+            case "lead-iv-viewer" -> {
+                requireService(serviceOffset, allocation.presetId());
+                long target = virtualTargetFromSb2ToRamScript(allocation.sb2FieldScriptOffset(), serviceOffset);
+                yield PersistentNativeCallBridge.buildViaSharedStagingService(
+                        rom, PersistentLeadIvViewerModule.MODULE_ID, target, rom.stringVar4 + 0x140L, b -> {},
+                        b -> b.message(LeadIvNativeHelper.dynamicMessageAddress(rom)).waitMessage().releaseAll().end(),
+                        b -> b.vMessage("lead_iv_bad").waitMessage().waitButtonPress().releaseAll().end()
+                                .text("lead_iv_bad", "Persistent Lead IV module invalid.")
+                ).fieldScript();
+            }
+            case "lead-ev-viewer" -> {
+                requireService(serviceOffset, allocation.presetId());
+                long target = virtualTargetFromSb2ToRamScript(allocation.sb2FieldScriptOffset(), serviceOffset);
+                yield PersistentNativeCallBridge.buildViaSharedStagingService(
+                        rom, PersistentLeadEvViewerModule.MODULE_ID, target, rom.stringVar4 + 0x140L, b -> {},
+                        b -> b.message(LeadEvNativeHelper.dynamicMessageAddress(rom)).waitMessage().releaseAll().end(),
+                        b -> b.vMessage("lead_ev_bad").waitMessage().waitButtonPress().releaseAll().end()
+                                .text("lead_ev_bad", "Persistent Lead EV module invalid.")
+                ).fieldScript();
+            }
+            case "party-ev-viewer" -> {
+                requireService(serviceOffset, allocation.presetId());
+                long target=virtualTargetFromSb2ToRamScript(allocation.sb2FieldScriptOffset(),serviceOffset);
+                yield PersistentNativeCallBridge.buildViaSharedStagingService(
+                        rom,PersistentPartyEvViewerModule.MODULE_ID,target,rom.stringVar4+0x140L,b->{},
+                        b->b.message(PartyEvNativeHelper.dynamicMessageAddress(rom)).waitMessage().releaseAll().end(),
+                        b->b.vMessage("ev_bad").waitMessage().waitButtonPress().releaseAll().end()
+                                .text("ev_bad","Persistent Party EV module invalid.")
                 ).fieldScript();
             }
             case "show-secret-id" -> {

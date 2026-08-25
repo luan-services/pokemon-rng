@@ -23,7 +23,8 @@ enum RomProfile {
             0x02021D18L,
             0x020370C0L,
             0x020370C2L,
-            0x0803FBE9L
+            0x0803FBE9L,
+            0x02036DFCL
     ),
 
     LEAF_GREEN_EN_10(
@@ -50,7 +51,8 @@ enum RomProfile {
             0x02021D18L,
             0x020370C0L,
             0x020370C2L,
-            0x0803FBE9L
+            0x0803FBE9L,
+            0x02036DFCL
     ),
 
     FIRE_RED_EN_11(
@@ -77,7 +79,8 @@ enum RomProfile {
             0x02021D18L,
             0x020370C0L,
             0x020370C2L,
-            0x0803FBFDL
+            0x0803FBFDL,
+            0x02036DFCL
     ),
 
     LEAF_GREEN_EN_11(
@@ -104,7 +107,8 @@ enum RomProfile {
             0x02021D18L,
             0x020370C0L,
             0x020370C2L,
-            0x0803FBFDL
+            0x0803FBFDL,
+            0x02036DFCL
     );
 
     enum ValidationStatus {
@@ -156,6 +160,7 @@ enum RomProfile {
     final long specialVar8004;
     final long specialVar8005;
     final long getMonData3Thumb;
+    final long mapHeader;
 
     RomProfile(
             String id,
@@ -181,7 +186,8 @@ enum RomProfile {
             long stringVar4,
             long specialVar8004,
             long specialVar8005,
-            long getMonData3Thumb
+            long getMonData3Thumb,
+            long mapHeader
     ) {
         this.id = id;
         this.displayName = displayName;
@@ -207,6 +213,7 @@ enum RomProfile {
         this.specialVar8004 = specialVar8004;
         this.specialVar8005 = specialVar8005;
         this.getMonData3Thumb = getMonData3Thumb;
+        this.mapHeader = mapHeader;
     }
 
     String id() {

@@ -37,7 +37,7 @@ final class PresetCatalog {
 
 
     static List<PresetDefinition> all() {
-        return List.of(seedModifier(), repel(), partyIvViewer(), showSecretId());
+        return List.of(seedModifier(), repel(), partyIvViewer(), leadIvViewer(), partyEvViewer(), leadEvViewer(), showSecretId());
     }
 
     static PresetDefinition byId(String id) {
@@ -133,6 +133,12 @@ final class PresetCatalog {
                 ALL_PROFILES,
                 List.of(
                         new PresetDeploymentDefinition(
+                                PresetDeploymentKind.DELIVERYMAN_LOCAL,
+                                PresetDeploymentDefinition.infra(),
+                                FR10_VALIDATED,
+                                rom -> new PresetDeploymentCost(PartyIvViewerPreset.payloadSize(rom), 0, 0, 0, 1),
+                                "Validated deliveryman/native-helper path."),
+                        new PresetDeploymentDefinition(
                                 PresetDeploymentKind.HOTKEY_LOCAL,
                                 PresetDeploymentDefinition.infra(PresetInfrastructure.HOTKEY_RUNTIME),
                                 FR10_VALIDATED,
@@ -164,6 +170,137 @@ final class PresetCatalog {
                         Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY)),
                 "Complex native preset used to validate alignment, staging and shared-native composition."
         );
+    }
+
+
+
+    static PresetDefinition leadIvViewer() {
+        return new PresetDefinition(
+                "lead-iv-viewer", "Lead IV Viewer", PresetPayloadType.HYBRID_NATIVE,
+                true, true, new Hotkey(HotkeyButton.R, HotkeyButton.LEFT), ALL_PROFILES,
+                List.of(
+                        new PresetDeploymentDefinition(
+                                PresetDeploymentKind.DELIVERYMAN_LOCAL,
+                                PresetDeploymentDefinition.infra(), FR10_VALIDATED,
+                                rom -> new PresetDeploymentCost(LeadIvViewerPreset.payloadSize(rom),0,0,0,1),
+                                "Compact slot-0-only IV viewer; Build 40 validated in-game on FR1.0."),
+                        new PresetDeploymentDefinition(
+                                PresetDeploymentKind.HOTKEY_LOCAL,
+                                PresetDeploymentDefinition.infra(PresetInfrastructure.HOTKEY_RUNTIME),
+                                Set.of(),
+                                rom -> new PresetDeploymentCost(LeadIvViewerPreset.payloadSize(rom),0,0,0,1),
+                                "Standalone HotkeyRuntimeV1 path; same Lead IV payload, awaiting in-game validation."),
+                        new PresetDeploymentDefinition(
+                                PresetDeploymentKind.SHARED_PERSISTENT_NATIVE,
+                                PresetDeploymentDefinition.infra(
+                                        PresetInfrastructure.SHARED_HOTKEY_RUNTIME,
+                                        PresetInfrastructure.SHARED_NATIVE_STAGING_SERVICE,
+                                        PresetInfrastructure.SB1_GATEWAY,
+                                        PresetInfrastructure.SB2_NATIVE_CATALOG),
+                                Set.of(),
+                                rom -> {
+                                    byte[] bridge = PersistentNativeCallBridge.buildViaSharedStagingService(
+                                            rom, PersistentLeadIvViewerModule.MODULE_ID, 0x08010000L,
+                                            rom.stringVar4 + 0x140L, b -> {},
+                                            b -> b.message(LeadIvNativeHelper.dynamicMessageAddress(rom)).waitMessage().releaseAll().end(),
+                                            b -> b.vMessage("lead_iv_bad").waitMessage().waitButtonPress().releaseAll().end()
+                                                    .text("lead_iv_bad", "Persistent Lead IV module invalid.")
+                                    ).fieldScript();
+                                    return new PresetDeploymentCost(0, PayloadPlacementPlanner.GATEWAY_SIZE,
+                                            bridge.length, PersistentLeadIvViewerModule.payload(rom).length, 1);
+                                },
+                                "Compact persistent native body; shares existing staging/runtime.")),
+                validationMatrix(
+                        Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY),
+                        Set.of(PresetUsageMode.DELIVERYMAN)),
+                "Shows only party slot 0 to reduce native storage cost.");
+    }
+
+    static PresetDefinition leadEvViewer() {
+        return new PresetDefinition(
+                "lead-ev-viewer", "Lead EV Viewer", PresetPayloadType.HYBRID_NATIVE,
+                true, true, new Hotkey(HotkeyButton.R, HotkeyButton.RIGHT), ALL_PROFILES,
+                List.of(
+                        new PresetDeploymentDefinition(
+                                PresetDeploymentKind.DELIVERYMAN_LOCAL,
+                                PresetDeploymentDefinition.infra(), FR10_VALIDATED,
+                                rom -> new PresetDeploymentCost(LeadEvViewerPreset.payloadSize(rom),0,0,0,1),
+                                "Compact slot-0-only EV viewer; Build 40 validated in-game on FR1.0."),
+                        new PresetDeploymentDefinition(
+                                PresetDeploymentKind.HOTKEY_LOCAL,
+                                PresetDeploymentDefinition.infra(PresetInfrastructure.HOTKEY_RUNTIME),
+                                Set.of(),
+                                rom -> new PresetDeploymentCost(LeadEvViewerPreset.payloadSize(rom),0,0,0,1),
+                                "Standalone HotkeyRuntimeV1 path; same Lead EV payload, awaiting in-game validation."),
+                        new PresetDeploymentDefinition(
+                                PresetDeploymentKind.SHARED_PERSISTENT_NATIVE,
+                                PresetDeploymentDefinition.infra(
+                                        PresetInfrastructure.SHARED_HOTKEY_RUNTIME,
+                                        PresetInfrastructure.SHARED_NATIVE_STAGING_SERVICE,
+                                        PresetInfrastructure.SB1_GATEWAY,
+                                        PresetInfrastructure.SB2_NATIVE_CATALOG),
+                                Set.of(),
+                                rom -> {
+                                    byte[] bridge = PersistentNativeCallBridge.buildViaSharedStagingService(
+                                            rom, PersistentLeadEvViewerModule.MODULE_ID, 0x08010000L,
+                                            rom.stringVar4 + 0x140L, b -> {},
+                                            b -> b.message(LeadEvNativeHelper.dynamicMessageAddress(rom)).waitMessage().releaseAll().end(),
+                                            b -> b.vMessage("lead_ev_bad").waitMessage().waitButtonPress().releaseAll().end()
+                                                    .text("lead_ev_bad", "Persistent Lead EV module invalid.")
+                                    ).fieldScript();
+                                    return new PresetDeploymentCost(0, PayloadPlacementPlanner.GATEWAY_SIZE,
+                                            bridge.length, PersistentLeadEvViewerModule.payload(rom).length, 1);
+                                },
+                                "Compact persistent native body; shares existing staging/runtime.")),
+                validationMatrix(
+                        Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY),
+                        Set.of(PresetUsageMode.DELIVERYMAN)),
+                "Shows only party slot 0 to reduce native storage cost.");
+    }
+
+    static PresetDefinition partyEvViewer() {
+        return new PresetDefinition(
+                "party-ev-viewer", "Party EV Viewer", PresetPayloadType.HYBRID_NATIVE,
+                true, true, new Hotkey(HotkeyButton.R, HotkeyButton.UP), ALL_PROFILES,
+                List.of(
+                        new PresetDeploymentDefinition(
+                                PresetDeploymentKind.DELIVERYMAN_LOCAL,
+                                PresetDeploymentDefinition.infra(), FR10_VALIDATED,
+                                rom -> new PresetDeploymentCost(PartyEvViewerPreset.payloadSize(rom),0,0,0,1),
+                                "Build-38 validated deliveryman path."),
+                        new PresetDeploymentDefinition(
+                                PresetDeploymentKind.HOTKEY_LOCAL,
+                                PresetDeploymentDefinition.infra(PresetInfrastructure.HOTKEY_RUNTIME),
+                                Set.of(),
+                                rom -> new PresetDeploymentCost(PartyEvViewerPreset.payloadSize(rom),0,0,0,1),
+                                "Standalone HotkeyRuntimeV1 path; same validated EV payload, awaiting in-game validation."),
+                        new PresetDeploymentDefinition(
+                                PresetDeploymentKind.SHARED_PERSISTENT_NATIVE,
+                                PresetDeploymentDefinition.infra(
+                                        PresetInfrastructure.SHARED_HOTKEY_RUNTIME,
+                                        PresetInfrastructure.SHARED_NATIVE_STAGING_SERVICE,
+                                        PresetInfrastructure.SB1_GATEWAY,
+                                        PresetInfrastructure.SB2_NATIVE_CATALOG),
+                                FR10_VALIDATED,
+                                rom -> {
+                                    byte[] bridge = PersistentNativeCallBridge.buildViaSharedStagingService(
+                                            rom, PersistentPartyEvViewerModule.MODULE_ID, 0x08010000L,
+                                            rom.stringVar4 + 0x140L, b -> {},
+                                            b -> b.message(PartyEvNativeHelper.dynamicMessageAddress(rom))
+                                                    .waitMessage().releaseAll().end(),
+                                            b -> b.vMessage("ev_bad").waitMessage().waitButtonPress().releaseAll().end()
+                                                    .text("ev_bad", "Persistent Party EV module invalid.")
+                                    ).fieldScript();
+                                    return new PresetDeploymentCost(
+                                            0, PayloadPlacementPlanner.GATEWAY_SIZE, bridge.length,
+                                            PersistentPartyEvViewerModule.payload(rom).length, 1);
+                                },
+                                "Uses existing shared native staging service; no new resident IWRAM.")
+                ),
+                validationMatrix(
+                        Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY),
+                        Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SHARED_N_HOTKEY)),
+                "Build-38 validated EV reader. Shared deployment defaults to R+UP; Build 39 IV+EV shared composition validated in-game on FR1.0.");
     }
 
     static PresetDefinition showSecretId() {

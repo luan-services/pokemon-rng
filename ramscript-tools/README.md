@@ -1,3 +1,7 @@
+# Build 37 note
+
+Build 37 adds an experimental Run Anywhere maintenance path that reuses the existing shared-runtime VBlank tail and stores its 24-byte maintenance code in RamScript/EWRAM. It claims no additional IWRAM block. See `docs/builds/BUILD-37-NOTES.md`.
+
 # RamScript Tools
 
 Build 35 adds a first-class preset validation matrix and moves historical build
@@ -229,3 +233,13 @@ Use `build-toolkit-cleaner-wc3` to generate a conservative deliveryman Cleaner t
 manifest-tagged toolkit installation and refuses to run while the resident hotkey runtime is active.
 
 See `docs/INSTALLATION_MANIFEST_AND_CLEANER.md` and `docs/PRESET_VALIDATION_MATRIX.md`.
+
+## Build 36 — Run Anywhere current-map probe
+
+Research command:
+
+```powershell
+java -cp out Main build-run-anywhere-probe-wc3 fr10 ../dummy-saves/custom-design.wc3 ../dummy-saves/run-anywhere-probe.wc3
+```
+
+The probe stages a 16-byte helper in EWRAM and sets only `gMapHeader.allowRunning` for the currently loaded map. It reserves no new IWRAM. This is intentionally a causal probe before choosing the final cross-map resident design. See `docs/builds/BUILD-36-NOTES.md`.

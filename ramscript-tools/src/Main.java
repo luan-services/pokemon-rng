@@ -63,6 +63,16 @@ public final class Main {
                 case "build-seed-modifier-wc3" -> buildSeedModifierWc3(args);
                 case "build-party-iv-viewer-bin" -> buildPartyIvViewerBin(args);
                 case "build-party-iv-viewer-wc3" -> buildPartyIvViewerWc3(args);
+                case "build-party-iv-viewer-deliveryman-wc3" -> buildPartyIvViewerDeliverymanWc3(args);
+                case "build-party-ev-viewer-bin" -> buildPartyEvViewerBin(args);
+                case "build-party-ev-viewer-wc3" -> buildPartyEvViewerWc3(args);
+                case "build-party-ev-viewer-hotkey-wc3" -> buildPartyEvViewerHotkeyWc3(args);
+                case "build-lead-iv-viewer-wc3" -> buildLeadIvViewerWc3(args);
+                case "build-lead-iv-viewer-hotkey-wc3" -> buildLeadIvViewerHotkeyWc3(args);
+                case "build-lead-ev-viewer-wc3" -> buildLeadEvViewerWc3(args);
+                case "build-lead-ev-viewer-hotkey-wc3" -> buildLeadEvViewerHotkeyWc3(args);
+                case "build-run-anywhere-probe-wc3" -> buildRunAnywhereProbeWc3(args);
+                case "build-run-anywhere-shared-runtime-wc3" -> buildRunAnywhereSharedRuntimeWc3(args);
                 case "build-repel-hotkey-bin" -> buildRepelHotkeyBin(args);
                 case "build-repel-hotkey-wc3" -> buildRepelHotkeyWc3(args);
                 case "build-seed-repel-combo-bin" -> buildSeedRepelComboBin(args);
@@ -400,6 +410,15 @@ public final class Main {
         printPartyIvViewer(result, hotkey);
     }
 
+    private static void buildPartyIvViewerDeliverymanWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-party-iv-viewer-deliveryman-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = PartyIvViewerPreset.buildDeliveryman(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Party IV Viewer (deliveryman): " + result.payloadBytes() + " payload bytes");
+    }
+
     private static void printPartyIvViewer(TriggerBuildResult result, Hotkey hotkey) {
         System.out.println();
         System.out.println("Party IV Viewer preset:");
@@ -414,6 +433,98 @@ public final class Main {
         System.out.println("  free bytes:        " + result.freeScriptBytes());
     }
 
+
+    private static void buildPartyEvViewerBin(String[] args) throws Exception {
+        if (args.length != 3) throw new IllegalArgumentException("Usage: build-party-ev-viewer-bin <rom> <output.bin>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = PartyEvViewerPreset.buildDeliveryman(rom);
+        buildBinary(result.ramScript(), Path.of(args[2]));
+        printPartyEvViewer(result);
+    }
+
+    private static void buildPartyEvViewerWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-party-ev-viewer-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = PartyEvViewerPreset.buildDeliveryman(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        printPartyEvViewer(result);
+    }
+
+    private static void buildPartyEvViewerHotkeyWc3(String[] args) throws Exception {
+        if (args.length != 4 && args.length != 6)
+            throw new IllegalArgumentException("Usage: build-party-ev-viewer-hotkey-wc3 <rom> <input.wc3> <output.wc3> [--hotkey <held>-<pressed>]");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        Hotkey hotkey = args.length == 6 ? parseOptionalHotkey(args, 4) : new Hotkey(HotkeyButton.R, HotkeyButton.UP);
+        TriggerBuildResult result = PartyEvViewerPreset.build(rom, hotkey);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        printViewerHotkey("Party EV Viewer", result, hotkey);
+    }
+
+    private static void printPartyEvViewer(TriggerBuildResult result) {
+        System.out.println();
+        System.out.println("Party EV Viewer preset (deliveryman validation):");
+        System.out.println("  ROM:               " + result.rom().displayName());
+        System.out.println("  display:           continuous prompted EV pages for the whole party");
+        System.out.println("  payload bytes:     " + result.payloadBytes());
+        System.out.println("  total script:      " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  free bytes:        " + result.freeScriptBytes());
+    }
+
+
+
+    private static void printViewerHotkey(String name, TriggerBuildResult result, Hotkey hotkey) {
+        System.out.println(name + " (single hotkey):");
+        System.out.println("  ROM: " + result.rom().displayName());
+        System.out.println("  trigger: " + hotkey.displayName());
+        System.out.println("  payload bytes: " + result.payloadBytes());
+        System.out.println("  runtime overhead: " + result.runtimeOverheadBytes());
+        System.out.println("  total script: " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  free bytes: " + result.freeScriptBytes());
+    }
+
+    private static void buildLeadIvViewerHotkeyWc3(String[] args) throws Exception {
+        if (args.length != 4 && args.length != 6)
+            throw new IllegalArgumentException("Usage: build-lead-iv-viewer-hotkey-wc3 <rom> <input.wc3> <output.wc3> [--hotkey <held>-<pressed>]");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        Hotkey hotkey = args.length == 6 ? parseOptionalHotkey(args, 4) : new Hotkey(HotkeyButton.R, HotkeyButton.LEFT);
+        TriggerBuildResult result = LeadIvViewerPreset.build(rom, hotkey);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        printViewerHotkey("Lead IV Viewer", result, hotkey);
+    }
+
+    private static void buildLeadEvViewerHotkeyWc3(String[] args) throws Exception {
+        if (args.length != 4 && args.length != 6)
+            throw new IllegalArgumentException("Usage: build-lead-ev-viewer-hotkey-wc3 <rom> <input.wc3> <output.wc3> [--hotkey <held>-<pressed>]");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        Hotkey hotkey = args.length == 6 ? parseOptionalHotkey(args, 4) : new Hotkey(HotkeyButton.R, HotkeyButton.RIGHT);
+        TriggerBuildResult result = LeadEvViewerPreset.build(rom, hotkey);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        printViewerHotkey("Lead EV Viewer", result, hotkey);
+    }
+
+    private static void buildLeadIvViewerWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-lead-iv-viewer-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = LeadIvViewerPreset.buildDeliveryman(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Lead IV Viewer (deliveryman):");
+        System.out.println("  native helper: " + LeadIvNativeHelper.CODE_SIZE + " B");
+        System.out.println("  full Party IV helper: " + PartyMonDataNativeHelper.CODE_SIZE + " B");
+        System.out.println("  native saved: " + (PartyMonDataNativeHelper.CODE_SIZE - LeadIvNativeHelper.CODE_SIZE) + " B");
+        System.out.println("  payload: " + result.payloadBytes() + " / " + RamScript.SCRIPT_SIZE + " B");
+    }
+
+    private static void buildLeadEvViewerWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-lead-ev-viewer-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = LeadEvViewerPreset.buildDeliveryman(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Lead EV Viewer (deliveryman):");
+        System.out.println("  native helper: " + LeadEvNativeHelper.CODE_SIZE + " B");
+        System.out.println("  full persistent Party EV helper: " + PersistentPartyEvViewerModule.payload(rom).length + " B");
+        System.out.println("  native saved: " + (PersistentPartyEvViewerModule.payload(rom).length - LeadEvNativeHelper.CODE_SIZE) + " B");
+        System.out.println("  payload: " + result.payloadBytes() + " / " + RamScript.SCRIPT_SIZE + " B");
+    }
 
     private static void buildSeedRepelComboBin(String[] args) throws Exception {
         if (args.length != 4 && args.length != 8) {
@@ -516,6 +627,48 @@ public final class Main {
         System.out.println("  runtime overhead:  " + result.runtimeOverheadBytes());
         System.out.println("  total script:      " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
         System.out.println("  free bytes:        " + result.freeScriptBytes());
+    }
+
+
+    private static void buildRunAnywhereSharedRuntimeWc3(String[] args) throws Exception {
+        if (args.length < 5) {
+            throw new IllegalArgumentException(
+                    "Usage: build-run-anywhere-shared-runtime-wc3 <rom> <input.wc3> <output.wc3> <preset-id> [preset-id ...]"
+            );
+        }
+        RomProfile rom = RomProfile.fromId(args[1]);
+        Path input = Path.of(args[2]);
+        Path output = Path.of(args[3]);
+        List<String> ids = java.util.Arrays.asList(args).subList(4, args.length);
+        PresetCompositionPlan plan = PresetCompositionPlanner.plan(rom, ids);
+        TriggerBuildResult runtime = RunAnywhereSharedRuntime.build(plan);
+        buildIntoWc3(runtime.ramScript(), input, output);
+        System.out.println("Run Anywhere shared runtime generated: " + output);
+        System.out.println("No additional IWRAM block is reserved.");
+        System.out.println("Runtime bytes: " + runtime.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+    }
+
+    private static void buildRunAnywhereProbeWc3(String[] args) throws Exception {
+        if (args.length != 4) {
+            throw new IllegalArgumentException(
+                    "Usage: build-run-anywhere-probe-wc3 <rom> <input.wc3> <output.wc3>"
+            );
+        }
+        RomProfile rom = RomProfile.fromId(args[1]);
+        RamScript script = RunAnywhereProbePreset.build(rom);
+        buildIntoWc3(script, Path.of(args[2]), Path.of(args[3]));
+        NativeHelper helper = RunAnywhereNativeHelper.build(rom);
+        System.out.println();
+        System.out.println("Run Anywhere current-map probe:");
+        System.out.println("  ROM:               " + rom.displayName());
+        System.out.println("  execution:         deliveryman diagnostic");
+        System.out.printf("  gMapHeader:        0x%08X%n", rom.mapHeader);
+        System.out.printf("  allowRunning byte: 0x%08X%n", rom.mapHeader + RunAnywhereNativeHelper.ALLOW_RUNNING_OFFSET);
+        System.out.printf("  helper staging:    0x%08X (EWRAM)%n", helper.stagingAddress());
+        System.out.println("  native helper:     " + helper.size() + " bytes");
+        System.out.println("  IWRAM reserved:    0 new bytes");
+        System.out.println("  persistence:       current loaded map only (probe)");
+        System.out.println("  total script:      " + RunAnywhereProbePreset.payloadSize(rom) + " / " + RamScript.SCRIPT_SIZE);
     }
 
     private static void buildShowSecretIdBin(String[] args) throws Exception {
@@ -1477,6 +1630,8 @@ public final class Main {
         System.out.println("  java -cp out Main build-seed-modifier-wc3 fr10 1234 input.wc3 output.wc3 [--hotkey r-b]");
         System.out.println("  java -cp out Main build-party-iv-viewer-bin fr10 output.bin [--hotkey r-select]");
         System.out.println("  java -cp out Main build-party-iv-viewer-wc3 fr10 input.wc3 output.wc3 [--hotkey l-start]");
+        System.out.println("  java -cp out Main build-lead-iv-viewer-wc3 fr10 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-lead-ev-viewer-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-repel-hotkey-bin fr10 output.bin [--hotkey r-select]");
         System.out.println("  java -cp out Main build-repel-hotkey-wc3 fr10 input.wc3 output.wc3 [--hotkey r-b]");
         System.out.println("  java -cp out Main build-seed-repel-combo-wc3 fr10 1234 input.wc3 output.wc3 [--seed-hotkey r-select --repel-hotkey r-b]");
