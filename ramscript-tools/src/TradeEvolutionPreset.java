@@ -1,15 +1,19 @@
 /*
-   Build-43 trade-evolution event prototype.
+   Production Trade Evolution preset.
 
-   Uses the stock party picker, the stock evolution table, and the stock
-   evolution scene. No persistent IWRAM/runtime is installed.
+   Current UX trigger is the Mystery Gift Deliveryman. The mechanic itself is
+   trigger-independent and is intentionally kept separate so a future release
+   can bind it to a dedicated NPC/object script.
+
+   Current deployment is exclusive/dedicated: it temporarily owns the same
+   validated 32-byte IWRAM WRAPPER slot used by the hotkey research. It does
+   not install the shared hotkey/VBlank runtime.
 */
 final class TradeEvolutionPreset {
     private static final long VIRTUAL_BASE = 0x08010000L;
-    private static final int SPECIAL_CHOOSE_PARTY_MON = 0x009F;
+    private static final int VAR_SELECTED = 0x8004;
     private static final int VAR_RESULT = 0x800D;
-    private static final int VAR_8004 = 0x8004;
-    private static final int PARTY_SIZE = 6;
+    private static final int VAR_TARGET = 0x8007;
 
     private TradeEvolutionPreset() {}
 
@@ -18,52 +22,18 @@ final class TradeEvolutionPreset {
     }
 
     static byte[] buildPayload(RomProfile rom) {
-        if (rom != RomProfile.FIRE_RED_EN_10)
-            throw new IllegalArgumentException("Build 43g trade evolution prototype currently supports fr10 only");
-
-        long copierAddress = rom.stringVar4 + 0x100L;
-        long helperAddress = CpuSetNativeHelperInstaller.helperDestination(copierAddress);
-        NativeHelper helper = TradeEvolutionEventNativeHelper.buildAt(rom, helperAddress);
+        long launcherAddress = rom.stringVar4 + 0x100L;
+        long evoHelperAddress = rom.stringVar4 + 0x180L;
+        long evoCopierAddress = evoHelperAddress - CpuSetNativeHelperInstaller.HELPER_DESTINATION_DELTA;
+        byte[] callbackLiterals = TradeEvolutionContinuationRuntime.callbackLiterals(rom);
+        byte[] launcher = TradeEvolutionContinuationRuntime.launcher(rom);
 
         RamScriptBuilder b = new RamScriptBuilder(VIRTUAL_BASE);
-        b.setVAddress();
+        b.setVAddress().vGoto("installer").raw(new byte[] {0x54, 0x45}); // "TE" marker only
 
-        NativeHelperInstaller.Plan install = NativeHelperInstaller.prepare(
-                b, VIRTUAL_BASE, helper, copierAddress, "trade_evo_event",
-                NativeHelperInstaller.Mode.AUTO
-        );
-
-        b.lockAll()
-         .vMessage("ask").callStd(5)
-         .compareVarToValue(VAR_RESULT, 0)
-         .vGotoIfEqual("decline")
-         .vMessage("choose").waitMessage().waitButtonPressStrict().closeMessage();
-
-        // Install only the temporary launcher/evolution helper.
-        install.install(b);
-
-        // This launcher uses stock InitPartyMenu indirectly and supplies the
-        // stock ContinueScript callback. No manual fade or stock ChoosePartyMon.
-        b.callNative(TradeEvolutionEventNativeHelper.menuEntry(helperAddress))
-         .waitState()
-
-         // The callback above resumes this exact script.
-         .setVAddressHere()
-         .compareVarToValue(VAR_8004, 0x00FF)
-         .vGotoIfEqual("decline")
-         .compareVarToValue(VAR_8004, PARTY_SIZE)
-         .vGotoIf(RamScriptBuilder.COND_GE, "decline");
-
-        // Party menu may reuse scratch EWRAM, so restore the helper before evo.
-        b.setVAddressHere();
-        install.install(b);
-
-        b.callNative(TradeEvolutionEventNativeHelper.evolutionEntry(helperAddress))
-         .compareVarToValue(VAR_RESULT, 0)
-         .vGotoIfEqual("no_evolution")
-
-         // BeginEvolutionScene switches callback2. Resume through stock callback.
-         .waitState()
+        // EvolutionScene -> field continuation. SaveBlock1 relocates again.
+        int postEvolutionOffset = b.position();
+        b.label("post_evolution")
          .setVAddressHere()
          .vMessage("done").waitMessage().waitButtonPressStrict()
          .releaseAll().end();
@@ -72,17 +42,61 @@ final class TradeEvolutionPreset {
          .vMessage("no_evo").waitMessage().waitButtonPressStrict()
          .releaseAll().end();
 
-        b.label("decline")
-         .vMessage("decline_msg").waitMessage().waitButtonPressStrict()
+        b.label("cancelled")
+         .vMessage("cancel_msg").waitMessage().waitButtonPressStrict()
          .releaseAll().end();
 
-        b.text("ask", "Lend me a POKéMON for a while?")
-         .text("choose", "Which POKéMON will you lend me?")
-         .text("no_evo", "Hmm... This POKéMON doesn't seem ready to change.")
-         .text("done", "There you go! Take good care of your POKéMON.")
-         .text("decline_msg", "All right. Maybe another time.");
+        b.label("declined")
+         .vMessage("cancel_msg").waitMessage().waitButtonPressStrict()
+         .releaseAll().end();
 
-        return b.buildScript();
+        // Party -> field continuation. Refresh virtual-address state before
+        // any vgoto or raw-block installer because SaveBlock1 has moved.
+        int preEvolutionOffset = b.position();
+        b.label("pre_evolution")
+         .setVAddressHere()
+         .compareVarToValue(VAR_SELECTED, 6)
+         .vGotoIf(RamScriptBuilder.COND_GE, "cancelled");
+
+        NativeHelper evoHelper = TradeEvolutionRuntimeHelper.buildAt(rom, evoHelperAddress, postEvolutionOffset);
+        NativeHelperInstaller.Plan evoInstall = NativeHelperInstaller.prepare(
+                b, VIRTUAL_BASE, evoHelper, evoCopierAddress, "trade_evolution",
+                NativeHelperInstaller.Mode.AUTO);
+        evoInstall.installAndCall(b);
+
+        b.compareVarToValue(VAR_TARGET, 0)
+         .vGotoIfEqual("no_evolution")
+         .waitState()
+         .end();
+
+        byte[] firstCallback = TradeEvolutionContinuationRuntime.callback(rom, preEvolutionOffset);
+        b.label("installer")
+         .lockAll()
+         .facePlayer()
+         .vMessage("ask").callStd(5)
+         .compareVarToValue(VAR_RESULT, 0)
+         .vGotoIfEqual("declined")
+         .closeMessage()
+         .writeBytes(TradeEvolutionContinuationRuntime.CALLBACK, firstCallback)
+         .writeBytes(TradeEvolutionContinuationRuntime.LITERAL_GET_RAM_SCRIPT, callbackLiterals)
+         .writeBytes(launcherAddress, launcher)
+         .fadeScreen(1)
+         .callNative(launcherAddress | 1L)
+         .waitState()
+         .end();
+
+        // Production v1 copy. The intermediate "Choose a POKéMON" prompt was
+        // intentionally removed so the requested dialogue still fits in the
+        // RamScript-local deployment; YES now opens the Party immediately.
+        b.text("ask", "Would you lend me your POKéMON for a while?")
+         .text("no_evo", "It doesn't seem special at all.")
+         .text("done", "Woah! Looks like something happened.")
+         .text("cancel_msg", "Okay. Maybe another time...");
+
+        byte[] result = b.buildScript();
+        if (postEvolutionOffset > 0xFF || preEvolutionOffset > 0xFF)
+            throw new IllegalStateException("Trade Evolution continuation offset exceeds Thumb immediate range");
+        return result;
     }
 
     static int payloadSize(RomProfile rom) {

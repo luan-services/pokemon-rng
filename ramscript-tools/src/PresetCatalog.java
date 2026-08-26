@@ -37,7 +37,7 @@ final class PresetCatalog {
 
 
     static List<PresetDefinition> all() {
-        return List.of(seedModifier(), repel(), partyIvViewer(), leadIvViewer(), partyEvViewer(), leadEvViewer(), showSecretId());
+        return List.of(seedModifier(), repel(), partyIvViewer(), leadIvViewer(), partyEvViewer(), leadEvViewer(), showSecretId(), tradeEvolution());
     }
 
     static PresetDefinition byId(String id) {
@@ -347,6 +347,45 @@ final class PresetCatalog {
         );
     }
 
+
+    static PresetDefinition tradeEvolution() {
+        java.util.ArrayList<PresetValidationEntry> validation = new java.util.ArrayList<>();
+        for (RomProfile rom : RomProfile.values()) {
+            for (PresetUsageMode mode : PresetUsageMode.values()) {
+                PresetValidationStatus status;
+                String note = "";
+                if (mode != PresetUsageMode.DELIVERYMAN) {
+                    status = PresetValidationStatus.UNSUPPORTED;
+                } else if (rom == RomProfile.FIRE_RED_EN_10) {
+                    status = PresetValidationStatus.VALIDATED_IN_GAME;
+                    note = "Production preset validated in-game on FR1.0: decline, Party cancel, no-target, National Dex block and successful Kadabra trade evolution.";
+                } else {
+                    status = PresetValidationStatus.SUPPORTED_NOT_TESTED;
+                }
+                validation.add(new PresetValidationEntry(mode, rom, status, note));
+            }
+        }
+
+        return new PresetDefinition(
+                "trade-evolution",
+                "Trade Evolution",
+                PresetPayloadType.HYBRID_NATIVE,
+                false,
+                false,
+                null,
+                ALL_PROFILES,
+                List.of(new PresetDeploymentDefinition(
+                        PresetDeploymentKind.DEDICATED_LOCAL,
+                        PresetDeploymentDefinition.infra(PresetInfrastructure.DEDICATED_IWRAM_CONTINUATION),
+                        FR10_VALIDATED,
+                        rom -> new PresetDeploymentCost(TradeEvolutionPreset.payloadSize(rom), 0, 0, 0, 1),
+                        "Exclusive deliveryman deployment. Temporarily owns the validated 32-byte continuation slot; no VBlank runtime."
+                )),
+                List.copyOf(validation),
+                "UI selection policy: EXCLUSIVE. Production flow validated on FR1.0; FR1.1/LG1.0/LG1.1 are symbol-profiled and require in-game validation."
+        );
+    }
+
     static String report(RomProfile rom) {
         if (rom == null) throw new IllegalArgumentException("ROM profile must not be null");
         StringBuilder out = new StringBuilder();
@@ -356,7 +395,9 @@ final class PresetCatalog {
                     .append("  type: ").append(preset.payloadType()).append("\n")
                     .append("  hotkeyCapable: ").append(preset.hotkeyCapable()).append("\n")
                     .append("  persistentPreferred: ").append(preset.persistentPreferred()).append("\n")
-                    .append("  defaultHotkey: ").append(preset.defaultHotkey() == null ? "none" : preset.defaultHotkey().displayName()).append("\n");
+                    .append("  defaultHotkey: ").append(preset.defaultHotkey() == null ? "none" : preset.defaultHotkey().displayName()).append("\n")
+                    .append("  selectionPolicy: ").append(preset.selectionPolicy()).append("\n")
+                    .append("  exclusiveSelection: ").append(preset.exclusiveSelection()).append("\n");
             for (PresetDeploymentDefinition deployment : preset.deployments()) {
                 PresetDeploymentCost cost = deployment.cost(rom);
                 out.append("  ").append(deployment.kind())

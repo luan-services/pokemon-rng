@@ -1,3 +1,13 @@
+# Current milestone — Trade Evolution production preset
+
+Trade Evolution has moved from the Build 43–48 research series into the production preset/catalog layer. The current deployment is `DEDICATED_LOCAL`: it uses the validated 32-byte relocation continuation slot, does not install the shared hotkey/VBlank runtime, and exposes `selectionPolicy=EXCLUSIVE` for the UI/planner. All ROM-sensitive symbols are resolved through `RomProfile` for FR1.0, FR1.1, LG1.0 and LG1.1. The production preset is validated in-game on FR1.0; the other three profiles remain supported but untested. See `docs/TRADE_EVOLUTION.md`.
+
+Production command:
+
+```powershell
+java -cp out Main build-trade-evolution-wc3 fr10 input.wc3 output.wc3
+```
+
 # Build 37 note
 
 Build 37 adds an experimental Run Anywhere maintenance path that reuses the existing shared-runtime VBlank tail and stores its 24-byte maintenance code in RamScript/EWRAM. It claims no additional IWRAM block. See `docs/builds/BUILD-37-NOTES.md`.

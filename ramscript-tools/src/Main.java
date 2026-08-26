@@ -538,9 +538,9 @@ public final class Main {
         if (args.length != 4)
             throw new IllegalArgumentException("Usage: build-trade-evolution-npc-wc3 <rom> <input.wc3> <output.wc3>");
         RomProfile rom = RomProfile.fromId(args[1]);
-        TriggerBuildResult result = TradeEvolutionNpcPreset.buildDeliveryman(rom);
+        TriggerBuildResult result = TradeEvolutionPreset.buildDeliveryman(rom);
         buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
-        System.out.println("Build 48 Trade Evolution NPC:");
+        System.out.println("Trade Evolution preset (legacy build-48 command alias):");
         System.out.println("  ROM: " + rom.displayName());
         System.out.println("  payload bytes: " + result.payloadBytes());
         System.out.println("  total script: " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
@@ -633,12 +633,12 @@ public final class Main {
         RomProfile rom = RomProfile.fromId(args[1]);
         TriggerBuildResult result = TradeEvolutionPreset.buildDeliveryman(rom);
         buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
-        System.out.println("Trade Evolution prototype:");
+        System.out.println("Trade Evolution preset:");
         System.out.println("  ROM: " + rom.displayName());
         System.out.println("  payload bytes: " + result.payloadBytes());
         System.out.println("  total script: " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
-        System.out.println("  resident IWRAM: 0 B");
-        System.out.println("  trigger: deliveryman (prototype)");
+        System.out.println("  deployment: dedicated/exclusive Deliveryman");
+        System.out.println("  continuation IWRAM: 32 B validated slot (no VBlank runtime)");
     }
 
     private static void buildPartyEvViewerWc3(String[] args) throws Exception {
@@ -1352,6 +1352,9 @@ public final class Main {
         System.out.println(
                 "  build-repel-hotkey-*            configurable-hotkey best-available Repel shortcut"
         );
+        System.out.println(
+                "  build-trade-evolution-wc3       exclusive trade-evolution preset (ROM-profiled)"
+        );
     }
 
     private static String bytesToHex(byte[] data) {
@@ -1831,6 +1834,7 @@ public final class Main {
         System.out.println("  java -cp out Main build-party-iv-viewer-wc3 fr10 input.wc3 output.wc3 [--hotkey l-start]");
         System.out.println("  java -cp out Main build-lead-iv-viewer-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-lead-ev-viewer-wc3 fr10 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-trade-evolution-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-repel-hotkey-bin fr10 output.bin [--hotkey r-select]");
         System.out.println("  java -cp out Main build-repel-hotkey-wc3 fr10 input.wc3 output.wc3 [--hotkey r-b]");
         System.out.println("  java -cp out Main build-seed-repel-combo-wc3 fr10 1234 input.wc3 output.wc3 [--seed-hotkey r-select --repel-hotkey r-b]");

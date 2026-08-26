@@ -160,6 +160,8 @@ final class PresetCompositionPlanner {
         boolean allValidated = true;
         for (var item : chosen) allValidated &= item.deployment().isValidatedOn(rom);
         if (!allValidated) diagnostics.add("one or more selected deployment modes are not runtime-validated on this ROM");
+        if (chosen.stream().anyMatch(item -> item.deployment().kind() == PresetDeploymentKind.DEDICATED_LOCAL))
+            diagnostics.add("selected preset is exclusive/dedicated and currently cannot participate in a multi-preset composition");
         if (presets.size() > 1) diagnostics.add("multi-preset local packing is intentionally not modeled yet; shared deployments were selected");
         if (nativeCount > 0) diagnostics.add("native catalog overhead/padding is included once for " + nativeCount + " module(s)");
 

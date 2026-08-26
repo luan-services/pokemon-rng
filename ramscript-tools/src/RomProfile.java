@@ -25,6 +25,9 @@ enum RomProfile {
             0x020370C2L,
             0x0803FBE9L,
             0x02036DFCL,
+            0x081283A9L,
+            0x03005024L,
+            0x080567DDL,
             0x08042EC5L,
             0x080CDDA9L,
             0x0300537CL,
@@ -57,6 +60,9 @@ enum RomProfile {
             0x020370C2L,
             0x0803FBE9L,
             0x02036DFCL,
+            0x08128381L,
+            0x03005024L,
+            0x080567DDL,
             0x08042EC5L,
             0x080CDD7DL,
             0x0300537CL,
@@ -89,6 +95,9 @@ enum RomProfile {
             0x020370C2L,
             0x0803FBFDL,
             0x02036DFCL,
+            0x08128421L,
+            0x03005024L,
+            0x080567F1L,
             0x08042ED9L,
             0x080CDDBDL,
             0x0300537CL,
@@ -121,6 +130,9 @@ enum RomProfile {
             0x020370C2L,
             0x0803FBFDL,
             0x02036DFCL,
+            0x081283F9L,
+            0x03005024L,
+            0x080567F1L,
             0x08042ED9L,
             0x080CDD91L,
             0x0300537CL,
@@ -178,7 +190,10 @@ enum RomProfile {
     final long getMonData3Thumb;
     final long mapHeader;
 
-    // Trade-evolution event helpers.
+    // Trade-evolution / Party continuation helpers.
+    final long choosePartyMonByMenuTypeThumb;
+    final long fieldCallback2;
+    final long cb2ReturnToFieldThumb;
     final long getEvolutionTargetSpeciesThumb;
     final long beginEvolutionSceneThumb;
     final long cb2AfterEvolution;
@@ -210,6 +225,9 @@ enum RomProfile {
             long specialVar8005,
             long getMonData3Thumb,
             long mapHeader,
+            long choosePartyMonByMenuTypeThumb,
+            long fieldCallback2,
+            long cb2ReturnToFieldThumb,
             long getEvolutionTargetSpeciesThumb,
             long beginEvolutionSceneThumb,
             long cb2AfterEvolution,
@@ -240,6 +258,9 @@ enum RomProfile {
         this.specialVar8005 = specialVar8005;
         this.getMonData3Thumb = getMonData3Thumb;
         this.mapHeader = mapHeader;
+        this.choosePartyMonByMenuTypeThumb = choosePartyMonByMenuTypeThumb;
+        this.fieldCallback2 = fieldCallback2;
+        this.cb2ReturnToFieldThumb = cb2ReturnToFieldThumb;
         this.getEvolutionTargetSpeciesThumb = getEvolutionTargetSpeciesThumb;
         this.beginEvolutionSceneThumb = beginEvolutionSceneThumb;
         this.cb2AfterEvolution = cb2AfterEvolution;

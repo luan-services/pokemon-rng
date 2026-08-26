@@ -65,4 +65,16 @@ record PresetDefinition(
         }
         return false;
     }
+
+    /* UI/planner policy. An EXCLUSIVE preset must be selected alone unless a
+       future deployment explicitly adds a composable alternative. */
+    PresetSelectionPolicy selectionPolicy() {
+        return deployments.stream().allMatch(d -> d.kind() == PresetDeploymentKind.DEDICATED_LOCAL)
+                ? PresetSelectionPolicy.EXCLUSIVE
+                : PresetSelectionPolicy.COMPOSABLE;
+    }
+
+    boolean exclusiveSelection() {
+        return selectionPolicy() == PresetSelectionPolicy.EXCLUSIVE;
+    }
 }
