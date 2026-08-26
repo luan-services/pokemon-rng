@@ -253,3 +253,10 @@ java -cp out Main build-run-anywhere-probe-wc3 fr10 ../dummy-saves/custom-design
 ```
 
 The probe stages a 16-byte helper in EWRAM and sets only `gMapHeader.allowRunning` for the currently loaded map. It reserves no new IWRAM. This is intentionally a causal probe before choosing the final cross-map resident design. See `docs/builds/BUILD-36-NOTES.md`.
+
+## Existing NPC bindings
+
+Object-bound RamScripts are now exposed through semantic `ObjectEventTarget`
+descriptors and `RamScriptBinding`. The first catalogued target is
+`lavender-town-worker-m`; use `build-trade-evolution-object-wc3` rather than
+embedding map/object ids in feature code. See `docs/OBJECT_EVENT_BINDINGS.md`.

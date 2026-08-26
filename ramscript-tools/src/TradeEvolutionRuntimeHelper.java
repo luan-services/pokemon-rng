@@ -13,6 +13,7 @@ final class TradeEvolutionRuntimeHelper {
     static final int CODE_SIZE = 104;
 
     private static final int POST_EVO_OFFSET_IMMEDIATE = 0x22;
+    private static final int CALLBACK_PATCH_INSTRUCTION = 0x24;
     private static final int LIT_VAR_8004 = 0x48;
     private static final int LIT_PLAYER_PARTY = 0x4C;
     private static final int LIT_CALLBACK_BASE = 0x50;
@@ -25,8 +26,14 @@ final class TradeEvolutionRuntimeHelper {
     private TradeEvolutionRuntimeHelper() {}
 
     static NativeHelper buildAt(RomProfile rom, long stagingAddress, int postEvolutionOffset) {
+        return buildAt(rom, stagingAddress, postEvolutionOffset, TradeEvolutionContinuationRuntime.CONTINUATION_IMMEDIATE_OFFSET);
+    }
+
+    static NativeHelper buildAt(RomProfile rom, long stagingAddress, int postEvolutionOffset, int callbackContinuationImmediateOffset) {
         if (postEvolutionOffset < 0 || postEvolutionOffset > 0xFF)
             throw new IllegalArgumentException("Post-evolution offset must fit callback Thumb immediate");
+        if (callbackContinuationImmediateOffset < 0 || callbackContinuationImmediateOffset > 0x1F)
+            throw new IllegalArgumentException("Callback patch offset must fit Thumb STRB immediate");
 
         byte[] code = hex(
                 "F0B5114E358864216943104C641820000121002200F014F8F08000280ED00100" +
@@ -35,6 +42,10 @@ final class TradeEvolutionRuntimeHelper {
                 "1111111122222222333333334444444455555555666666667777777788888888");
 
         code[POST_EVO_OFFSET_IMMEDIATE] = (byte)postEvolutionOffset;
+        // strb r3, [r2, #callbackContinuationImmediateOffset]
+        // Deliveryman bridge stores the adds immediate at +0x0A; object-bound
+        // bridge stores it at +0x0E because of the extra GetRamScript args.
+        putU16(code, CALLBACK_PATCH_INSTRUCTION, 0x7000 | (callbackContinuationImmediateOffset << 6) | (2 << 3) | 3);
         putU32(code, LIT_VAR_8004, rom.specialVar8004);
         putU32(code, LIT_PLAYER_PARTY, rom.playerParty);
         putU32(code, LIT_CALLBACK_BASE, TradeEvolutionContinuationRuntime.CALLBACK);
@@ -54,6 +65,10 @@ final class TradeEvolutionRuntimeHelper {
         for (int i = 0; i < data.length; i++)
             data[i] = (byte)Integer.parseInt(value.substring(i * 2, i * 2 + 2), 16);
         return data;
+    }
+
+    private static void putU16(byte[] d, int o, int v) {
+        d[o] = (byte)v; d[o + 1] = (byte)(v >>> 8);
     }
 
     private static void putU32(byte[] d, int o, long v) {

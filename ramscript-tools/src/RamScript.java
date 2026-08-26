@@ -66,6 +66,26 @@ final class RamScript {
         return new RamScript(bytes);
     }
 
+    static RamScript createObjectBound(byte[] script, int mapGroup, int mapNum, int objectId) {
+        if (script.length > SCRIPT_SIZE) {
+            throw new IllegalArgumentException(
+                    "RamScript field script is " + script.length + " bytes; maximum is " + SCRIPT_SIZE
+            );
+        }
+        if ((mapGroup & ~0xFF) != 0 || (mapNum & ~0xFF) != 0 || (objectId & ~0xFF) != 0)
+            throw new IllegalArgumentException("Object-bound RamScript ids must fit in one byte");
+
+        byte[] data = new byte[SIZE];
+        data[MAGIC_OFFSET] = (byte) EXPECTED_MAGIC;
+        data[MAP_GROUP_OFFSET] = (byte) mapGroup;
+        data[MAP_NUM_OFFSET] = (byte) mapNum;
+        data[OBJECT_ID_OFFSET] = (byte) objectId;
+        System.arraycopy(script, 0, data, SCRIPT_OFFSET, script.length);
+        int checksum = Crc16.calculate(data, DATA_OFFSET, DATA_SIZE);
+        Binary.putU32(data, CHECKSUM_OFFSET, checksum);
+        return new RamScript(data);
+    }
+
     static RamScript createWonderCard(byte[] script) {
         if (script.length > SCRIPT_SIZE) {
             throw new IllegalArgumentException(

@@ -1,0 +1,5 @@
+enum ObjectEventSafety {
+    SAFE_SIMPLE_DIALOG,
+    REVIEW_REQUIRED,
+    IMPORTANT_EVENT
+}

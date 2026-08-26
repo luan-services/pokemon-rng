@@ -18,14 +18,33 @@ final class TradeEvolutionPreset {
     private TradeEvolutionPreset() {}
 
     static TriggerBuildResult buildDeliveryman(RomProfile rom) {
-        return TriggerComposer.compose(EventTrigger.DELIVERYMAN, rom, buildPayload(rom));
+        return build(rom, NoObjectRamScriptBinding.INSTANCE);
+    }
+
+    static TriggerBuildResult buildLavenderWorker(RomProfile rom) {
+        return buildForObjectEvent(rom, ObjectEventCatalog.LAVENDER_TOWN_WORKER_M);
+    }
+
+    static TriggerBuildResult buildForObjectEvent(RomProfile rom, ObjectEventTarget target) {
+        return build(rom, new ObjectEventRamScriptBinding(target));
+    }
+
+    static TriggerBuildResult build(RomProfile rom, RamScriptBinding binding) {
+        byte[] payload = buildPayload(rom, binding);
+        RamScript script = binding.createRamScript(payload);
+        return new TriggerBuildResult(script, binding.trigger(), rom, payload.length, 0, payload.length, RamScript.SCRIPT_SIZE - payload.length);
     }
 
     static byte[] buildPayload(RomProfile rom) {
+        return buildPayload(rom, NoObjectRamScriptBinding.INSTANCE);
+    }
+
+    static byte[] buildPayload(RomProfile rom, RamScriptBinding binding) {
+        if (binding == null) throw new IllegalArgumentException("RamScript binding must not be null");
         long launcherAddress = rom.stringVar4 + 0x100L;
         long evoHelperAddress = rom.stringVar4 + 0x180L;
         long evoCopierAddress = evoHelperAddress - CpuSetNativeHelperInstaller.HELPER_DESTINATION_DELTA;
-        byte[] callbackLiterals = TradeEvolutionContinuationRuntime.callbackLiterals(rom);
+        byte[] callbackLiterals = binding.continuationLiterals(rom);
         byte[] launcher = TradeEvolutionContinuationRuntime.launcher(rom);
 
         RamScriptBuilder b = new RamScriptBuilder(VIRTUAL_BASE);
@@ -58,7 +77,8 @@ final class TradeEvolutionPreset {
          .compareVarToValue(VAR_SELECTED, 6)
          .vGotoIf(RamScriptBuilder.COND_GE, "cancelled");
 
-        NativeHelper evoHelper = TradeEvolutionRuntimeHelper.buildAt(rom, evoHelperAddress, postEvolutionOffset);
+        int callbackPatchOffset = binding.continuationImmediateOffset();
+        NativeHelper evoHelper = TradeEvolutionRuntimeHelper.buildAt(rom, evoHelperAddress, postEvolutionOffset, callbackPatchOffset);
         NativeHelperInstaller.Plan evoInstall = NativeHelperInstaller.prepare(
                 b, VIRTUAL_BASE, evoHelper, evoCopierAddress, "trade_evolution",
                 NativeHelperInstaller.Mode.AUTO);
@@ -69,7 +89,7 @@ final class TradeEvolutionPreset {
          .waitState()
          .end();
 
-        byte[] firstCallback = TradeEvolutionContinuationRuntime.callback(rom, preEvolutionOffset);
+        byte[] firstCallback = binding.continuationCallback(rom, preEvolutionOffset);
         b.label("installer")
          .lockAll()
          .facePlayer()
@@ -88,7 +108,7 @@ final class TradeEvolutionPreset {
         // Production v1 copy. The intermediate "Choose a POKéMON" prompt was
         // intentionally removed so the requested dialogue still fits in the
         // RamScript-local deployment; YES now opens the Party immediately.
-        b.text("ask", "Would you lend me your POKéMON for a while?")
+        b.text("ask", "Would you lend me your\\nPOKéMON for a while?")
          .text("no_evo", "It doesn't seem special at all.")
          .text("done", "Woah! Looks like something happened.")
          .text("cancel_msg", "Okay. Maybe another time...");

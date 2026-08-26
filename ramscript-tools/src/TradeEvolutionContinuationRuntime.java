@@ -17,6 +17,7 @@ final class TradeEvolutionContinuationRuntime {
     static final long LITERAL_SETUP_SCRIPT = 0x0300535CL;
 
     static final int CALLBACK_SIZE = 32;
+    static final int CONTINUATION_IMMEDIATE_OFFSET = 0x0A;
     static final int LAUNCHER_SIZE = 32;
 
     private TradeEvolutionContinuationRuntime() {}

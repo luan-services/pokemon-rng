@@ -67,6 +67,8 @@ public final class Main {
                 case "build-party-ev-viewer-bin" -> buildPartyEvViewerBin(args);
                 case "build-party-ev-viewer-wc3" -> buildPartyEvViewerWc3(args);
                 case "build-trade-evolution-wc3" -> buildTradeEvolutionWc3(args);
+                case "build-trade-evolution-lavender-npc-wc3" -> buildTradeEvolutionLavenderNpcWc3(args);
+                case "build-trade-evolution-object-wc3" -> buildTradeEvolutionObjectWc3(args);
                 case "build-party-selector-harness-wc3" -> buildPartySelectorHarnessWc3(args);
                 case "build-party-single-continuation-harness-wc3" -> buildPartySingleContinuationHarnessWc3(args);
                 case "build-party-callback-probe-wc3" -> buildPartyCallbackProbeWc3(args);
@@ -625,6 +627,36 @@ public final class Main {
         System.out.println("  dedicated IWRAM callback: 32 B at 03005310");
         System.out.println("  success marker: VAR_0x8005 = 0x4502 after relocation-safe return");
         System.out.println("  selected slot copy: VAR_0x8006 = VAR_0x8004");
+    }
+
+    private static void buildTradeEvolutionObjectWc3(String[] args) throws Exception {
+        if (args.length != 5)
+            throw new IllegalArgumentException("Usage: build-trade-evolution-object-wc3 <rom> <target-id> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        ObjectEventTarget target = ObjectEventCatalog.byId(args[2]);
+        TriggerBuildResult result = TradeEvolutionPreset.buildForObjectEvent(rom, target);
+        buildIntoWc3(result.ramScript(), Path.of(args[3]), Path.of(args[4]));
+        System.out.println("Trade Evolution object-bound build:");
+        System.out.println("  ROM: " + rom.displayName());
+        System.out.println("  target: " + target.displayName() + " [" + target.id() + "]");
+        System.out.println("  map binding: group=" + target.mapGroup() + " map=" + target.mapNum() + " localId=" + target.localId());
+        System.out.println("  payload bytes: " + result.payloadBytes());
+        System.out.println("  trigger: stock object-bound RamScript / GetRamScript");
+    }
+
+    private static void buildTradeEvolutionLavenderNpcWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-trade-evolution-lavender-npc-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = TradeEvolutionPreset.buildLavenderWorker(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Trade Evolution Lavender NPC research build:");
+        System.out.println("  ROM: " + rom.displayName());
+        ObjectEventTarget target = ObjectEventCatalog.LAVENDER_TOWN_WORKER_M;
+        System.out.println("  target: " + target.displayName() + " [" + target.id() + "]");
+        System.out.println("  map binding: group=" + target.mapGroup() + " map=" + target.mapNum() + " localId=" + target.localId());
+        System.out.println("  payload bytes: " + result.payloadBytes());
+        System.out.println("  trigger: stock object-bound RamScript / GetRamScript");
     }
 
     private static void buildTradeEvolutionWc3(String[] args) throws Exception {
@@ -1355,6 +1387,9 @@ public final class Main {
         System.out.println(
                 "  build-trade-evolution-wc3       exclusive trade-evolution preset (ROM-profiled)"
         );
+        System.out.println(
+                "  build-trade-evolution-lavender-npc-wc3  research: bind Trade Evolution to Lavender Worker M"
+        );
     }
 
     private static String bytesToHex(byte[] data) {
@@ -1835,6 +1870,7 @@ public final class Main {
         System.out.println("  java -cp out Main build-lead-iv-viewer-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-lead-ev-viewer-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-trade-evolution-wc3 fr10 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-trade-evolution-object-wc3 fr10 lavender-town-worker-m input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-repel-hotkey-bin fr10 output.bin [--hotkey r-select]");
         System.out.println("  java -cp out Main build-repel-hotkey-wc3 fr10 input.wc3 output.wc3 [--hotkey r-b]");
         System.out.println("  java -cp out Main build-seed-repel-combo-wc3 fr10 1234 input.wc3 output.wc3 [--seed-hotkey r-select --repel-hotkey r-b]");
