@@ -354,11 +354,13 @@ final class PresetCatalog {
             for (PresetUsageMode mode : PresetUsageMode.values()) {
                 PresetValidationStatus status;
                 String note = "";
-                if (mode != PresetUsageMode.DELIVERYMAN) {
+                if (mode != PresetUsageMode.DELIVERYMAN && mode != PresetUsageMode.OBJECT_EVENT) {
                     status = PresetValidationStatus.UNSUPPORTED;
                 } else if (rom == RomProfile.FIRE_RED_EN_10) {
                     status = PresetValidationStatus.VALIDATED_IN_GAME;
-                    note = "Production preset validated in-game on FR1.0: decline, Party cancel, no-target, National Dex block and successful Kadabra trade evolution.";
+                    note = mode == PresetUsageMode.OBJECT_EVENT
+                            ? "Object-bound production flow validated in-game on FR1.0 with Lavender Town Worker M, including cancel/no-target/National-Dex-block/success paths."
+                            : "Deliveryman production flow validated in-game on FR1.0: decline, Party cancel, no-target, National Dex block and successful Kadabra trade evolution.";
                 } else {
                     status = PresetValidationStatus.SUPPORTED_NOT_TESTED;
                 }
@@ -379,10 +381,10 @@ final class PresetCatalog {
                         PresetDeploymentDefinition.infra(PresetInfrastructure.DEDICATED_IWRAM_CONTINUATION),
                         FR10_VALIDATED,
                         rom -> new PresetDeploymentCost(TradeEvolutionPreset.payloadSize(rom), 0, 0, 0, 1),
-                        "Exclusive deliveryman deployment. Temporarily owns the validated 32-byte continuation slot; no VBlank runtime."
+                        "Exclusive dedicated deployment for Deliveryman or existing-object binding. Temporarily owns the validated 32-byte continuation slot; no VBlank runtime."
                 )),
                 List.copyOf(validation),
-                "UI selection policy: EXCLUSIVE. Production flow validated on FR1.0; FR1.1/LG1.0/LG1.1 are symbol-profiled and require in-game validation."
+                "UI selection policy: EXCLUSIVE. Deliveryman and existing-object usage are validated on FR1.0; FR1.1/LG1.0/LG1.1 are symbol-profiled and require in-game validation."
         );
     }
 

@@ -193,6 +193,27 @@ final class RamScriptBuilder {
         return this;
     }
 
+    /* --- Trainer battles --- */
+
+    /* Raw stock single-trainer battle command. The text pointers are absolute
+       ROM pointers on purpose; unlike the v* commands, trainerbattle has no
+       RamScript-relocatable pointer form. */
+    RamScriptBuilder trainerBattleSingle(int trainerId, int localId, long introText, long defeatText) {
+        opcode(0x5C);
+        u8(0); // TRAINER_BATTLE_SINGLE
+        u16(trainerId);
+        u16(localId);
+        u32(introText);
+        u32(defeatText);
+        return this;
+    }
+
+    RamScriptBuilder clearTrainerFlag(int trainerIdOrVariable) {
+        opcode(0x62);
+        u16(trainerIdOrVariable);
+        return this;
+    }
+
     RamScriptBuilder checkFlag(int flag) {
         opcode(0x2B);
         u16(flag);

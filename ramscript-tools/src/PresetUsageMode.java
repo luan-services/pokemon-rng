@@ -6,6 +6,7 @@
 */
 enum PresetUsageMode {
     DELIVERYMAN,
+    OBJECT_EVENT,
     SINGLE_HOTKEY,
     LEGACY_MULTI_HOTKEY,
     SHARED_N_HOTKEY

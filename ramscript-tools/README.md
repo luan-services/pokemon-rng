@@ -260,3 +260,7 @@ Object-bound RamScripts are now exposed through semantic `ObjectEventTarget`
 descriptors and `RamScriptBinding`. The first catalogued target is
 `lavender-town-worker-m`; use `build-trade-evolution-object-wc3` rather than
 embedding map/object ids in feature code. See `docs/OBJECT_EVENT_BINDINGS.md`.
+
+## Trade Evolution v1 status
+
+Trade Evolution v1 is closed for FR1.0 feature work: both Deliveryman and existing-object/NPC bindings are validated in-game. The existing-NPC path is generic through `ObjectEventTarget` / `ObjectEventRamScriptBinding`; Lavender Town Worker M is the first validated catalog target. Visual trade/trade-back animation is researched but deferred, and the preset remains `EXCLUSIVE` after a documented multipreset assessment. See `docs/TRADE_EVOLUTION.md`, `docs/OBJECT_EVENT_BINDINGS.md`, `docs/TRADE_ANIMATION_RESEARCH.md`, and `docs/TRADE_EVOLUTION_MULTIPRESET_ASSESSMENT.md`.

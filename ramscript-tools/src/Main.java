@@ -69,6 +69,13 @@ public final class Main {
                 case "build-trade-evolution-wc3" -> buildTradeEvolutionWc3(args);
                 case "build-trade-evolution-lavender-npc-wc3" -> buildTradeEvolutionLavenderNpcWc3(args);
                 case "build-trade-evolution-object-wc3" -> buildTradeEvolutionObjectWc3(args);
+                case "build-trainer-battle-return-probe-wc3" -> buildTrainerBattleReturnProbeWc3(args);
+                case "build-ereader-trainer-battle-probe-wc3" -> buildEReaderTrainerBattleProbeWc3(args);
+                case "build-brock-identity-battle-probe-wc3" -> buildBrockIdentityBattleProbeWc3(args);
+                case "build-brock-six-mon-battle-probe-wc3" -> buildBrockSixMonBattleProbeWc3(args);
+                case "build-brock-normal-flags-six-mon-probe-wc3" -> buildBrockNormalFlagsSixMonProbeWc3(args);
+                case "build-brock-normal-end-battle-probe-wc3" -> buildBrockNormalEndBattleProbeWc3(args);
+                case "build-brock-custom-end-callback-probe-wc3" -> buildBrockCustomEndCallbackProbeWc3(args);
                 case "build-party-selector-harness-wc3" -> buildPartySelectorHarnessWc3(args);
                 case "build-party-single-continuation-harness-wc3" -> buildPartySingleContinuationHarnessWc3(args);
                 case "build-party-callback-probe-wc3" -> buildPartyCallbackProbeWc3(args);
@@ -627,6 +634,77 @@ public final class Main {
         System.out.println("  dedicated IWRAM callback: 32 B at 03005310");
         System.out.println("  success marker: VAR_0x8005 = 0x4502 after relocation-safe return");
         System.out.println("  selected slot copy: VAR_0x8006 = VAR_0x8004");
+    }
+
+    private static void buildEReaderTrainerBattleProbeWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-ereader-trainer-battle-probe-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = EReaderTrainerBattleProbePreset.buildLavenderWorker(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.printf("Built e-Reader trainer battle probe: %s (%d/%d bytes) -> %s%n", rom.displayName(), result.payloadBytes(), RamScript.SCRIPT_SIZE, args[3]);
+    }
+
+    private static void buildBrockIdentityBattleProbeWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-brock-identity-battle-probe-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = BrockIdentityBattleProbePreset.buildLavenderWorker(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.printf("Built Brock identity battle probe: %s (%d/%d bytes) -> %s%n", rom.displayName(), result.payloadBytes(), RamScript.SCRIPT_SIZE, args[3]);
+    }
+
+    private static void buildBrockSixMonBattleProbeWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-brock-six-mon-battle-probe-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = BrockSixMonBattleProbePreset.buildLavenderWorker(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.printf("Built Brock six-mon battle probe: %s (%d/%d bytes) -> %s%n", rom.displayName(), result.payloadBytes(), RamScript.SCRIPT_SIZE, args[3]);
+    }
+
+
+    private static void buildBrockNormalFlagsSixMonProbeWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-brock-normal-flags-six-mon-probe-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = BrockNormalFlagsSixMonProbePreset.buildLavenderWorker(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.printf("Built Brock normal-flags six-mon probe: %s (%d/%d bytes) -> %s%n", rom.displayName(), result.payloadBytes(), RamScript.SCRIPT_SIZE, args[3]);
+    }
+
+    private static void buildBrockNormalEndBattleProbeWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-brock-normal-end-battle-probe-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = BrockNormalEndBattleProbePreset.buildLavenderWorker(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.printf("Built Brock normal-flags six-mon probe: %s (%d/%d bytes) -> %s%n", rom.displayName(), result.payloadBytes(), RamScript.SCRIPT_SIZE, args[3]);
+    }
+
+
+    private static void buildBrockCustomEndCallbackProbeWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-brock-custom-end-callback-probe-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = BrockCustomEndCallbackProbePreset.buildLavenderWorker(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.printf("Built Brock custom-end-callback probe: %s (%d/%d bytes) -> %s%n", rom.displayName(), result.payloadBytes(), RamScript.SCRIPT_SIZE, args[3]);
+    }
+
+    private static void buildTrainerBattleReturnProbeWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-trainer-battle-return-probe-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = TrainerBattleReturnProbePreset.buildLavenderWorker(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        ObjectEventTarget target = ObjectEventCatalog.LAVENDER_TOWN_WORKER_M;
+        System.out.println("Trainer Battle return probe:");
+        System.out.println("  ROM: " + rom.displayName());
+        System.out.println("  target: " + target.displayName() + " [" + target.id() + "]");
+        System.out.println("  opponent: vanilla Youngster Ben (trainer 89)");
+        System.out.println("  payload bytes: " + result.payloadBytes());
+        System.out.println("  markers: VAR_0x8005 5101 before battle, 5102 after relocation-safe return");
     }
 
     private static void buildTradeEvolutionObjectWc3(String[] args) throws Exception {
@@ -1390,6 +1468,11 @@ public final class Main {
         System.out.println(
                 "  build-trade-evolution-lavender-npc-wc3  research: bind Trade Evolution to Lavender Worker M"
         );
+        System.out.println(
+                "  build-trainer-battle-return-probe-wc3   research: Lavender NPC -> vanilla trainer battle -> relocated RamScript"
+                + "\n  build-ereader-trainer-battle-probe-wc3 research: stock e-Reader trainer data -> custom battle"
+                + "\n  build-brock-identity-battle-probe-wc3 research: Brock presentation + custom e-Reader party"
+        );
     }
 
     private static String bytesToHex(byte[] data) {
@@ -1871,6 +1954,9 @@ public final class Main {
         System.out.println("  java -cp out Main build-lead-ev-viewer-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-trade-evolution-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-trade-evolution-object-wc3 fr10 lavender-town-worker-m input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-trainer-battle-return-probe-wc3 fr10 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-ereader-trainer-battle-probe-wc3 fr10 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-brock-identity-battle-probe-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-repel-hotkey-bin fr10 output.bin [--hotkey r-select]");
         System.out.println("  java -cp out Main build-repel-hotkey-wc3 fr10 input.wc3 output.wc3 [--hotkey r-b]");
         System.out.println("  java -cp out Main build-seed-repel-combo-wc3 fr10 1234 input.wc3 output.wc3 [--seed-hotkey r-select --repel-hotkey r-b]");

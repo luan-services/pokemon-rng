@@ -31,7 +31,9 @@ enum RomProfile {
             0x08042EC5L,
             0x080CDDA9L,
             0x0300537CL,
-            0x080568C5L
+            0x080568C5L,
+            0x08183560L,
+            0x081835A0L
     ),
 
     LEAF_GREEN_EN_10(
@@ -66,7 +68,9 @@ enum RomProfile {
             0x08042EC5L,
             0x080CDD7DL,
             0x0300537CL,
-            0x080568C5L
+            0x080568C5L,
+            0x0818353CL,
+            0x0818357CL
     ),
 
     FIRE_RED_EN_11(
@@ -101,7 +105,9 @@ enum RomProfile {
             0x08042ED9L,
             0x080CDDBDL,
             0x0300537CL,
-            0x080568D9L
+            0x080568D9L,
+            0x081835D8L,
+            0x08183618L
     ),
 
     LEAF_GREEN_EN_11(
@@ -136,7 +142,9 @@ enum RomProfile {
             0x08042ED9L,
             0x080CDD91L,
             0x0300537CL,
-            0x080568D9L
+            0x080568D9L,
+            0x081835B4L,
+            0x081835F4L
     );
 
     enum ValidationStatus {
@@ -199,6 +207,10 @@ enum RomProfile {
     final long cb2AfterEvolution;
     final long cb2ReturnToFieldContinueScriptThumb;
 
+    // Vanilla ROM text pointers used only by the trainer-battle boundary probe.
+    final long trainerProbeIntroText;
+    final long trainerProbeDefeatText;
+
     RomProfile(
             String id,
             String displayName,
@@ -231,7 +243,9 @@ enum RomProfile {
             long getEvolutionTargetSpeciesThumb,
             long beginEvolutionSceneThumb,
             long cb2AfterEvolution,
-            long cb2ReturnToFieldContinueScriptThumb
+            long cb2ReturnToFieldContinueScriptThumb,
+            long trainerProbeIntroText,
+            long trainerProbeDefeatText
     ) {
         this.id = id;
         this.displayName = displayName;
@@ -265,6 +279,8 @@ enum RomProfile {
         this.beginEvolutionSceneThumb = beginEvolutionSceneThumb;
         this.cb2AfterEvolution = cb2AfterEvolution;
         this.cb2ReturnToFieldContinueScriptThumb = cb2ReturnToFieldContinueScriptThumb;
+        this.trainerProbeIntroText = trainerProbeIntroText;
+        this.trainerProbeDefeatText = trainerProbeDefeatText;
     }
 
     String id() {
