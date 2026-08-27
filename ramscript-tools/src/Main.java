@@ -76,6 +76,9 @@ public final class Main {
                 case "build-brock-normal-flags-six-mon-probe-wc3" -> buildBrockNormalFlagsSixMonProbeWc3(args);
                 case "build-brock-normal-end-battle-probe-wc3" -> buildBrockNormalEndBattleProbeWc3(args);
                 case "build-brock-custom-end-callback-probe-wc3" -> buildBrockCustomEndCallbackProbeWc3(args);
+                case "build-brock-dialogue-flow-probe-wc3" -> buildBrockDialogueFlowProbeWc3(args);
+                case "build-brock-completion-flag-probe-wc3" -> buildBrockCompletionFlagProbeWc3(args);
+                case "build-brock-gym-leader-bgm-probe-wc3" -> buildBrockGymLeaderBgmProbeWc3(args);
                 case "build-party-selector-harness-wc3" -> buildPartySelectorHarnessWc3(args);
                 case "build-party-single-continuation-harness-wc3" -> buildPartySingleContinuationHarnessWc3(args);
                 case "build-party-callback-probe-wc3" -> buildPartyCallbackProbeWc3(args);
@@ -690,6 +693,32 @@ public final class Main {
         TriggerBuildResult result = BrockCustomEndCallbackProbePreset.buildLavenderWorker(rom);
         buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
         System.out.printf("Built Brock custom-end-callback probe: %s (%d/%d bytes) -> %s%n", rom.displayName(), result.payloadBytes(), RamScript.SCRIPT_SIZE, args[3]);
+    }
+
+    private static void buildBrockDialogueFlowProbeWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-brock-dialogue-flow-probe-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = BrockDialogueFlowProbePreset.buildLavenderWorker(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.printf("Built Brock dialogue-flow probe: %s (%d/%d bytes) -> %s%n", rom.displayName(), result.payloadBytes(), RamScript.SCRIPT_SIZE, args[3]);
+    }
+
+    private static void buildBrockCompletionFlagProbeWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-brock-completion-flag-probe-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = BrockCompletionFlagProbePreset.buildLavenderWorker(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.printf("Built Brock completion-flag probe: %s (%d/%d bytes) -> %s%n", rom.displayName(), result.payloadBytes(), RamScript.SCRIPT_SIZE, args[3]);
+    }
+    private static void buildBrockGymLeaderBgmProbeWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-brock-gym-leader-bgm-probe-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = BrockGymLeaderBgmProbePreset.buildLavenderWorker(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.printf("Built Brock completion-flag probe: %s (%d/%d bytes) -> %s%n", rom.displayName(), result.payloadBytes(), RamScript.SCRIPT_SIZE, args[3]);
     }
 
     private static void buildTrainerBattleReturnProbeWc3(String[] args) throws Exception {
