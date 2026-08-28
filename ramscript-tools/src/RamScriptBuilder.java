@@ -69,6 +69,14 @@ final class RamScriptBuilder {
         return this;
     }
 
+    /* Absolute stock-ROM control flow, used when an object-bound RamScript must
+       delegate back to the NPC's original script. */
+    RamScriptBuilder gotoAddress(long address) {
+        opcode(0x05);
+        u32(address);
+        return this;
+    }
+
     RamScriptBuilder vCall(String label) {
         opcode(0xBA);
         labelPointer(label);

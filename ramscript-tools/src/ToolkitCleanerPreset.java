@@ -86,6 +86,22 @@ final class ToolkitCleanerPreset {
         out.u16(0x3E01); // subs r6,#1
         out.bcond(0x1, "sb1_loop");
 
+        // Clear Custom Trainer rematch completion flags 0x4A7..0x4AE while
+        // preserving neighboring bits. Flags live at SB1+0x0EE0; these eight
+        // authored flags span flag bytes +0x94/+0x95.
+        out.ldrLiteral(4, "sb1_ptr");
+        out.u16(0x6824);
+        out.ldrLiteral(6, "custom_flag_bytes_off");
+        out.u16(addReg(4,4,6));
+        out.u16(ldrbImm(0,4,0));
+        out.u16(0x217F); // movs r1,#0x7F
+        out.u16(0x4008); // ands r0,r1
+        out.u16(strbImm(0,4,0));
+        out.u16(ldrbImm(0,4,1));
+        out.u16(0x2180); // movs r1,#0x80
+        out.u16(0x4008);
+        out.u16(strbImm(0,4,1));
+
         // Clear complete toolkit-reserved SB2 area: 1024 B = 128 * 8 B.
         out.ldrLiteral(4, "sb2_ptr");
         out.u16(0x6824);
@@ -115,6 +131,7 @@ final class ToolkitCleanerPreset {
         out.literal("sb1_ptr", rom.saveBlock1Ptr);
         out.literal("sb1_off", PayloadStorageArea.SAVE_BLOCK1.offset());
         out.literal("sb2_off", PayloadStorageArea.SAVE_BLOCK2.offset());
+        out.literal("custom_flag_bytes_off", 0x0EE0 + (0x4A7 >>> 3));
         out.literal("result", rom.specialVarResult);
         return out.build(address);
     }
@@ -123,6 +140,8 @@ final class ToolkitCleanerPreset {
     private static int ldrWordImm(int rd,int rn,int off){ return 0x6800 | ((off/4)<<6) | (rn<<3) | rd; }
     private static int strWordImm(int rd,int rn,int off){ return 0x6000 | ((off/4)<<6) | (rn<<3) | rd; }
     private static int ldrhImm(int rd,int rn,int off){ return 0x8800 | ((off/2)<<6) | (rn<<3) | rd; }
+    private static int ldrbImm(int rd,int rn,int off){ return 0x7800 | (off<<6) | (rn<<3) | rd; }
+    private static int strbImm(int rd,int rn,int off){ return 0x7000 | (off<<6) | (rn<<3) | rd; }
 
     private static final class Thumb {
         private final ByteArrayOutputStream out = new ByteArrayOutputStream();

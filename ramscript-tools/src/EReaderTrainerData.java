@@ -144,6 +144,12 @@ final class EReaderTrainerData {
         return out;
     }
 
+    static byte[] encodeMon(Mon m) {
+        byte[] out = new byte[MON_SIZE];
+        putMon(out, 0, m);
+        return out;
+    }
+
     private static void putMon(byte[] out, int o, Mon m) {
         putU16(out, o + 0x00, m.species());
         putU16(out, o + 0x02, m.heldItem());

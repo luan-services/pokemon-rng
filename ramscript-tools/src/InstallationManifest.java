@@ -38,6 +38,26 @@ final class InstallationManifest {
         return out;
     }
 
+    static byte[] buildCustomTrainer() {
+        byte[] out = new byte[SIZE];
+        System.arraycopy(MAGIC, 0, out, 0, MAGIC.length);
+        putU16(out, 4, FORMAT_VERSION);
+        putU16(out, 6, SIZE);
+        putU32(out, 8, SECONDARY_MARKER);
+        // Stable feature fingerprint: "CTRB".
+        putU32(out, 12, 0x42525443);
+        out[16] = 1;
+        // bit 8 is reserved here for the custom-trainer shared runtime family.
+        putU16(out, 18, 0x0100);
+        putU16(out, 20, 0);
+        putU16(out, 22, CustomTrainerFieldTextStorage.CAPACITY);
+        putU16(out, 24, PayloadStorageArea.SAVE_BLOCK2.capacity() - SIZE);
+        putU16(out, 26, 0);
+        putU16(out, 28, Crc16.calculate(out, 0, 28));
+        putU16(out, 30, 0);
+        return out;
+    }
+
     static boolean hasMagic(byte[] data) {
         if (data == null || data.length < SIZE) return false;
         for (int i = 0; i < MAGIC.length; i++) if (data[i] != MAGIC[i]) return false;

@@ -2,6 +2,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 final class Vars {
+    static final int VAR_8004 = 0x8004;
+    static final int RESULT = 0x800D;
+
     private static final Map<Integer, String> NAMES = new HashMap<>();
 
     static {

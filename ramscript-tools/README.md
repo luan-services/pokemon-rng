@@ -1,3 +1,11 @@
+# Current milestone — Custom Trainer production baseline
+
+Custom Trainer Runtime V2 is now the production baseline on FireRed English 1.0. The real Brock and Misty Gym NPC bindings have been validated both before Hall of Fame (exact stock-script fallback) and postgame, and Misty can be installed after Brock while reusing the persisted runtime. Historical trainer probes were moved under `src/research/customtrainer`, `tests/research/customtrainer` and `docs/research/customtrainer`.
+
+Use `java -cp out ProductionTestRunner` for the focused production suite. The historical all-in-one `TestRunner` still contains an older unrelated Party-IV planner assertion and is retained for regression/research coverage.
+
+Current Custom Trainer documentation: `docs/CUSTOM_TRAINER_PRODUCTION.md`. Size work must follow `docs/CUSTOM_TRAINER_SIZE_AUDIT.md`; the validated runtime itself is frozen.
+
 # Current milestone — Trade Evolution production preset
 
 Trade Evolution has moved from the Build 43–48 research series into the production preset/catalog layer. The current deployment is `DEDICATED_LOCAL`: it uses the validated 32-byte relocation continuation slot, does not install the shared hotkey/VBlank runtime, and exposes `selectionPolicy=EXCLUSIVE` for the UI/planner. All ROM-sensitive symbols are resolved through `RomProfile` for FR1.0, FR1.1, LG1.0 and LG1.1. The production preset is validated in-game on FR1.0; the other three profiles remain supported but untested. See `docs/TRADE_EVOLUTION.md`.

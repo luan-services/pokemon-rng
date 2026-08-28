@@ -79,6 +79,13 @@ public final class Main {
                 case "build-brock-dialogue-flow-probe-wc3" -> buildBrockDialogueFlowProbeWc3(args);
                 case "build-brock-completion-flag-probe-wc3" -> buildBrockCompletionFlagProbeWc3(args);
                 case "build-brock-gym-leader-bgm-probe-wc3" -> buildBrockGymLeaderBgmProbeWc3(args);
+                case "build-custom-trainer-runtime-wc3" -> buildCustomTrainerRuntimeWc3(args);
+                case "build-custom-trainer-brock-wc3" -> buildCustomTrainerBrockWc3(args);
+                case "build-custom-trainer-misty-wc3" -> buildCustomTrainerMistyWc3(args);
+                case "build-custom-trainer-runtime-install-probe-wc3" -> buildCustomTrainerRuntimeInstallProbeWc3(args);
+                case "build-custom-trainer-runtime-verify-probe-wc3" -> buildCustomTrainerRuntimeVerifyProbeWc3(args);
+                case "build-custom-trainer-brock-shared-probe-wc3" -> buildCustomTrainerBrockSharedProbeWc3(args);
+                case "build-custom-trainer-misty-shared-probe-wc3" -> buildCustomTrainerMistySharedProbeWc3(args);
                 case "build-party-selector-harness-wc3" -> buildPartySelectorHarnessWc3(args);
                 case "build-party-single-continuation-harness-wc3" -> buildPartySingleContinuationHarnessWc3(args);
                 case "build-party-callback-probe-wc3" -> buildPartyCallbackProbeWc3(args);
@@ -719,6 +726,99 @@ public final class Main {
         TriggerBuildResult result = BrockGymLeaderBgmProbePreset.buildLavenderWorker(rom);
         buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
         System.out.printf("Built Brock completion-flag probe: %s (%d/%d bytes) -> %s%n", rom.displayName(), result.payloadBytes(), RamScript.SCRIPT_SIZE, args[3]);
+    }
+
+    private static void buildCustomTrainerRuntimeWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-custom-trainer-runtime-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = CustomTrainerSharedRuntimeInstallerPreset.buildDeliveryman(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        NativeHelper runtime = CustomTrainerBattleRuntimeV2.build(rom);
+        System.out.println("Custom Trainer battle runtime installer:");
+        System.out.println("  trigger: Deliveryman");
+        System.out.println("  ROM: " + rom.displayName());
+        System.out.println("  runtime bytes: " + runtime.size() + " / " + CustomTrainerRuntimeStorage.RUNTIME_CAPACITY);
+        System.out.println("  RamScript bytes: " + result.payloadBytes() + " / " + RamScript.SCRIPT_SIZE);
+    }
+
+    private static void buildCustomTrainerBrockWc3(String[] args) throws Exception {
+        buildCustomTrainerLeaderWc3(args, CustomTrainerBattleExamples.brock(), ObjectEventCatalog.PEWTER_GYM_BROCK,
+                CustomTrainerVanillaScripts::brock, "Brock");
+    }
+
+    private static void buildCustomTrainerMistyWc3(String[] args) throws Exception {
+        buildCustomTrainerLeaderWc3(args, CustomTrainerBattleExamples.misty(), ObjectEventCatalog.CERULEAN_GYM_MISTY,
+                CustomTrainerVanillaScripts::misty, "Misty");
+    }
+
+    private static void buildCustomTrainerLeaderWc3(String[] args, CustomTrainerBattleSpec spec, ObjectEventTarget target,
+                                                     java.util.function.ToLongFunction<RomProfile> vanillaScript, String name) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-custom-trainer-" + name.toLowerCase() + "-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = CustomTrainerBattleSharedRuntimePreset.buildGymLeader(rom, target, spec, vanillaScript.applyAsLong(rom));
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Custom Trainer Gym Leader preset — " + name + ":");
+        System.out.println("  target: " + target.displayName() + " map=" + target.mapGroup() + ":" + target.mapNum() + " localId=" + target.localId());
+        System.out.printf("  completion flag: 0x%03X%n", spec.completionFlag().eventFlag());
+        System.out.println("  Hall of Fame gate: FLAG_SYS_GAME_CLEAR (0x82C), vanilla fallback before clear");
+        System.out.println("  party size: " + spec.party().size());
+        System.out.println("  manifest: RSPK custom-trainer tag written by descriptor loader");
+        System.out.println("  RamScript bytes: " + result.payloadBytes() + " / " + RamScript.SCRIPT_SIZE);
+    }
+
+    private static void buildCustomTrainerRuntimeInstallProbeWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-custom-trainer-runtime-install-probe-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = CustomTrainerSharedRuntimeInstallerPreset.buildLavenderWorker(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        NativeHelper runtime = CustomTrainerBattleRuntimeV2.build(rom);
+        System.out.println("Custom Trainer shared-runtime installer probe:");
+        System.out.println("  ROM: " + rom.displayName());
+        System.out.println("  target: " + ObjectEventCatalog.LAVENDER_TOWN_WORKER_M.displayName());
+        System.out.println("  resident runtime: " + runtime.size() + " / " + CustomTrainerRuntimeStorage.RUNTIME_CAPACITY + " B");
+        System.out.printf("  persistent runtime: SB2+0x%04X%n", CustomTrainerRuntimeStorage.RUNTIME_OFFSET);
+        System.out.println("  payload bytes: " + result.payloadBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  next: talk to the Worker, save the game, then replace this card with Brock/Misty descriptor probe.");
+    }
+
+    private static void buildCustomTrainerRuntimeVerifyProbeWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-custom-trainer-runtime-verify-probe-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = CustomTrainerSharedRuntimeVerifierPreset.buildLavenderWorker(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Custom Trainer shared runtime verifier built.");
+        System.out.println("  payload bytes: " + result.payloadBytes() + " / " + RamScript.SCRIPT_SIZE);
+    }
+
+    private static void buildCustomTrainerBrockSharedProbeWc3(String[] args) throws Exception {
+        buildCustomTrainerSharedProbeWc3(args, CustomTrainerBattleExamples.brock(), "Brock");
+    }
+
+    private static void buildCustomTrainerMistySharedProbeWc3(String[] args) throws Exception {
+        buildCustomTrainerSharedProbeWc3(args, CustomTrainerBattleExamples.misty(), "Misty");
+    }
+
+    private static void buildCustomTrainerSharedProbeWc3(String[] args, CustomTrainerBattleSpec spec, String displayName) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-custom-trainer-" + displayName.toLowerCase() + "-shared-probe-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = CustomTrainerBattleSharedRuntimePreset.buildLavenderWorker(rom, spec);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        byte[] descriptor = CustomTrainerBattleDescriptor.encode(spec, ObjectEventCatalog.LAVENDER_TOWN_WORKER_M.localId(), 0);
+        System.out.println("Custom Trainer descriptor-only probe — " + displayName + ":");
+        System.out.println("  ROM: " + rom.displayName());
+        System.out.println("  identity host: " + spec.identity() + " (trainer " + spec.identity().trainerId() + ")");
+        System.out.println("  party size: " + spec.party().size());
+        System.out.printf("  completion flag: %s / 0x%03X%n", spec.completionFlag(), spec.completionFlag().eventFlag());
+        byte[] fieldTexts = CustomTrainerFieldTextStorage.encode(spec);
+        System.out.println("  descriptor bytes (SB2): " + descriptor.length + " / " + CustomTrainerRuntimeStorage.DESCRIPTOR_CAPACITY);
+        System.out.println("  field dialogue bytes (SB1): " + fieldTexts.length + " / " + CustomTrainerFieldTextStorage.CAPACITY);
+        System.out.println("  RamScript bytes: " + result.payloadBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  shared runtime embedded: NO");
     }
 
     private static void buildTrainerBattleReturnProbeWc3(String[] args) throws Exception {
