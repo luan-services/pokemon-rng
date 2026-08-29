@@ -201,6 +201,22 @@ final class RamScriptBuilder {
         return this;
     }
 
+
+    /* --- Object movement --- */
+
+    RamScriptBuilder applyMovement(int localIdOrVariable, long movementScript) {
+        opcode(0x4F);
+        u16(localIdOrVariable);
+        u32(movementScript);
+        return this;
+    }
+
+    RamScriptBuilder waitMovement(int localIdOrVariable) {
+        opcode(0x51);
+        u16(localIdOrVariable);
+        return this;
+    }
+
     /* --- Trainer battles --- */
 
     /* Raw stock single-trainer battle command. The text pointers are absolute

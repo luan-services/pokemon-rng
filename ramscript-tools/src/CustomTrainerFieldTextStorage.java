@@ -25,7 +25,10 @@ final class CustomTrainerFieldTextStorage {
         ByteArrayOutputStream pool = new ByteArrayOutputStream();
         int pre = append(pool, spec.preBattleText());
         int post = append(pool, spec.postVictoryText());
-        int already = append(pool, spec.alreadyCompletedText());
+        // Production policy: talking again after victory reuses the post-victory
+        // line. The persistent CTXT layout is unchanged; both offsets simply
+        // point at the same encoded string.
+        int already = post;
 
         int size = HEADER_SIZE + pool.size();
         if (size > CAPACITY) {

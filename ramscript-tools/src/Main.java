@@ -82,6 +82,14 @@ public final class Main {
                 case "build-custom-trainer-runtime-wc3" -> buildCustomTrainerRuntimeWc3(args);
                 case "build-custom-trainer-brock-wc3" -> buildCustomTrainerBrockWc3(args);
                 case "build-custom-trainer-misty-wc3" -> buildCustomTrainerMistyWc3(args);
+                case "build-custom-trainer-lt-surge-wc3" -> buildCustomTrainerLtSurgeWc3(args);
+                case "build-custom-trainer-erika-wc3" -> buildCustomTrainerErikaWc3(args);
+                case "build-custom-trainer-koga-wc3" -> buildCustomTrainerKogaWc3(args);
+                case "build-custom-trainer-sabrina-wc3" -> buildCustomTrainerSabrinaWc3(args);
+                case "build-custom-trainer-blaine-wc3" -> buildCustomTrainerBlaineWc3(args);
+                case "build-custom-trainer-giovanni-wc3" -> buildCustomTrainerGiovanniWc3(args);
+                case "build-custom-trainer-giovanni-capacity-wc3" -> buildCustomTrainerGiovanniCapacityWc3(args);
+                case "build-custom-trainer-brock-six-mon-wc3" -> buildCustomTrainerBrockSixMonWc3(args);
                 case "build-custom-trainer-runtime-install-probe-wc3" -> buildCustomTrainerRuntimeInstallProbeWc3(args);
                 case "build-custom-trainer-runtime-verify-probe-wc3" -> buildCustomTrainerRuntimeVerifyProbeWc3(args);
                 case "build-custom-trainer-brock-shared-probe-wc3" -> buildCustomTrainerBrockSharedProbeWc3(args);
@@ -743,13 +751,67 @@ public final class Main {
     }
 
     private static void buildCustomTrainerBrockWc3(String[] args) throws Exception {
-        buildCustomTrainerLeaderWc3(args, CustomTrainerBattleExamples.brock(), ObjectEventCatalog.PEWTER_GYM_BROCK,
+        buildCustomTrainerLeaderWc3(args, CustomTrainerGymLeaderPresets.brock(), ObjectEventCatalog.PEWTER_GYM_BROCK,
                 CustomTrainerVanillaScripts::brock, "Brock");
     }
 
     private static void buildCustomTrainerMistyWc3(String[] args) throws Exception {
-        buildCustomTrainerLeaderWc3(args, CustomTrainerBattleExamples.misty(), ObjectEventCatalog.CERULEAN_GYM_MISTY,
+        buildCustomTrainerLeaderWc3(args, CustomTrainerGymLeaderPresets.misty(), ObjectEventCatalog.CERULEAN_GYM_MISTY,
                 CustomTrainerVanillaScripts::misty, "Misty");
+    }
+
+    private static void buildCustomTrainerLtSurgeWc3(String[] args) throws Exception {
+        buildCustomTrainerLeaderWc3(args, CustomTrainerGymLeaderPresets.ltSurge(), ObjectEventCatalog.VERMILION_GYM_LT_SURGE,
+                CustomTrainerVanillaScripts::ltSurge, "Lt-Surge");
+    }
+
+    private static void buildCustomTrainerErikaWc3(String[] args) throws Exception {
+        buildCustomTrainerLeaderWc3(args, CustomTrainerGymLeaderPresets.erika(), ObjectEventCatalog.CELADON_GYM_ERIKA,
+                CustomTrainerVanillaScripts::erika, "Erika");
+    }
+
+    private static void buildCustomTrainerKogaWc3(String[] args) throws Exception {
+        buildCustomTrainerLeaderWc3(args, CustomTrainerGymLeaderPresets.koga(), ObjectEventCatalog.FUCHSIA_GYM_KOGA,
+                CustomTrainerVanillaScripts::koga, "Koga");
+    }
+
+    private static void buildCustomTrainerSabrinaWc3(String[] args) throws Exception {
+        buildCustomTrainerLeaderWc3(args, CustomTrainerGymLeaderPresets.sabrina(), ObjectEventCatalog.SAFFRON_GYM_SABRINA,
+                CustomTrainerVanillaScripts::sabrina, "Sabrina");
+    }
+
+    private static void buildCustomTrainerBlaineWc3(String[] args) throws Exception {
+        buildCustomTrainerLeaderWc3(args, CustomTrainerGymLeaderPresets.blaine(), ObjectEventCatalog.CINNABAR_GYM_BLAINE,
+                CustomTrainerVanillaScripts::blaine, "Blaine");
+    }
+
+    private static void buildCustomTrainerGiovanniWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-custom-trainer-giovanni-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        CustomTrainerBattleSpec spec = CustomTrainerGymLeaderPresets.giovanni();
+        ObjectEventTarget target = ObjectEventCatalog.FIVE_ISLAND_FISHER_GIOVANNI_HOST;
+        TriggerBuildResult result = CustomTrainerBattleSharedRuntimePreset.buildGiovanniFiveIsland(rom, target, spec);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Custom Trainer Gym Leader preset — Giovanni:");
+        System.out.println("  target host: " + target.displayName() + " map=" + target.mapGroup() + ":" + target.mapNum() + " localId=" + target.localId());
+        System.out.println("  live sprite override: OBJ_EVENT_GFX_GIOVANNI (87), under fade on interaction");
+        System.out.printf("  completion flag: 0x%03X%n", spec.completionFlag().eventFlag());
+        System.out.println("  postgame host: Five Island; no pre-Hall-of-Fame fallback required");
+        System.out.println("  party size: " + spec.party().size());
+        System.out.println("  RamScript bytes: " + result.payloadBytes() + " / " + RamScript.SCRIPT_SIZE);
+        CustomTrainerAuthoringReport.print(rom, spec, target, 0, result);
+    }
+
+    private static void buildCustomTrainerGiovanniCapacityWc3(String[] args) throws Exception {
+        System.out.println("WARNING: Giovanni content/capacity build only; vanilla Giovanni is hidden after story completion.");
+        buildCustomTrainerLeaderWc3(args, CustomTrainerGymLeaderPresets.giovanni(), ObjectEventCatalog.VIRIDIAN_GYM_GIOVANNI,
+                CustomTrainerVanillaScripts::giovanni, "Giovanni-Capacity");
+    }
+
+    private static void buildCustomTrainerBrockSixMonWc3(String[] args) throws Exception {
+        buildCustomTrainerLeaderWc3(args, CustomTrainerGymLeaderPresets.brock(), ObjectEventCatalog.PEWTER_GYM_BROCK,
+                CustomTrainerVanillaScripts::brock, "Brock-Six-Mon");
     }
 
     private static void buildCustomTrainerLeaderWc3(String[] args, CustomTrainerBattleSpec spec, ObjectEventTarget target,
@@ -766,6 +828,7 @@ public final class Main {
         System.out.println("  party size: " + spec.party().size());
         System.out.println("  manifest: RSPK custom-trainer tag written by descriptor loader");
         System.out.println("  RamScript bytes: " + result.payloadBytes() + " / " + RamScript.SCRIPT_SIZE);
+        CustomTrainerAuthoringReport.print(rom, spec, target, vanillaScript.applyAsLong(rom), result);
     }
 
     private static void buildCustomTrainerRuntimeInstallProbeWc3(String[] args) throws Exception {
