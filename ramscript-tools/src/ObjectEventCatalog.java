@@ -5,6 +5,16 @@ import java.util.List;
 final class ObjectEventCatalog {
     private ObjectEventCatalog() {}
 
+
+    // Early-game installer host in Professor Oak's Lab. This aide is permanent
+    // (flag 0) and has a simple dialogue script, so binding a RamScript here
+    // does not replace Oak's story-critical interaction during starter selection.
+    static final ObjectEventTarget OAKS_LAB_AIDE1_EARLY_INSTALLER = new ObjectEventTarget(
+            "oaks-lab-aide1-early-installer", "Professor Oak's Lab — Aide 1 (early installer)",
+            4, 3, 1, 3, 11,
+            "PalletTown_ProfessorOaksLab_EventScript_Aide1", ObjectEventSafety.SAFE_SIMPLE_DIALOG
+    );
+
     static final ObjectEventTarget LAVENDER_TOWN_WORKER_M = new ObjectEventTarget(
             "lavender-town-worker-m",
             "Lavender Town — Worker M",
@@ -70,7 +80,7 @@ final class ObjectEventCatalog {
     );
 
     static List<ObjectEventTarget> all() {
-        return List.of(LAVENDER_TOWN_WORKER_M, PEWTER_GYM_BROCK, CERULEAN_GYM_MISTY,
+        return List.of(OAKS_LAB_AIDE1_EARLY_INSTALLER, LAVENDER_TOWN_WORKER_M, PEWTER_GYM_BROCK, CERULEAN_GYM_MISTY,
                 VERMILION_GYM_LT_SURGE, CELADON_GYM_ERIKA, FUCHSIA_GYM_KOGA,
                 SAFFRON_GYM_SABRINA, CINNABAR_GYM_BLAINE, VIRIDIAN_GYM_GIOVANNI,
                 FIVE_ISLAND_FISHER_GIOVANNI_HOST);

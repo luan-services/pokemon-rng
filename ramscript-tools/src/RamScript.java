@@ -86,6 +86,12 @@ final class RamScript {
         return new RamScript(data);
     }
 
+    static RamScript rebindObject(RamScript source, ObjectEventTarget target) {
+        if (source == null) throw new IllegalArgumentException("source RamScript must not be null");
+        if (target == null) throw new IllegalArgumentException("object-event target must not be null");
+        return createObjectBound(source.scriptCopy(), target.mapGroup(), target.mapNum(), target.localId());
+    }
+
     static RamScript createWonderCard(byte[] script) {
         if (script.length > SCRIPT_SIZE) {
             throw new IllegalArgumentException(

@@ -39,6 +39,7 @@ public final class Main {
                 case "plan-presets" -> planPresets(args);
                 case "plan-installation" -> planInstallation(args);
                 case "build-planned-installation-wc3" -> buildPlannedInstallationWc3(args);
+                case "build-planned-installation-object-wc3" -> buildPlannedInstallationObjectWc3(args);
                 case "build-toolkit-cleaner-wc3" -> buildToolkitCleanerWc3(args);
                 case "toolkit-cleaner-metadata" -> requireArgs(args, 1, () -> System.out.print(ToolkitCleanerUiModel.current().report()));
 
@@ -64,6 +65,7 @@ public final class Main {
                 case "build-show-secret-id-persistent-launch-wc3" -> buildShowSecretIdPersistentLaunchWc3(args);
                 case "build-seed-modifier-bin" -> buildSeedModifierBin(args);
                 case "build-seed-modifier-wc3" -> buildSeedModifierWc3(args);
+                case "build-seed-modifier-oak-lab-wc3" -> buildSeedModifierOakLabWc3(args);
                 case "build-party-iv-viewer-bin" -> buildPartyIvViewerBin(args);
                 case "build-party-iv-viewer-wc3" -> buildPartyIvViewerWc3(args);
                 case "build-party-iv-viewer-deliveryman-wc3" -> buildPartyIvViewerDeliverymanWc3(args);
@@ -268,6 +270,40 @@ public final class Main {
     }
 
 
+    private static void buildPlannedInstallationObjectWc3(String[] args) throws Exception {
+        if (args.length < 7) {
+            throw new IllegalArgumentException("Usage: build-planned-installation-object-wc3 <rom> <seed-hex> <input.wc3> <output-prefix> <object-target-id> <preset-id> [preset-id ...]");
+        }
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int seed = Integer.parseUnsignedInt(args[2], 16);
+        Path input = Path.of(args[3]);
+        String prefix = args[4];
+        ObjectEventTarget target = ObjectEventCatalog.byId(args[5]);
+        List<String> ids = java.util.Arrays.asList(args).subList(6, args.length);
+        PresetCompositionPlan composition = PresetCompositionPlanner.plan(rom, ids);
+        InstallationPlan plan = CompositionInstallationPlanner.plan(composition);
+        InstallationEmitter.EmittedInstallation emitted = InstallationEmitter.emit(plan, seed);
+
+        if (emitted.runtime() != null) {
+            throw new IllegalArgumentException(
+                    "This composition requires a final shared hotkey runtime. No files were written: "
+                            + "the validated shared runtime locator requires FF/FF/FF and cannot remain "
+                            + "object-bound. Use the dedicated one-shot early installer for HotkeyRuntimeV1; "
+                            + "a generic self-detaching adapter for shared runtimes is not implemented yet."
+            );
+        }
+
+        for (InstallationEmitter.EmittedStage stage : emitted.persistentStages()) {
+            String suffix = plan.localOnly() ? "local" : stage.name();
+            Path output = Path.of(prefix + "-" + suffix + ".wc3");
+            RamScript bound = RamScript.rebindObject(stage.ramScript(), target);
+            buildIntoWc3(bound, input, output);
+            System.out.println("Generated object-bound stage: " + output);
+        }
+        System.out.println("Installer host: " + target.displayName());
+        System.out.println("Talk to this object instead of the Deliveryman for each generated stage.");
+    }
+
     private static void buildToolkitCleanerWc3(String[] args) throws Exception {
         if (args.length < 4) {
             throw new IllegalArgumentException("Usage: build-toolkit-cleaner-wc3 <rom> <input.wc3> <output.wc3> [--wipe-flags] [--exclude <FLAG_ID>]...");
@@ -424,6 +460,27 @@ public final class Main {
         } catch (NumberFormatException exception) {
             throw new IllegalArgumentException("Invalid hexadecimal seed: " + value);
         }
+    }
+
+    private static void buildSeedModifierOakLabWc3(String[] args) throws Exception {
+        if (args.length != 5 && args.length != 7) {
+            throw new IllegalArgumentException("Usage: build-seed-modifier-oak-lab-wc3 <rom> <seed-hex> <input.wc3> <output.wc3> [--hotkey <held>-<pressed>]");
+        }
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int seed = parseSeed(args[2]);
+        Hotkey hotkey = parseOptionalHotkey(args, 5);
+        ObjectEventTarget target = ObjectEventCatalog.OAKS_LAB_AIDE1_EARLY_INSTALLER;
+        byte[] payload = SeedModifierPreset.buildPayload(rom, seed);
+        TriggerBuildResult result = EarlyObjectBoundHotkeyInstaller.compose(rom, payload, hotkey, target);
+        buildIntoWc3(result.ramScript(), Path.of(args[3]), Path.of(args[4]));
+        printSeedModifier(result, seed, hotkey);
+        System.out.println("  installer host:    " + target.displayName());
+        System.out.println("  object binding:    map 4:3, localId 1 @ (3,11)");
+        System.out.println("  early-game use:    install before choosing the starter");
+        System.out.println("  installer UX:      one-shot; Aide continues into vanilla dialogue");
+        System.out.println("  self-detach:       object binding -> FF/FF/FF + CRC refresh");
+        System.out.println("  runtime locator:   unchanged GetSavedRamScriptIfValid()");
+        System.out.println("  test after talk:   close dialogue, then hold R and press SELECT");
     }
 
     private static void printSeedModifier(TriggerBuildResult result, int seed, Hotkey hotkey) {
