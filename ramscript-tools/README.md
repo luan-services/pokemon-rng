@@ -110,7 +110,7 @@ Build the cleaner with:
 java -cp out Main build-toolkit-cleaner-wc3 fr10 input.wc3 toolkit-cleaner.wc3
 ```
 
-The cleaner validates the toolkit manifest before clearing the reserved SB1/SB2 regions and toolkit completion flags. Automated checks cover the implementation.
+The cleaner validates the toolkit manifest before clearing the reserved SB1/SB2 regions and toolkit completion flags. Automated checks cover the implementation. The Cleaner is now also part of `ProductionTestRunner` across all four ROM profiles; the remaining emulator integration sequence is documented in `docs/CLEANER_REGRESSION.md`.
 
 One manual closeout regression is still intentionally tracked:
 

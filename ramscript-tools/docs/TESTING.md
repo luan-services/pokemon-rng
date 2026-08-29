@@ -47,4 +47,4 @@ The cleaner code already exists. The remaining manual integration check is:
 3. save normally and restart;
 4. reinstall Custom Trainer Runtime V2;
 5. install a trainer preset;
-6. confirm reserved storage and completion flags behave as fresh state.
+6. confirm reserved storage is fresh; then separately validate whether completion flags are preserved (default Cleaner) or reset (`--wipe-flags`) according to the selected Cleaner plan.

@@ -3,6 +3,8 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 public final class Main {
     private Main() {}
@@ -38,6 +40,7 @@ public final class Main {
                 case "plan-installation" -> planInstallation(args);
                 case "build-planned-installation-wc3" -> buildPlannedInstallationWc3(args);
                 case "build-toolkit-cleaner-wc3" -> buildToolkitCleanerWc3(args);
+                case "toolkit-cleaner-metadata" -> requireArgs(args, 1, () -> System.out.print(ToolkitCleanerUiModel.current().report()));
 
                 case "build-preset-bin" -> buildPresetBin(args);
                 case "build-preset-wc3" -> buildPresetWc3(args);
@@ -266,14 +269,33 @@ public final class Main {
 
 
     private static void buildToolkitCleanerWc3(String[] args) throws Exception {
-        if (args.length != 4) {
-            throw new IllegalArgumentException("Usage: build-toolkit-cleaner-wc3 <rom> <input.wc3> <output.wc3>");
+        if (args.length < 4) {
+            throw new IllegalArgumentException("Usage: build-toolkit-cleaner-wc3 <rom> <input.wc3> <output.wc3> [--wipe-flags] [--exclude <FLAG_ID>]...");
         }
         RomProfile rom = RomProfile.fromId(args[1]);
-        RamScript cleaner = ToolkitCleanerPreset.build(rom);
+        ToolkitCleanerMode mode = ToolkitCleanerMode.INFRASTRUCTURE_ONLY;
+        Set<String> excluded = new LinkedHashSet<>();
+        for (int i = 4; i < args.length; i++) {
+            String arg = args[i];
+            if (arg.equalsIgnoreCase("--wipe-flags") || arg.equalsIgnoreCase("--wipe-progress")) {
+                mode = ToolkitCleanerMode.WIPE_PROGRESS;
+            } else if (arg.equalsIgnoreCase("--exclude")) {
+                if (++i >= args.length) throw new IllegalArgumentException("--exclude requires a toolkit flag id");
+                excluded.add(args[i]);
+            } else if (arg.startsWith("--exclude=")) {
+                excluded.add(arg.substring("--exclude=".length()));
+            } else {
+                throw new IllegalArgumentException("Unknown Cleaner option: " + arg);
+            }
+        }
+        ToolkitCleanerOptions options = new ToolkitCleanerOptions(mode, excluded);
+        ToolkitCleanerPlan plan = ToolkitCleanerPlan.resolve(options);
+        RamScript cleaner = ToolkitCleanerPreset.build(rom, plan);
         buildIntoWc3(cleaner, Path.of(args[2]), Path.of(args[3]));
         System.out.println("Toolkit Cleaner generated: " + Path.of(args[3]));
-        System.out.println("Cleaner only removes Build-34+ manifest-tagged installations and refuses while the hotkey runtime is active.");
+        System.out.println("Cleaner only removes manifest-tagged toolkit storage and refuses while the hotkey runtime is active.");
+        System.out.println();
+        System.out.print(plan.report());
     }
 
     private static void extractBinary(Path inputWc3, Path outputBin) throws Exception {
