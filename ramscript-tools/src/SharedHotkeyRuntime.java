@@ -171,6 +171,22 @@ final class SharedHotkeyRuntime {
         return nativeInstallerBlob(rom, modifier, false).length;
     }
 
+    /*
+       Deployment adapters may need to install the already-validated resident
+       shared runtime from a different transient host (for example an
+       object-bound one-shot installer). Keep the resident block construction in
+       this class so adapters cannot silently fork wrapper/safety-gate bytes.
+
+       This does not change the SharedHotkeyRuntime output. Callers receive the
+       exact production resident blocks used by nativeInstallerBlob(..., false).
+    */
+    static List<RuntimeV1ResidentBlocks.Block> frozenResidentBlocks(
+            RomProfile rom,
+            HotkeyButton modifier
+    ) {
+        return residentBlocks(rom, modifier, false);
+    }
+
     static int dispatcherSize(int bindings) {
         return SharedHotkeyDispatcher.sizeForBindings(bindings);
     }

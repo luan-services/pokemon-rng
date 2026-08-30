@@ -1,50 +1,34 @@
-# Testing
+# Testing and validation
 
-Compile recursively:
+Validation is intentionally tracked separately from implementation support.
 
-```powershell
-Remove-Item -Recurse -Force out -ErrorAction SilentlyContinue
-New-Item -ItemType Directory out | Out-Null
-$sources = Get-ChildItem src,tests -Recurse -Filter *.java
-javac -encoding UTF-8 -d out $sources.FullName
-```
+## Labels
 
-Run both gates:
+- **GAME-VALIDATED** — exact preset + usage/deployment + ROM/version path exercised successfully.
+- **BUILD-TESTED** — builders/tests/checksums/layout pass, but the exact in-game path is not recorded as exercised.
+- **SUPPORTED / NOT TESTED** — symbols/profile/implementation exist without exact runtime validation.
+- **LEGACY / VALIDATED / SUPERSEDED** — old mechanism worked but must not be selected for new production builds.
+- **REJECTED** — failed approach retained to prevent accidental revival.
 
-```powershell
-java -cp out ProductionTestRunner
-java -cp out TestRunner
-```
+Never promote FR1.1/LG1.0/LG1.1 to GAME-VALIDATED merely because a `RomProfile` exists.
 
-## Current expected result
+## Compile policy
 
-`ProductionTestRunner` must pass. It covers the promoted object-event binding, Trade Evolution production preset, Custom Trainer Runtime V2/Compact Transport, fixed Gym Leader authoring, and related production invariants.
+Compile the source tree **recursively**. `src/*.java` is not the project-wide validation command because active/legacy/research sources may live below subdirectories.
 
-`TestRunner` is a historical all-in-one regression suite. It currently stops at the known unrelated assertion:
+The production regression gate must continue covering at least object bindings, early hotkey installers, Trade Evolution, Custom Trainer V2, Gym Leader presets and Cleaner.
 
-```text
-Party-IV-only AUTO plan should preserve standalone HotkeyRuntimeV1 when cheaper
-```
+## Runtime changes
 
-This is an existing planner/test contract mismatch, not a Gym Leader/Custom Trainer regression. Do not hide it and do not claim the historical suite is fully green.
+Frozen runtimes require a higher bar than preset changes. A runtime modification needs:
 
-## Emulator validation policy
+1. a demonstrated blocking feature;
+2. isolated byte/layout impact;
+3. regression coverage;
+4. exact in-game revalidation of affected paths.
 
-Use precise labels:
+Preset/bridge/message changes that do not alter frozen resident blocks should be labeled/tested at their own layer rather than triggering unnecessary runtime redesign.
 
-- `emulator-tested` / `validated in game`: that exact behavior/preset was exercised successfully.
-- `Java/build-tested`: byte/layout/build assertions pass, but that exact preset was not played in emulator.
-- profile-supported: addresses/build logic exist for the ROM profile; this does not imply gameplay validation.
+## Documentation discipline
 
-For the current Gym Leader V1 status, see `GYM_LEADER_REMATCH_PRESETS.md`.
-
-## Remaining cleaner regression
-
-The cleaner code already exists. The remaining manual integration check is:
-
-1. install/use toolkit content;
-2. run Cleaner;
-3. save normally and restart;
-4. reinstall Custom Trainer Runtime V2;
-5. install a trainer preset;
-6. confirm reserved storage is fresh; then separately validate whether completion flags are preserved (default Cleaner) or reset (`--wipe-flags`) according to the selected Cleaner plan.
+Record exact mode/profile when a new in-game test succeeds. Do not use “all supported” as a synonym for “all tested”. `PRESETS.md` is the compact current summary; detailed old matrices remain under `reference/internals/` for provenance.

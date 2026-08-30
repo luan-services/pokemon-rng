@@ -123,6 +123,7 @@ final class SharedHotkeyPartyIvSmokeTestPreset {
                 b -> {},
                 b -> b.message(PartyMonDataNativeHelper.dynamicMessageAddress(rom))
                         .waitMessage()
+                        .waitButtonPressStrict()
                         .releaseAll()
                         .end(),
                 b -> b.vMessage("badmsg")

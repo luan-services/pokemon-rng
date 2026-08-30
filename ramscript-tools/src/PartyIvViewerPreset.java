@@ -43,10 +43,13 @@ final class PartyIvViewerPreset {
         // The helper has already built one continuous Gen III text stream for
         // the whole party. CHAR_PROMPT_CLEAR (0xFB / "\\p") keeps the stock
         // field message box open, displays the normal down-arrow, clears the
-        // contents after A/B, and continues with the next page.
+        // contents after A/B, and continues with the next page. After the final
+        // EOS, waitButtonPressStrict keeps the final normal textbox visible until
+        // A/B instead of closing immediately after the last character renders.
         builder
                 .message(PartyMonDataNativeHelper.dynamicMessageAddress(rom))
                 .waitMessage()
+                .waitButtonPressStrict()
                 .releaseAll()
                 .end();
 

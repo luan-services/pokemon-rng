@@ -2,10 +2,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/* Chooses/validates one of the hotkey runtimes that has reached production.
-   plan() prefers the smallest legacy runtime when possible. planShared() is
-   used by persistent multi-preset compositions that explicitly require the
-   validated SharedHotkeyRuntime. */
+/* Chooses/validates one of the production hotkey runtimes.
+   New builds use HotkeyRuntimeV1 for one binding and SharedHotkeyRuntime for
+   two or more bindings. MultiHotkeyRuntimeV1 is retained only as an archived,
+   explicitly-invoked legacy runtime and is never selected automatically. */
 final class HotkeyBindingAllocator {
     private HotkeyBindingAllocator() {}
 
@@ -14,10 +14,6 @@ final class HotkeyBindingAllocator {
         if (copy.isEmpty()) return new HotkeyBindingPlan(copy, HotkeyBindingRuntime.NONE, "no hotkey runtime required");
         if (copy.size() == 1) {
             return new HotkeyBindingPlan(copy, HotkeyBindingRuntime.SINGLE_HOTKEY_V1, "uses validated HotkeyRuntimeV1");
-        }
-        if (copy.size() == 2 && isMultiV1Compatible(copy.get(0).hotkey(), copy.get(1).hotkey())) {
-            return new HotkeyBindingPlan(copy, HotkeyBindingRuntime.MULTI_HOTKEY_V1,
-                    "uses validated MultiHotkeyRuntimeV1 compact adjacent-bit decoder");
         }
         return sharedPlan(copy);
     }

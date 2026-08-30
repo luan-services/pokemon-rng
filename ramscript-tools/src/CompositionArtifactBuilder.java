@@ -54,6 +54,20 @@ final class CompositionArtifactBuilder {
         return new Build(Map.copyOf(components), runtime);
     }
 
+    static TriggerBuildResult buildObjectBoundSharedRuntime(
+            PresetCompositionPlan plan,
+            ObjectEventTarget target
+    ) {
+        if (plan == null || target == null) throw new IllegalArgumentException("plan/target must not be null");
+        if (!plan.infrastructure().contains(PresetInfrastructure.SHARED_HOTKEY_RUNTIME)) {
+            throw new IllegalArgumentException("composition does not use SharedHotkeyRuntime");
+        }
+        int serviceOffset = plan.infrastructure().contains(PresetInfrastructure.SHARED_NATIVE_STAGING_SERVICE)
+                ? SharedPersistentNativeStagingService.offsetForBindings(plan.hotkeyBindings(), 4)
+                : -1;
+        return buildSharedRuntime(plan, serviceOffset, target);
+    }
+
     static RamScript buildLocal(PresetCompositionPlan plan, int seed) {
         if (plan.selections().size() != 1) throw new IllegalArgumentException("local emission currently supports one preset");
         var item = plan.selections().get(0);
@@ -111,7 +125,7 @@ final class CompositionArtifactBuilder {
                         rom, PersistentPartyIvViewerModule.MODULE_ID, target,
                         rom.stringVar4 + 0x140L, b -> {},
                         b -> b.message(PartyMonDataNativeHelper.dynamicMessageAddress(rom))
-                                .waitMessage().releaseAll().end(),
+                                .waitMessage().waitButtonPressStrict().releaseAll().end(),
                         b -> b.vMessage("party_bad").waitMessage().waitButtonPress().releaseAll().end()
                                 .text("party_bad", "Persistent Party IV module invalid.")
                 ).fieldScript();
@@ -165,6 +179,14 @@ final class CompositionArtifactBuilder {
     }
 
     private static TriggerBuildResult buildSharedRuntime(PresetCompositionPlan plan, int serviceOffset) {
+        return buildSharedRuntime(plan, serviceOffset, null);
+    }
+
+    private static TriggerBuildResult buildSharedRuntime(
+            PresetCompositionPlan plan,
+            int serviceOffset,
+            ObjectEventTarget objectTarget
+    ) {
         List<SharedHotkeyDispatcher.Entry> entries = new ArrayList<>();
         HotkeyButton modifier = null;
         Map<String, ConcretePresetAllocation> byId = new HashMap<>();
@@ -185,7 +207,12 @@ final class CompositionArtifactBuilder {
             service = build.fieldScript();
             alignment = build.requiredBaseAlignment();
         }
-        return SharedHotkeyRuntime.compose(plan.rom(), modifier, entries, service, alignment);
+        if (objectTarget == null) {
+            return SharedHotkeyRuntime.compose(plan.rom(), modifier, entries, service, alignment);
+        }
+        return EarlyObjectBoundSharedHotkeyInstaller.compose(
+                plan.rom(), modifier, entries, service, alignment, objectTarget
+        );
     }
 
     private static byte[] gatewayFor(int sb2TargetOffset, int gatewayOffset) {

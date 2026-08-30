@@ -61,10 +61,13 @@ public final class Main {
                 case "build-custom-payload-wc3" -> buildCustomPayloadWc3(args);
                 case "build-show-secret-id-bin" -> buildShowSecretIdBin(args);
                 case "build-show-secret-id-wc3" -> buildShowSecretIdWc3(args);
+                case "build-show-secret-id-object-wc3" -> buildShowSecretIdObjectWc3(args);
+                case "build-show-secret-id-oak-lab-wc3" -> buildShowSecretIdOakLabWc3(args);
                 case "build-show-secret-id-persistent-install-wc3" -> buildShowSecretIdPersistentInstallWc3(args);
                 case "build-show-secret-id-persistent-launch-wc3" -> buildShowSecretIdPersistentLaunchWc3(args);
                 case "build-seed-modifier-bin" -> buildSeedModifierBin(args);
                 case "build-seed-modifier-wc3" -> buildSeedModifierWc3(args);
+                case "build-seed-modifier-object-wc3" -> buildSeedModifierObjectWc3(args);
                 case "build-seed-modifier-oak-lab-wc3" -> buildSeedModifierOakLabWc3(args);
                 case "build-party-iv-viewer-bin" -> buildPartyIvViewerBin(args);
                 case "build-party-iv-viewer-wc3" -> buildPartyIvViewerWc3(args);
@@ -284,15 +287,6 @@ public final class Main {
         InstallationPlan plan = CompositionInstallationPlanner.plan(composition);
         InstallationEmitter.EmittedInstallation emitted = InstallationEmitter.emit(plan, seed);
 
-        if (emitted.runtime() != null) {
-            throw new IllegalArgumentException(
-                    "This composition requires a final shared hotkey runtime. No files were written: "
-                            + "the validated shared runtime locator requires FF/FF/FF and cannot remain "
-                            + "object-bound. Use the dedicated one-shot early installer for HotkeyRuntimeV1; "
-                            + "a generic self-detaching adapter for shared runtimes is not implemented yet."
-            );
-        }
-
         for (InstallationEmitter.EmittedStage stage : emitted.persistentStages()) {
             String suffix = plan.localOnly() ? "local" : stage.name();
             Path output = Path.of(prefix + "-" + suffix + ".wc3");
@@ -300,8 +294,15 @@ public final class Main {
             buildIntoWc3(bound, input, output);
             System.out.println("Generated object-bound stage: " + output);
         }
+        if (emitted.runtime() != null) {
+            TriggerBuildResult earlyRuntime = CompositionArtifactBuilder.buildObjectBoundSharedRuntime(composition, target);
+            Path output = Path.of(prefix + "-runtime.wc3");
+            buildIntoWc3(earlyRuntime.ramScript(), input, output);
+            System.out.println("Generated self-detaching object-bound shared runtime: " + output);
+            System.out.println("Runtime size: " + earlyRuntime.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE + " bytes");
+        }
         System.out.println("Installer host: " + target.displayName());
-        System.out.println("Talk to this object instead of the Deliveryman for each generated stage.");
+        System.out.println("Persistent stages remain object-bound to this host. The final shared runtime stage self-detaches to FF/FF/FF after activation.");
     }
 
     private static void buildToolkitCleanerWc3(String[] args) throws Exception {
@@ -462,6 +463,17 @@ public final class Main {
         }
     }
 
+    private static void buildSeedModifierObjectWc3(String[] args) throws Exception {
+        if (args.length != 6 && args.length != 8) {
+            throw new IllegalArgumentException("Usage: build-seed-modifier-object-wc3 <rom> <seed-hex> <target-id> <input.wc3> <output.wc3> [--hotkey <held>-<pressed>]");
+        }
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int seed = parseSeed(args[2]);
+        ObjectEventTarget target = ObjectEventCatalog.byId(args[3]);
+        Hotkey hotkey = parseOptionalHotkey(args, 6);
+        buildSeedModifierObjectWc3(rom, seed, hotkey, target, Path.of(args[4]), Path.of(args[5]));
+    }
+
     private static void buildSeedModifierOakLabWc3(String[] args) throws Exception {
         if (args.length != 5 && args.length != 7) {
             throw new IllegalArgumentException("Usage: build-seed-modifier-oak-lab-wc3 <rom> <seed-hex> <input.wc3> <output.wc3> [--hotkey <held>-<pressed>]");
@@ -469,18 +481,22 @@ public final class Main {
         RomProfile rom = RomProfile.fromId(args[1]);
         int seed = parseSeed(args[2]);
         Hotkey hotkey = parseOptionalHotkey(args, 5);
-        ObjectEventTarget target = ObjectEventCatalog.OAKS_LAB_AIDE1_EARLY_INSTALLER;
+        buildSeedModifierObjectWc3(rom, seed, hotkey, ObjectEventCatalog.OAKS_LAB_AIDE1_EARLY_INSTALLER, Path.of(args[3]), Path.of(args[4]));
+    }
+
+    private static void buildSeedModifierObjectWc3(
+            RomProfile rom, int seed, Hotkey hotkey, ObjectEventTarget target, Path input, Path output
+    ) throws Exception {
         byte[] payload = SeedModifierPreset.buildPayload(rom, seed);
         TriggerBuildResult result = EarlyObjectBoundHotkeyInstaller.compose(rom, payload, hotkey, target);
-        buildIntoWc3(result.ramScript(), Path.of(args[3]), Path.of(args[4]));
+        buildIntoWc3(result.ramScript(), input, output);
         printSeedModifier(result, seed, hotkey);
         System.out.println("  installer host:    " + target.displayName());
-        System.out.println("  object binding:    map 4:3, localId 1 @ (3,11)");
-        System.out.println("  early-game use:    install before choosing the starter");
-        System.out.println("  installer UX:      one-shot; Aide continues into vanilla dialogue");
+        System.out.println("  object binding:    map " + target.mapGroup() + ":" + target.mapNum() + ", localId " + target.localId() + " @ (" + target.x() + "," + target.y() + ")");
+        System.out.println("  installer UX:      one-shot; original NPC script resumes through returnram");
         System.out.println("  self-detach:       object binding -> FF/FF/FF + CRC refresh");
         System.out.println("  runtime locator:   unchanged GetSavedRamScriptIfValid()");
-        System.out.println("  test after talk:   close dialogue, then hold R and press SELECT");
+        System.out.println("  test after talk:   close dialogue, then use " + hotkey.displayName());
     }
 
     private static void printSeedModifier(TriggerBuildResult result, int seed, Hotkey hotkey) {
@@ -1165,7 +1181,7 @@ public final class Main {
         System.out.println("  shared overhead:   " + result.runtimeOverheadBytes());
         System.out.println("  total script:      " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
         System.out.println("  free bytes:        " + result.freeScriptBytes());
-        System.out.println("  status:            EXPERIMENTAL - requires in-game validation");
+        System.out.println("  status:            LEGACY / VALIDATED / SUPERSEDED - explicit builds only");
     }
 
     private static void buildRepelHotkeyBin(String[] args) throws Exception {
@@ -1277,6 +1293,39 @@ public final class Main {
         printShowSecretId(rom, script);
     }
 
+    private static void buildShowSecretIdObjectWc3(String[] args) throws Exception {
+        if (args.length != 5) {
+            throw new IllegalArgumentException(
+                    "Usage: build-show-secret-id-object-wc3 <rom> <target-id> <input.wc3> <output.wc3>"
+            );
+        }
+        RomProfile rom = RomProfile.fromId(args[1]);
+        ObjectEventTarget target = ObjectEventCatalog.byId(args[2]);
+        buildShowSecretIdObjectWc3(rom, target, Path.of(args[3]), Path.of(args[4]));
+    }
+
+    private static void buildShowSecretIdOakLabWc3(String[] args) throws Exception {
+        if (args.length != 4) {
+            throw new IllegalArgumentException(
+                    "Usage: build-show-secret-id-oak-lab-wc3 <rom> <input.wc3> <output.wc3>"
+            );
+        }
+        RomProfile rom = RomProfile.fromId(args[1]);
+        buildShowSecretIdObjectWc3(rom, ObjectEventCatalog.OAKS_LAB_AIDE1_EARLY_INSTALLER, Path.of(args[2]), Path.of(args[3]));
+    }
+
+    private static void buildShowSecretIdObjectWc3(
+            RomProfile rom, ObjectEventTarget target, Path input, Path output
+    ) throws Exception {
+        RamScript script = RamScript.rebindObject(ShowSecretIdPreset.build(rom), target);
+        buildIntoWc3(script, input, output);
+        printShowSecretId(rom, script);
+        System.out.println("  execution:         object-bound NPC interaction");
+        System.out.println("  host:              " + target.displayName());
+        System.out.println("  object binding:    map " + target.mapGroup() + ":" + target.mapNum() + ", localId " + target.localId() + " @ (" + target.x() + "," + target.y() + ")");
+        System.out.println("  persistence:       remains bound until another RamScript/Wonder Card replaces it");
+    }
+
     private static void printShowSecretId(RomProfile rom, RamScript script) {
         NativeHelper helper = SecretIdNativeHelper.build(rom);
         int used = ShowSecretIdPreset.payloadSize(rom);
@@ -1284,7 +1333,7 @@ public final class Main {
         System.out.println();
         System.out.println("Show Secret ID preset:");
         System.out.println("  ROM:               " + rom.displayName());
-        System.out.println("  execution:         deliveryman");
+        System.out.println("  execution:         direct RamScript interaction");
         System.out.println("  hotkey runtime:    none");
         System.out.printf("  helper staging:    0x%08X%n", helper.stagingAddress());
         System.out.println("  native helper:     " + helper.size() + " bytes");
@@ -2215,10 +2264,14 @@ public final class Main {
         System.out.println("Advanced presets:");
         System.out.println("  java -cp out Main build-show-secret-id-bin fr10 output.bin");
         System.out.println("  java -cp out Main build-show-secret-id-wc3 fr10 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-show-secret-id-object-wc3 fr10 oaks-lab-aide1-early-installer input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-show-secret-id-oak-lab-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-show-secret-id-persistent-install-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-show-secret-id-persistent-launch-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-seed-modifier-bin fr10 1234 output.bin [--hotkey r-select]");
         System.out.println("  java -cp out Main build-seed-modifier-wc3 fr10 1234 input.wc3 output.wc3 [--hotkey r-b]");
+        System.out.println("  java -cp out Main build-seed-modifier-object-wc3 fr10 1234 oaks-lab-aide1-early-installer input.wc3 output.wc3 [--hotkey r-select]");
+        System.out.println("  java -cp out Main build-seed-modifier-oak-lab-wc3 fr10 1234 input.wc3 output.wc3 [--hotkey r-select]");
         System.out.println("  java -cp out Main build-party-iv-viewer-bin fr10 output.bin [--hotkey r-select]");
         System.out.println("  java -cp out Main build-party-iv-viewer-wc3 fr10 input.wc3 output.wc3 [--hotkey l-start]");
         System.out.println("  java -cp out Main build-lead-iv-viewer-wc3 fr10 input.wc3 output.wc3");
@@ -2230,7 +2283,7 @@ public final class Main {
         System.out.println("  java -cp out Main build-brock-identity-battle-probe-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-repel-hotkey-bin fr10 output.bin [--hotkey r-select]");
         System.out.println("  java -cp out Main build-repel-hotkey-wc3 fr10 input.wc3 output.wc3 [--hotkey r-b]");
-        System.out.println("  java -cp out Main build-seed-repel-combo-wc3 fr10 1234 input.wc3 output.wc3 [--seed-hotkey r-select --repel-hotkey r-b]");
+        System.out.println("  java -cp out Main build-seed-repel-combo-wc3 fr10 1234 input.wc3 output.wc3 [--seed-hotkey r-select --repel-hotkey r-b]  [LEGACY]");
         System.out.println("  java -cp out Main build-persistent-hotkey-install-wc3 fr10 1234 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-persistent-hotkey-runtime-wc3 fr10 1234 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-direct-persistent-hotkey-install-wc3 fr10 1234 input.wc3 output.wc3");

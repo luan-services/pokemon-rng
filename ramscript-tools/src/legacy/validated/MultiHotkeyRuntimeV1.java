@@ -31,6 +31,12 @@ import java.util.List;
 
    No persistent physical RamScript pointer is stored.
 */
+/**
+ * @deprecated Validated historical two-binding runtime. Superseded for all new
+ * builds by SharedHotkeyRuntime. Retained byte-for-byte for reproducibility and
+ * explicit legacy Seed+Repel builds; do not modify or auto-select it.
+ */
+@Deprecated
 final class MultiHotkeyRuntimeV1 {
     static final long VIRTUAL_BASE = HotkeyRuntimeV1.VIRTUAL_BASE;
     static final int HEADER_SIZE = HotkeyRuntimeV1.HEADER_SIZE;

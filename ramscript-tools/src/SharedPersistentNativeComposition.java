@@ -127,7 +127,7 @@ final class SharedPersistentNativeComposition {
                 rom, PersistentPartyIvViewerModule.MODULE_ID, sharedServiceVirtualTarget,
                 rom.stringVar4 + 0x140L, b -> {},
                 b -> b.message(PartyMonDataNativeHelper.dynamicMessageAddress(rom))
-                        .waitMessage().releaseAll().end(),
+                        .waitMessage().waitButtonPressStrict().releaseAll().end(),
                 b -> b.vMessage("party_bad").waitMessage().waitButtonPress().releaseAll().end()
                         .text("party_bad", "Persistent Party IV module invalid.")
         );

@@ -1,3 +1,5 @@
+/** @deprecated Legacy validated one-WC Seed+Repel build using MultiHotkeyRuntimeV1. */
+@Deprecated
 final class SeedRepelComboPreset {
     static final Hotkey DEFAULT_SEED_HOTKEY = Hotkey.DEFAULT;
     static final Hotkey DEFAULT_REPEL_HOTKEY = new Hotkey(HotkeyButton.R, HotkeyButton.B);
