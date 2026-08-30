@@ -21,9 +21,7 @@ final class SeedModifierPreset {
     }
 
     static byte[] buildPayload(RomProfile rom, int desiredSeed) {
-        validateSeed(desiredSeed);
-
-        long predecessor = RngMath.previousState(desiredSeed);
+        long predecessor = RngMath.previousState(Integer.toUnsignedLong(desiredSeed));
         byte[] predecessorBytes = new byte[] {
                 (byte) predecessor,
                 (byte) (predecessor >>> 8),
@@ -50,18 +48,11 @@ final class SeedModifierPreset {
     }
 
     static long predecessor(int desiredSeed) {
-        validateSeed(desiredSeed);
-        return RngMath.previousState(desiredSeed);
+        return RngMath.previousState(Integer.toUnsignedLong(desiredSeed));
     }
 
     static String message(int desiredSeed) {
-        validateSeed(desiredSeed);
-        return String.format("Press A to set %04X as seed.", desiredSeed);
+        return String.format("Press A to set %08X as seed.", desiredSeed);
     }
 
-    private static void validateSeed(int desiredSeed) {
-        if (desiredSeed < 0 || desiredSeed > 0xFFFF) {
-            throw new IllegalArgumentException("Initial seed must fit in u16");
-        }
-    }
 }

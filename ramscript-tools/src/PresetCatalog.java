@@ -91,7 +91,7 @@ final class PresetCatalog {
                 validationMatrix(
                         Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY),
                         Set.of(PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY)),
-                "Seed value is a build parameter; catalog sizing uses representative 0x1234 and is invariant for this preset."
+                "Seed value is a build parameter; the prompt is fixed-width 8-hex-digit text, so payload size is invariant across the full u32 range."
         );
     }
 

@@ -32,3 +32,7 @@ Preset/bridge/message changes that do not alter frozen resident blocks should be
 ## Documentation discipline
 
 Record exact mode/profile when a new in-game test succeeds. Do not use “all supported” as a synonym for “all tested”. `PRESETS.md` is the compact current summary; detailed old matrices remain under `reference/internals/` for provenance.
+
+## Recent exact validation — Seed u32 Shared
+
+LeafGreen English 1.0: Shared Seed Modifier + Show Secret ID + Party IV Viewer was rebuilt with `--seed B5B1E7AD` after the fixed-width Seed payload correction and confirmed working in-game. The prior failing build mixed Seed/SID/invalid textbox data because the Seed payload exceeded the planner's reserved SB2 interval. This exact path is now GAME-VALIDATED.

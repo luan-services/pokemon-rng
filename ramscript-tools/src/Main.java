@@ -528,11 +528,7 @@ public final class Main {
             String digits = (value.startsWith("0x") || value.startsWith("0X"))
                     ? value.substring(2)
                     : value;
-            int seed = Integer.parseUnsignedInt(digits, 16);
-            if (seed > 0xFFFF) {
-                throw new IllegalArgumentException("Initial seed must fit in u16");
-            }
-            return seed;
+            return Integer.parseUnsignedInt(digits, 16);
         } catch (NumberFormatException exception) {
             throw new IllegalArgumentException("Invalid hexadecimal seed: " + value);
         }
@@ -582,7 +578,7 @@ public final class Main {
         System.out.println("  trigger:           " + hotkey.displayName());
         System.out.println("  hotkey semantics:  hold " + hotkey.heldButton().displayName() + ", press " + hotkey.pressedButton().displayName());
         System.out.println("  prompt:            " + SeedModifierPreset.message(seed));
-        System.out.printf("  desired seed:      0x%04X%n", seed);
+        System.out.printf("  desired seed:      0x%08X%n", seed);
         System.out.printf("  predecessor:       0x%08X%n", predecessor);
         System.out.printf("  after Random():    0x%08X%n", RngMath.nextState(predecessor));
         System.out.println("  payload bytes:     " + result.payloadBytes());
@@ -1249,7 +1245,7 @@ public final class Main {
         System.out.println("  ROM:               " + result.rom().displayName());
         System.out.println("  seed hotkey:       " + seedHotkey.displayName());
         System.out.println("  repel hotkey:      " + repelHotkey.displayName());
-        System.out.printf("  desired seed:      0x%04X%n", seed);
+        System.out.printf("  desired seed:      0x%08X%n", seed);
         System.out.println("  seed payload:      " + seedBytes + " bytes @ +0x" + Integer.toHexString(MultiHotkeyRuntimeV1.firstPayloadOffset()).toUpperCase());
         System.out.println("  repel payload:     " + repelBytes + " bytes @ +0x" + Integer.toHexString(MultiHotkeyRuntimeV1.secondPayloadOffset(SeedModifierPreset.buildPayload(result.rom(), seed))).toUpperCase());
         System.out.println("  payload bytes:     " + result.payloadBytes());
