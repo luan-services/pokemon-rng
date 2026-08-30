@@ -36,15 +36,14 @@ public final class Main {
                 case "presets" -> requireArgs(args, 1, Main::printPresets);
                 case "preset-metadata" -> requireArgs(args, 2, () -> System.out.print(PresetCatalog.report(RomProfile.fromId(args[1]))));
                 case "preset-validation" -> requireArgs(args, 2, () -> System.out.print(PresetCatalog.validationReport(RomProfile.fromId(args[1]))));
-                case "plan-presets" -> planPresets(args);
-                case "plan-installation" -> planInstallation(args);
-                case "build-planned-installation-wc3" -> buildPlannedInstallationWc3(args);
-                case "build-planned-installation-object-wc3" -> buildPlannedInstallationObjectWc3(args);
+                case "plan-preset" -> planPreset(args);
+                case "build-preset-object-wc3" -> buildPresetObjectWc3(args);
                 case "build-toolkit-cleaner-wc3" -> buildToolkitCleanerWc3(args);
                 case "toolkit-cleaner-metadata" -> requireArgs(args, 1, () -> System.out.print(ToolkitCleanerUiModel.current().report()));
 
-                case "build-preset-bin" -> buildPresetBin(args);
+                case "build-gift-bin" -> buildGiftBin(args);
                 case "build-preset-wc3" -> buildPresetWc3(args);
+                case "build-gift-wc3" -> buildGiftWc3(args);
 
                 case "build-item-gift-bin" -> buildItemGiftBin(args);
                 case "build-item-gift-wc3" -> buildItemGiftWc3(args);
@@ -219,76 +218,59 @@ public final class Main {
     }
 
 
-    private static void planPresets(String[] args) {
-        if (args.length < 3) {
-            throw new IllegalArgumentException("Usage: plan-presets <rom> <preset-id> [preset-id ...]");
+    private static void planPreset(String[] args) {
+        if (args.length < 4) {
+            throw new IllegalArgumentException(
+                    "Usage: plan-preset <rom> <deliveryman|hotkey> <preset-id> [preset-id ...]"
+            );
         }
         RomProfile rom = RomProfile.fromId(args[1]);
-        java.util.List<String> ids = java.util.Arrays.asList(args).subList(2, args.length);
-        System.out.print(PresetCompositionPlanner.plan(rom, ids).report());
-    }
+        PresetActivation activation = switch (args[2].toLowerCase()) {
+            case "deliveryman", "direct" -> PresetActivation.DELIVERYMAN;
+            case "hotkey" -> PresetActivation.HOTKEY;
+            default -> throw new IllegalArgumentException("activation must be deliveryman or hotkey");
+        };
+        List<String> ids = java.util.Arrays.asList(args).subList(3, args.length);
+        if (activation == PresetActivation.DELIVERYMAN && ids.size() != 1) {
+            throw new IllegalArgumentException("Deliveryman activation supports exactly one preset per Wonder Card");
+        }
 
-    private static void planInstallation(String[] args) {
-        if (args.length < 3) {
-            throw new IllegalArgumentException("Usage: plan-installation <rom> <preset-id> [preset-id ...]");
-        }
-        RomProfile rom = RomProfile.fromId(args[1]);
-        List<String> ids = java.util.Arrays.asList(args).subList(2, args.length);
-        PresetCompositionPlan composition = PresetCompositionPlanner.plan(rom, ids);
-        InstallationPlan installation = CompositionInstallationPlanner.plan(composition);
+        PresetCompositionPlan composition = activation == PresetActivation.HOTKEY
+                ? PresetCompositionPlanner.planHotkeys(rom, ids)
+                : PresetCompositionPlanner.planDeliveryman(rom, ids.get(0));
         System.out.print(composition.report());
+        InstallationPlan installation = CompositionInstallationPlanner.plan(composition);
         System.out.println();
         System.out.print(installation.report());
     }
 
 
-    private static void buildPlannedInstallationWc3(String[] args) throws Exception {
+    private static void buildPresetObjectWc3(String[] args) throws Exception {
         if (args.length < 6) {
-            throw new IllegalArgumentException("Usage: build-planned-installation-wc3 <rom> <seed-hex> <input.wc3> <output-prefix> <preset-id> [preset-id ...]");
+            throw new IllegalArgumentException("Usage: build-preset-object-wc3 <rom> <input.wc3> <output-prefix> <object-target-id> <preset-id> [preset-id ...] [--seed <hex>]");
         }
         RomProfile rom = RomProfile.fromId(args[1]);
-        int seed = Integer.parseUnsignedInt(args[2], 16);
-        Path input = Path.of(args[3]);
-        String prefix = args[4];
-        List<String> ids = java.util.Arrays.asList(args).subList(5, args.length);
-        PresetCompositionPlan composition = PresetCompositionPlanner.plan(rom, ids);
-        InstallationPlan plan = CompositionInstallationPlanner.plan(composition);
-        InstallationEmitter.EmittedInstallation emitted = InstallationEmitter.emit(plan, seed);
-
-        if (plan.localOnly()) {
-            Path output = Path.of(prefix + "-local.wc3");
-            buildIntoWc3(emitted.persistentStages().get(0).ramScript(), input, output);
-            System.out.println("Generated: " + output);
-        } else {
-            for (InstallationEmitter.EmittedStage stage : emitted.persistentStages()) {
-                Path output = Path.of(prefix + "-" + stage.name() + ".wc3");
-                buildIntoWc3(stage.ramScript(), input, output);
-                System.out.println("Generated: " + output);
-            }
-            if (emitted.runtime() != null) {
-                Path output = Path.of(prefix + "-runtime.wc3");
-                buildIntoWc3(emitted.runtime(), input, output);
-                System.out.println("Generated: " + output);
+        Path input = Path.of(args[2]);
+        String prefix = args[3];
+        ObjectEventTarget target = ObjectEventCatalog.byId(args[4]);
+        java.util.ArrayList<String> ids = new java.util.ArrayList<>();
+        Integer seed = null;
+        for (int i = 5; i < args.length; i++) {
+            if (args[i].equalsIgnoreCase("--seed")) {
+                if (i + 1 >= args.length) throw new IllegalArgumentException("--seed requires a hexadecimal value");
+                seed = parseSeed(args[++i]);
+            } else {
+                ids.add(args[i]);
             }
         }
-        System.out.println();
-        System.out.print(plan.report());
-    }
-
-
-    private static void buildPlannedInstallationObjectWc3(String[] args) throws Exception {
-        if (args.length < 7) {
-            throw new IllegalArgumentException("Usage: build-planned-installation-object-wc3 <rom> <seed-hex> <input.wc3> <output-prefix> <object-target-id> <preset-id> [preset-id ...]");
+        if (ids.isEmpty()) throw new IllegalArgumentException("select at least one preset");
+        if (ids.contains("seed-modifier") && seed == null) {
+            throw new IllegalArgumentException("seed-modifier requires --seed <hex>");
         }
-        RomProfile rom = RomProfile.fromId(args[1]);
-        int seed = Integer.parseUnsignedInt(args[2], 16);
-        Path input = Path.of(args[3]);
-        String prefix = args[4];
-        ObjectEventTarget target = ObjectEventCatalog.byId(args[5]);
-        List<String> ids = java.util.Arrays.asList(args).subList(6, args.length);
-        PresetCompositionPlan composition = PresetCompositionPlanner.plan(rom, ids);
+
+        PresetCompositionPlan composition = PresetCompositionPlanner.planHotkeys(rom, ids);
         InstallationPlan plan = CompositionInstallationPlanner.plan(composition);
-        InstallationEmitter.EmittedInstallation emitted = InstallationEmitter.emit(plan, seed);
+        InstallationEmitter.EmittedInstallation emitted = InstallationEmitter.emit(plan, seed == null ? 0 : seed);
 
         for (InstallationEmitter.EmittedStage stage : emitted.persistentStages()) {
             String suffix = plan.localOnly() ? "local" : stage.name();
@@ -307,6 +289,7 @@ public final class Main {
         System.out.println("Installer host: " + target.displayName());
         System.out.println("Persistent stages remain object-bound to this host. The final shared runtime stage self-detaches to FF/FF/FF after activation.");
     }
+
 
     private static void buildToolkitCleanerWc3(String[] args) throws Exception {
         if (args.length < 4) {
@@ -364,27 +347,103 @@ public final class Main {
         printValidation(ramScript);
     }
 
-    private static void buildPresetBin(String[] args) throws Exception {
+    private static void buildGiftBin(String[] args) throws Exception {
         requireArgs(args, 3, () -> {
-            RamScript script = preset(args[1]);
+            RamScript script = gift(args[1]);
             buildBinary(script, Path.of(args[2]));
         });
     }
 
-    private static void buildPresetWc3(String[] args) throws Exception {
+    private static void buildGiftWc3(String[] args) throws Exception {
         requireArgs(args, 4, () -> {
-            RamScript script = preset(args[1]);
+            RamScript script = gift(args[1]);
             buildIntoWc3(script, Path.of(args[2]), Path.of(args[3]));
         });
     }
 
-    private static RamScript preset(String name) {
+    private static void buildPresetWc3(String[] args) throws Exception {
+        // Canonical production preset facade.
+        if (args.length >= 6 && (args[2].equalsIgnoreCase("deliveryman") || args[2].equalsIgnoreCase("hotkey"))) {
+            RomProfile rom = RomProfile.fromId(args[1]);
+            PresetActivation activation = args[2].equalsIgnoreCase("hotkey")
+                    ? PresetActivation.HOTKEY
+                    : PresetActivation.DELIVERYMAN;
+            Path input = Path.of(args[3]);
+            String output = args[4];
+
+            java.util.ArrayList<String> ids = new java.util.ArrayList<>();
+            Integer seed = null;
+            for (int i = 5; i < args.length; i++) {
+                if (args[i].equalsIgnoreCase("--seed")) {
+                    if (i + 1 >= args.length) throw new IllegalArgumentException("--seed requires a hexadecimal value");
+                    seed = parseSeed(args[++i]);
+                } else {
+                    ids.add(args[i]);
+                }
+            }
+            if (ids.isEmpty()) throw new IllegalArgumentException("select at least one preset");
+            if (ids.contains("seed-modifier") && seed == null) {
+                throw new IllegalArgumentException("seed-modifier requires --seed <hex>");
+            }
+
+            if (activation == PresetActivation.DELIVERYMAN) {
+                if (ids.size() != 1) throw new IllegalArgumentException("Deliveryman activation accepts exactly one preset per Wonder Card");
+                TriggerBuildResult result = buildDeliverymanPreset(rom, ids.get(0), seed);
+                buildIntoWc3(result.ramScript(), input, Path.of(output));
+                System.out.println("Generated preset: " + ids.get(0));
+                System.out.println("Activation: Deliveryman");
+                System.out.println("Output: " + output);
+                return;
+            }
+
+            PresetCompositionPlan composition = PresetCompositionPlanner.planHotkeys(rom, ids);
+            InstallationPlan plan = CompositionInstallationPlanner.plan(composition);
+            InstallationEmitter.EmittedInstallation emitted = InstallationEmitter.emit(plan, seed == null ? 0 : seed);
+            if (plan.localOnly()) {
+                Path target = Path.of(output);
+                buildIntoWc3(emitted.persistentStages().get(0).ramScript(), input, target);
+                System.out.println("Generated: " + target);
+                System.out.println("Runtime: HotkeyRuntimeV1 (single hotkey)");
+            } else {
+                for (InstallationEmitter.EmittedStage stage : emitted.persistentStages()) {
+                    Path target = Path.of(output + "-" + stage.name() + ".wc3");
+                    buildIntoWc3(stage.ramScript(), input, target);
+                    System.out.println("Generated: " + target);
+                }
+                if (emitted.runtime() != null) {
+                    Path target = Path.of(output + "-runtime.wc3");
+                    buildIntoWc3(emitted.runtime(), input, target);
+                    System.out.println("Generated: " + target);
+                }
+                System.out.println("Runtime: SharedHotkeyRuntime (" + ids.size() + " hotkeys)");
+            }
+            return;
+        }
+
+        throw new IllegalArgumentException("Usage: build-preset-wc3 <rom> <deliveryman|hotkey> <input.wc3> <output-or-prefix> <preset-id> [preset-id ...] [--seed <hex>]");
+    }
+
+    private static TriggerBuildResult buildDeliverymanPreset(RomProfile rom, String presetId, Integer seed) {
+        return switch (presetId.toLowerCase()) {
+            case "seed-modifier" -> SeedModifierPreset.buildDeliveryman(rom, seed);
+            case "repel" -> RepelHotkeyPreset.buildDeliveryman(rom);
+            case "show-secret-id" -> ShowSecretIdPreset.buildDeliveryman(rom);
+            case "party-iv-viewer" -> PartyIvViewerPreset.buildDeliveryman(rom);
+            case "party-ev-viewer" -> PartyEvViewerPreset.buildDeliveryman(rom);
+            case "lead-iv-viewer" -> LeadIvViewerPreset.buildDeliveryman(rom);
+            case "lead-ev-viewer" -> LeadEvViewerPreset.buildDeliveryman(rom);
+            case "trade-evolution" -> TradeEvolutionPreset.buildDeliveryman(rom);
+            default -> throw new IllegalArgumentException("Preset '" + presetId + "' does not expose canonical Deliveryman building");
+        };
+    }
+
+    private static RamScript gift(String name) {
         return switch (name.toLowerCase()) {
             case "aurora-ticket", "aurora" -> OfficialGiftScripts.buildAuroraTicket();
             case "mystic-ticket", "mystic" -> OfficialGiftScripts.buildMysticTicket();
             case "rare-candy-test", "rare-candy" -> CustomGiftScripts.buildRareCandyTest();
             default -> throw new IllegalArgumentException(
-                    "Unknown preset: " + name + ". Run `presets` to list available presets."
+                    "Unknown named gift: " + name + ". Supported gifts: aurora-ticket, mystic-ticket, rare-candy-test."
             );
         };
     }
@@ -1264,7 +1323,7 @@ public final class Main {
         Path input = Path.of(args[2]);
         Path output = Path.of(args[3]);
         List<String> ids = java.util.Arrays.asList(args).subList(4, args.length);
-        PresetCompositionPlan plan = PresetCompositionPlanner.plan(rom, ids);
+        PresetCompositionPlan plan = PresetCompositionPlanner.planHotkeys(rom, ids);
         TriggerBuildResult runtime = RunAnywhereSharedRuntime.build(plan);
         buildIntoWc3(runtime.ramScript(), input, output);
         System.out.println("Run Anywhere shared runtime generated: " + output);
@@ -2267,10 +2326,21 @@ public final class Main {
         System.out.println("Discover building blocks:");
         System.out.println("  java -cp out Main commands");
         System.out.println("  java -cp out Main presets");
+        System.out.println("  java -cp out Main plan-preset fr10 deliveryman party-iv-viewer");
+        System.out.println("  java -cp out Main plan-preset fr10 hotkey party-iv-viewer");
+        System.out.println("  java -cp out Main plan-preset fr10 hotkey seed-modifier show-secret-id party-iv-viewer");
         System.out.println();
-        System.out.println("Build named presets:");
-        System.out.println("  java -cp out Main build-preset-bin aurora-ticket output.bin");
-        System.out.println("  java -cp out Main build-preset-wc3 aurora-ticket input.wc3 output.wc3");
+        System.out.println("Build production presets (canonical facade):");
+        System.out.println("  java -cp out Main build-preset-wc3 fr10 deliveryman input.wc3 output.wc3 party-iv-viewer");
+        System.out.println("  java -cp out Main build-preset-wc3 fr10 deliveryman input.wc3 output.wc3 seed-modifier --seed 1234");
+        System.out.println("  java -cp out Main build-preset-wc3 fr10 hotkey input.wc3 output.wc3 party-iv-viewer");
+        System.out.println("  java -cp out Main build-preset-wc3 fr10 hotkey input.wc3 output-prefix seed-modifier show-secret-id party-iv-viewer --seed 1234");
+        System.out.println("  one hotkey -> HotkeyRuntimeV1; 2..8 hotkeys -> SharedHotkeyRuntime");
+        System.out.println();
+        System.out.println("Named gift/event script references:");
+        System.out.println("  java -cp out Main build-gift-bin aurora-ticket output.bin");
+        System.out.println("  java -cp out Main build-gift-wc3 aurora-ticket input.wc3 output.wc3");
+        System.out.println("  gifts are separate from the production PresetCatalog");
         System.out.println();
         System.out.println("Build a one-time item gift:");
         System.out.println("  java -cp out Main build-item-gift-bin output.bin 0x44 1 0x2AA");

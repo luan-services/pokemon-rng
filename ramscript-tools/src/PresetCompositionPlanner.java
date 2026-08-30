@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Set;
 
 /*
-   Dry-run automatic composition planner.
+   Dry-run preset composition planner.
 
    It intentionally consumes PresetCatalog metadata rather than knowing preset
    classes by name. Multi-preset local packing is NOT claimed yet: for more
@@ -21,64 +21,75 @@ final class PresetCompositionPlanner {
 
     private PresetCompositionPlanner() {}
 
-    static PresetCompositionPlan plan(RomProfile rom, List<String> presetIds) {
+    static PresetCompositionPlan planHotkeys(RomProfile rom, List<String> presetIds) {
+        List<PresetSelection> selections = new ArrayList<>();
+        for (String id : presetIds) selections.add(PresetSelection.hotkey(id));
+        return planSelections(rom, selections);
+    }
+
+    static PresetCompositionPlan planDeliveryman(RomProfile rom, String presetId) {
+        return planSelections(rom, List.of(PresetSelection.deliveryman(presetId)));
+    }
+
+    static PresetCompositionPlan planSelections(RomProfile rom, List<PresetSelection> selections) {
         if (rom == null) throw new IllegalArgumentException("ROM profile must not be null");
-        if (presetIds == null || presetIds.isEmpty()) throw new IllegalArgumentException("select at least one preset");
+        if (selections == null || selections.isEmpty()) throw new IllegalArgumentException("select at least one preset");
 
         List<PresetDefinition> presets = new ArrayList<>();
+        List<PresetDeploymentDefinition> deployments = new ArrayList<>();
         Set<String> seen = new HashSet<>();
-        for (String id : presetIds) {
-            PresetDefinition preset = PresetCatalog.byId(id);
+        int hotkeyCount = 0;
+        int deliverymanCount = 0;
+
+        for (PresetSelection selection : selections) {
+            PresetDefinition preset = PresetCatalog.byId(selection.presetId());
             if (!seen.add(preset.id())) throw new IllegalArgumentException("duplicate preset selection: " + preset.id());
             if (!preset.supports(rom)) throw new IllegalArgumentException(preset.id() + " does not support " + rom.displayName());
             presets.add(preset);
+            if (selection.activation() == PresetActivation.HOTKEY) hotkeyCount++;
+            else deliverymanCount++;
         }
 
-        List<List<PresetDeploymentDefinition>> options = new ArrayList<>();
-        boolean multi = presets.size() > 1;
-        for (PresetDefinition preset : presets) {
-            List<PresetDeploymentDefinition> choices = new ArrayList<>();
-            for (PresetDeploymentDefinition deployment : preset.deployments()) {
-                if (!multi || isSharedPersistent(deployment.kind())) choices.add(deployment);
-            }
-            if (choices.isEmpty()) {
-                throw new IllegalArgumentException("no composable deployment for " + preset.id() +
-                        (multi ? " in a multi-preset plan" : ""));
-            }
-            options.add(choices);
+        if (hotkeyCount > 0 && deliverymanCount > 0) {
+            throw new IllegalArgumentException("one composition cannot mix Deliveryman and hotkey activation");
+        }
+        if (deliverymanCount > 1) {
+            throw new IllegalArgumentException("Deliveryman activation currently supports one preset per Wonder Card");
         }
 
-        Candidate best = search(rom, presets, options, 0, new ArrayList<>(), null);
-        if (best == null) throw new IllegalArgumentException("no valid composition fits current memory/runtime constraints");
-        return best.plan;
+        for (int i = 0; i < selections.size(); i++) {
+            PresetSelection selection = selections.get(i);
+            PresetDefinition preset = presets.get(i);
+            PresetDeploymentKind kind;
+            if (selection.activation() == PresetActivation.HOTKEY) {
+                if (!preset.hotkeyCapable()) throw new IllegalArgumentException(preset.id() + " does not support hotkey activation");
+                kind = hotkeyCount == 1
+                        ? PresetDeploymentKind.HOTKEY_LOCAL
+                        : sharedDeploymentKind(preset);
+            } else {
+                if (preset.supportsDeployment(PresetDeploymentKind.DELIVERYMAN_LOCAL)) {
+                    kind = PresetDeploymentKind.DELIVERYMAN_LOCAL;
+                } else if (preset.supportsDeployment(PresetDeploymentKind.DEDICATED_LOCAL)) {
+                    kind = PresetDeploymentKind.DEDICATED_LOCAL;
+                } else {
+                    throw new IllegalArgumentException(preset.id() + " does not support Deliveryman/direct activation");
+                }
+            }
+            if (!preset.supportsDeployment(kind)) {
+                throw new IllegalArgumentException(preset.id() + " does not support required deployment " + kind);
+            }
+            deployments.add(preset.deployment(kind));
+        }
+
+        return evaluate(rom, presets, deployments);
     }
 
-    private static Candidate search(
-            RomProfile rom,
-            List<PresetDefinition> presets,
-            List<List<PresetDeploymentDefinition>> options,
-            int index,
-            List<PresetDeploymentDefinition> selected,
-            Candidate best
-    ) {
-        if (index == presets.size()) {
-            try {
-                PresetCompositionPlan plan = evaluate(rom, presets, selected);
-                int score = plan.ramScriptBytes() + plan.sb1Bytes() + plan.sb2Bytes();
-                int complexity = plan.infrastructure().size();
-                Candidate candidate = new Candidate(plan, score, complexity);
-                if (best == null || candidate.betterThan(best)) return candidate;
-            } catch (IllegalArgumentException ignored) {
-                // Candidate does not fit or combines incompatible infrastructure.
-            }
-            return best;
-        }
-        for (PresetDeploymentDefinition choice : options.get(index)) {
-            selected.add(choice);
-            best = search(rom, presets, options, index + 1, selected, best);
-            selected.remove(selected.size() - 1);
-        }
-        return best;
+    private static PresetDeploymentKind sharedDeploymentKind(PresetDefinition preset) {
+        if (preset.supportsDeployment(PresetDeploymentKind.SHARED_PERSISTENT_NATIVE))
+            return PresetDeploymentKind.SHARED_PERSISTENT_NATIVE;
+        if (preset.supportsDeployment(PresetDeploymentKind.SHARED_PERSISTENT_FIELD_SCRIPT))
+            return PresetDeploymentKind.SHARED_PERSISTENT_FIELD_SCRIPT;
+        throw new IllegalArgumentException(preset.id() + " does not support SharedHotkeyRuntime deployment");
     }
 
     private static PresetCompositionPlan evaluate(
@@ -214,10 +225,4 @@ final class PresetCompositionPlanner {
         return (value + alignment - 1) & ~(alignment - 1);
     }
 
-    private record Candidate(PresetCompositionPlan plan, int totalBytes, int complexity) {
-        boolean betterThan(Candidate other) {
-            if (totalBytes != other.totalBytes) return totalBytes < other.totalBytes;
-            return complexity < other.complexity;
-        }
-    }
 }
