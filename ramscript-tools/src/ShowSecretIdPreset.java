@@ -6,7 +6,19 @@ final class ShowSecretIdPreset {
     private ShowSecretIdPreset() {}
 
     static RamScript build(RomProfile rom) {
-        return RamScript.createWonderCard(buildScript(rom));
+        return buildDeliveryman(rom).ramScript();
+    }
+
+    static TriggerBuildResult buildDeliveryman(RomProfile rom) {
+        return TriggerComposer.compose(EventTrigger.DELIVERYMAN, rom, buildScript(rom));
+    }
+
+    static TriggerBuildResult buildHotkey(RomProfile rom) {
+        return buildHotkey(rom, new Hotkey(HotkeyButton.R, HotkeyButton.START));
+    }
+
+    static TriggerBuildResult buildHotkey(RomProfile rom, Hotkey hotkey) {
+        return TriggerComposer.compose(EventTrigger.HOTKEY_RUNTIME, rom, buildScript(rom), hotkey);
     }
 
     static byte[] buildScript(RomProfile rom) {

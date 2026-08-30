@@ -59,6 +59,15 @@ final class PresetCatalog {
                 ALL_PROFILES,
                 List.of(
                         new PresetDeploymentDefinition(
+                                PresetDeploymentKind.DELIVERYMAN_LOCAL,
+                                PresetDeploymentDefinition.infra(),
+                                Set.of(),
+                                rom -> new PresetDeploymentCost(
+                                        SeedModifierPreset.buildPayload(rom, 0x1234).length,
+                                        0, 0, 0, 1),
+                                "Direct Deliveryman execution of the same Field Script payload; supported but exact path not yet recorded in-game."
+                        ),
+                        new PresetDeploymentDefinition(
                                 PresetDeploymentKind.HOTKEY_LOCAL,
                                 PresetDeploymentDefinition.infra(PresetInfrastructure.HOTKEY_RUNTIME),
                                 FR10_VALIDATED,
@@ -80,8 +89,8 @@ final class PresetCatalog {
                         )
                 ),
                 validationMatrix(
-                        Set.of(PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY),
-                        Set.of(PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY)),
+                        Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY),
+                        Set.of(PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY)),
                 "Seed value is a build parameter; catalog sizing uses representative 0x1234 and is invariant for this preset."
         );
     }
@@ -96,6 +105,13 @@ final class PresetCatalog {
                 new Hotkey(HotkeyButton.R, HotkeyButton.B),
                 ALL_PROFILES,
                 List.of(
+                        new PresetDeploymentDefinition(
+                                PresetDeploymentKind.DELIVERYMAN_LOCAL,
+                                PresetDeploymentDefinition.infra(),
+                                Set.of(),
+                                rom -> new PresetDeploymentCost(RepelHotkeyPreset.buildPayload().length, 0, 0, 0, 1),
+                                "Direct Deliveryman execution of the same Field Script payload; supported but exact path not yet recorded in-game."
+                        ),
                         new PresetDeploymentDefinition(
                                 PresetDeploymentKind.HOTKEY_LOCAL,
                                 PresetDeploymentDefinition.infra(PresetInfrastructure.HOTKEY_RUNTIME),
@@ -116,8 +132,8 @@ final class PresetCatalog {
                         )
                 ),
                 validationMatrix(
-                        Set.of(PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY),
-                        Set.of(PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY)),
+                        Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY),
+                        Set.of(PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY)),
                 "Pure Field Script; does not require the shared native staging service."
         );
     }
@@ -321,6 +337,13 @@ final class PresetCatalog {
                                 "Simple validated deliveryman path is intentionally preserved."
                         ),
                         new PresetDeploymentDefinition(
+                                PresetDeploymentKind.HOTKEY_LOCAL,
+                                PresetDeploymentDefinition.infra(PresetInfrastructure.HOTKEY_RUNTIME),
+                                Set.of(),
+                                rom -> new PresetDeploymentCost(ShowSecretIdPreset.payloadSize(rom), 0, 0, 0, 1),
+                                "Standalone HotkeyRuntimeV1 wrapper around the same SID payload; supported, exact path not yet recorded in-game."
+                        ),
+                        new PresetDeploymentDefinition(
                                 PresetDeploymentKind.SHARED_PERSISTENT_NATIVE,
                                 PresetDeploymentDefinition.infra(
                                         PresetInfrastructure.SHARED_HOTKEY_RUNTIME,
@@ -341,7 +364,7 @@ final class PresetCatalog {
                         )
                 ),
                 validationMatrix(
-                        Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SHARED_N_HOTKEY),
+                        Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY),
                         Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SHARED_N_HOTKEY)),
                 "Deliveryman/local remains cheaper for a standalone SID request; persistent-native becomes useful in shared compositions."
         );

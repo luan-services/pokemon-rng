@@ -61,12 +61,14 @@ public final class Main {
                 case "build-custom-payload-wc3" -> buildCustomPayloadWc3(args);
                 case "build-show-secret-id-bin" -> buildShowSecretIdBin(args);
                 case "build-show-secret-id-wc3" -> buildShowSecretIdWc3(args);
+                case "build-show-secret-id-hotkey-wc3" -> buildShowSecretIdHotkeyWc3(args);
                 case "build-show-secret-id-object-wc3" -> buildShowSecretIdObjectWc3(args);
                 case "build-show-secret-id-oak-lab-wc3" -> buildShowSecretIdOakLabWc3(args);
                 case "build-show-secret-id-persistent-install-wc3" -> buildShowSecretIdPersistentInstallWc3(args);
                 case "build-show-secret-id-persistent-launch-wc3" -> buildShowSecretIdPersistentLaunchWc3(args);
                 case "build-seed-modifier-bin" -> buildSeedModifierBin(args);
                 case "build-seed-modifier-wc3" -> buildSeedModifierWc3(args);
+                case "build-seed-modifier-deliveryman-wc3" -> buildSeedModifierDeliverymanWc3(args);
                 case "build-seed-modifier-object-wc3" -> buildSeedModifierObjectWc3(args);
                 case "build-seed-modifier-oak-lab-wc3" -> buildSeedModifierOakLabWc3(args);
                 case "build-party-iv-viewer-bin" -> buildPartyIvViewerBin(args);
@@ -122,6 +124,7 @@ public final class Main {
                 case "build-run-anywhere-shared-runtime-wc3" -> buildRunAnywhereSharedRuntimeWc3(args);
                 case "build-repel-hotkey-bin" -> buildRepelHotkeyBin(args);
                 case "build-repel-hotkey-wc3" -> buildRepelHotkeyWc3(args);
+                case "build-repel-deliveryman-wc3" -> buildRepelDeliverymanWc3(args);
                 case "build-seed-repel-combo-bin" -> buildSeedRepelComboBin(args);
                 case "build-seed-repel-combo-wc3" -> buildSeedRepelComboWc3(args);
                 case "build-persistence-probe-install-wc3" -> buildPersistenceProbeInstallWc3(args);
@@ -438,6 +441,19 @@ public final class Main {
         TriggerBuildResult result = SeedModifierPreset.build(rom, seed, hotkey);
         buildIntoWc3(result.ramScript(), Path.of(args[3]), Path.of(args[4]));
         printSeedModifier(result, seed, hotkey);
+    }
+
+    private static void buildSeedModifierDeliverymanWc3(String[] args) throws Exception {
+        if (args.length != 5) {
+            throw new IllegalArgumentException(
+                    "Usage: build-seed-modifier-deliveryman-wc3 <rom> <seed-hex> <input.wc3> <output.wc3>"
+            );
+        }
+        RomProfile rom = RomProfile.fromId(args[1]);
+        int seed = parseSeed(args[2]);
+        TriggerBuildResult result = SeedModifierPreset.buildDeliveryman(rom, seed);
+        buildIntoWc3(result.ramScript(), Path.of(args[3]), Path.of(args[4]));
+        System.out.println("Seed Modifier (deliveryman): " + result.payloadBytes() + " payload bytes, no hotkey runtime");
     }
 
     private static Hotkey parseOptionalHotkey(String[] args, int baseLength) {
@@ -1212,6 +1228,18 @@ public final class Main {
         printRepelHotkey(result, hotkey);
     }
 
+    private static void buildRepelDeliverymanWc3(String[] args) throws Exception {
+        if (args.length != 4) {
+            throw new IllegalArgumentException(
+                    "Usage: build-repel-deliveryman-wc3 <rom> <input.wc3> <output.wc3>"
+            );
+        }
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = RepelHotkeyPreset.buildDeliveryman(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Repel (deliveryman): " + result.payloadBytes() + " payload bytes, no hotkey runtime");
+    }
+
     private static void printRepelHotkey(TriggerBuildResult result, Hotkey hotkey) {
         System.out.println();
         System.out.println("Repel Hotkey preset:");
@@ -1291,6 +1319,24 @@ public final class Main {
         RamScript script = ShowSecretIdPreset.build(rom);
         buildIntoWc3(script, Path.of(args[2]), Path.of(args[3]));
         printShowSecretId(rom, script);
+    }
+
+    private static void buildShowSecretIdHotkeyWc3(String[] args) throws Exception {
+        if (args.length != 4 && args.length != 6) {
+            throw new IllegalArgumentException(
+                    "Usage: build-show-secret-id-hotkey-wc3 <rom> <input.wc3> <output.wc3> [--hotkey <held>-<pressed>]"
+            );
+        }
+        RomProfile rom = RomProfile.fromId(args[1]);
+        Hotkey hotkey = args.length == 4
+                ? new Hotkey(HotkeyButton.R, HotkeyButton.START)
+                : parseOptionalHotkey(args, 4);
+        TriggerBuildResult result = ShowSecretIdPreset.buildHotkey(rom, hotkey);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Show Secret ID (HotkeyRuntimeV1): " + hotkey.displayName());
+        System.out.println("  payload bytes:     " + result.payloadBytes());
+        System.out.println("  runtime overhead:  " + result.runtimeOverheadBytes());
+        System.out.println("  total script:      " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
     }
 
     private static void buildShowSecretIdObjectWc3(String[] args) throws Exception {
@@ -2264,12 +2310,14 @@ public final class Main {
         System.out.println("Advanced presets:");
         System.out.println("  java -cp out Main build-show-secret-id-bin fr10 output.bin");
         System.out.println("  java -cp out Main build-show-secret-id-wc3 fr10 input.wc3 output.wc3");
+        System.out.println("  java -cp out Main build-show-secret-id-hotkey-wc3 fr10 input.wc3 output.wc3 [--hotkey r-start]");
         System.out.println("  java -cp out Main build-show-secret-id-object-wc3 fr10 oaks-lab-aide1-early-installer input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-show-secret-id-oak-lab-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-show-secret-id-persistent-install-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-show-secret-id-persistent-launch-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-seed-modifier-bin fr10 1234 output.bin [--hotkey r-select]");
         System.out.println("  java -cp out Main build-seed-modifier-wc3 fr10 1234 input.wc3 output.wc3 [--hotkey r-b]");
+        System.out.println("  java -cp out Main build-seed-modifier-deliveryman-wc3 fr10 1234 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-seed-modifier-object-wc3 fr10 1234 oaks-lab-aide1-early-installer input.wc3 output.wc3 [--hotkey r-select]");
         System.out.println("  java -cp out Main build-seed-modifier-oak-lab-wc3 fr10 1234 input.wc3 output.wc3 [--hotkey r-select]");
         System.out.println("  java -cp out Main build-party-iv-viewer-bin fr10 output.bin [--hotkey r-select]");
@@ -2283,6 +2331,7 @@ public final class Main {
         System.out.println("  java -cp out Main build-brock-identity-battle-probe-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-repel-hotkey-bin fr10 output.bin [--hotkey r-select]");
         System.out.println("  java -cp out Main build-repel-hotkey-wc3 fr10 input.wc3 output.wc3 [--hotkey r-b]");
+        System.out.println("  java -cp out Main build-repel-deliveryman-wc3 fr10 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-seed-repel-combo-wc3 fr10 1234 input.wc3 output.wc3 [--seed-hotkey r-select --repel-hotkey r-b]  [LEGACY]");
         System.out.println("  java -cp out Main build-persistent-hotkey-install-wc3 fr10 1234 input.wc3 output.wc3");
         System.out.println("  java -cp out Main build-persistent-hotkey-runtime-wc3 fr10 1234 input.wc3 output.wc3");

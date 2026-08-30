@@ -30,6 +30,10 @@ final class RepelHotkeyPreset {
         );
     }
 
+    static TriggerBuildResult buildDeliveryman(RomProfile rom) {
+        return TriggerComposer.compose(EventTrigger.DELIVERYMAN, rom, buildPayload());
+    }
+
     static byte[] buildPayload() {
         RamScriptBuilder builder = new RamScriptBuilder(VIRTUAL_BASE);
 

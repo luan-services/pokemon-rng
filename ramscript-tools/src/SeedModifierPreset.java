@@ -16,6 +16,10 @@ final class SeedModifierPreset {
         );
     }
 
+    static TriggerBuildResult buildDeliveryman(RomProfile rom, int desiredSeed) {
+        return TriggerComposer.compose(EventTrigger.DELIVERYMAN, rom, buildPayload(rom, desiredSeed));
+    }
+
     static byte[] buildPayload(RomProfile rom, int desiredSeed) {
         validateSeed(desiredSeed);
 
