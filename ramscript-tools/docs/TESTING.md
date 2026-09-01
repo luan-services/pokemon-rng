@@ -36,3 +36,8 @@ Record exact mode/profile when a new in-game test succeeds. Do not use “all su
 ## Recent exact validation — Seed u32 Shared
 
 LeafGreen English 1.0: Shared Seed Modifier + Show Secret ID + Party IV Viewer was rebuilt with `--seed B5B1E7AD` after the fixed-width Seed payload correction and confirmed working in-game. The prior failing build mixed Seed/SID/invalid textbox data because the Seed payload exceeded the planner's reserved SB2 interval. This exact path is now GAME-VALIDATED.
+
+
+## LeafGreen 1.0 — Seed Modifier Pokémon Center RNG normalization
+
+GAME-VALIDATED. Entering Pokémon Center 1F during the session changed `gWirelessCommType` (`0x03003F3C`) from `00` to `01` and changed observed RNG progression from 1 to 2 advances/frame; the state persisted after leaving. A CloseLink-only Seed build ran safely but did not change either condition. The production Seed payload now executes stock `special CloseLink` while the selector is still nonzero, then writes `00` to `gWirelessCommType` before opening the prompt. Frame-by-frame testing showed the selector become `00` and RNG return to 1 advance/frame before the textbox opened. Pressing A preserved 1x behavior and the Seed workflow remained correct. Re-entering Center 1F restored `01`/2x; invoking Seed again restored `00`/1x. Normal gameplay afterward showed no observed crash. Active link/wireless sessions are outside the supported Seed Modifier use case.
