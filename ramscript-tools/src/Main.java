@@ -67,6 +67,7 @@ public final class Main {
                 case "build-show-secret-id-persistent-launch-wc3" -> buildShowSecretIdPersistentLaunchWc3(args);
                 case "build-seed-modifier-bin" -> buildSeedModifierBin(args);
                 case "build-seed-modifier-wc3" -> buildSeedModifierWc3(args);
+                case "build-box14-seed-modifier-wc3" -> buildBox14SeedModifierWc3(args);
                 case "build-seed-modifier-deliveryman-wc3" -> buildSeedModifierDeliverymanWc3(args);
                 case "build-seed-modifier-object-wc3" -> buildSeedModifierObjectWc3(args);
                 case "build-seed-modifier-oak-lab-wc3" -> buildSeedModifierOakLabWc3(args);
@@ -500,6 +501,24 @@ public final class Main {
         TriggerBuildResult result = SeedModifierPreset.build(rom, seed, hotkey);
         buildIntoWc3(result.ramScript(), Path.of(args[3]), Path.of(args[4]));
         printSeedModifier(result, seed, hotkey);
+    }
+
+    private static void buildBox14SeedModifierWc3(String[] args) throws Exception {
+        if (args.length != 4 && args.length != 6) {
+            throw new IllegalArgumentException(
+                    "Usage: build-box14-seed-modifier-wc3 <rom> <input.wc3> <output.wc3> [--hotkey <held>-<pressed>]"
+            );
+        }
+        RomProfile rom = RomProfile.fromId(args[1]);
+        Hotkey hotkey = parseOptionalHotkey(args, 4);
+        TriggerBuildResult result = Box14SeedModifierPreset.build(rom, hotkey);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("BOX 14 Seed Modifier (LG1.0 GAME-VALIDATED)");
+        System.out.println("  BOX 14 name: exactly 8 uppercase hex digits (0-9/A-F)");
+        System.out.println("  hotkey: " + hotkey);
+        System.out.println("  helper: " + Box14SeedNativeHelper.CODE_SIZE + " bytes");
+        System.out.println("  payload: " + result.payloadBytes() + " bytes");
+        System.out.println("  total: " + result.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE + " bytes");
     }
 
     private static void buildSeedModifierDeliverymanWc3(String[] args) throws Exception {

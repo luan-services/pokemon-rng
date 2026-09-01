@@ -11,6 +11,7 @@ import java.util.Set;
 final class PresetCatalog {
     private static final Set<RomProfile> ALL_PROFILES = Set.copyOf(EnumSet.allOf(RomProfile.class));
     private static final Set<RomProfile> FR10_VALIDATED = Set.of(RomProfile.FIRE_RED_EN_10);
+    private static final Set<RomProfile> LG10_ONLY = Set.of(RomProfile.LEAF_GREEN_EN_10);
 
     private PresetCatalog() {}
 
@@ -37,7 +38,7 @@ final class PresetCatalog {
 
 
     static List<PresetDefinition> all() {
-        return List.of(seedModifier(), repel(), partyIvViewer(), leadIvViewer(), partyEvViewer(), leadEvViewer(), showSecretId(), tradeEvolution());
+        return List.of(seedModifier(), box14SeedModifier(), repel(), partyIvViewer(), leadIvViewer(), partyEvViewer(), leadEvViewer(), showSecretId(), tradeEvolution());
     }
 
     static PresetDefinition byId(String id) {
@@ -92,6 +93,64 @@ final class PresetCatalog {
                         Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY),
                         Set.of(PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY)),
                 "Seed value is a build parameter; the prompt is fixed-width 8-hex-digit text, so payload size is invariant across the full u32 range."
+        );
+    }
+
+    static PresetDefinition box14SeedModifier() {
+        java.util.ArrayList<PresetValidationEntry> validation = new java.util.ArrayList<>();
+        for (RomProfile rom : RomProfile.values()) {
+            for (PresetUsageMode mode : PresetUsageMode.values()) {
+                PresetValidationStatus status;
+                String note = "";
+                if (rom != RomProfile.LEAF_GREEN_EN_10
+                        || (mode != PresetUsageMode.SINGLE_HOTKEY && mode != PresetUsageMode.SHARED_N_HOTKEY)) {
+                    status = PresetValidationStatus.UNSUPPORTED;
+                } else if (mode == PresetUsageMode.SINGLE_HOTKEY) {
+                    status = PresetValidationStatus.VALIDATED_IN_GAME;
+                    note = "Standalone R+SELECT path GAME-VALIDATED on LG1.0 with BOX 14 uppercase hex seed and RFU normalization.";
+                } else {
+                    status = PresetValidationStatus.VALIDATED_IN_GAME;
+                    note = "Shared BOX 14 + Party IV composition GAME-VALIDATED on LG1.0; same 72-byte helper and existing shared native staging service.";
+                }
+                validation.add(new PresetValidationEntry(mode, rom, status, note));
+            }
+        }
+
+        return new PresetDefinition(
+                "seed-modifier-box14",
+                "Seed Modifier (BOX 14)",
+                PresetPayloadType.HYBRID_NATIVE,
+                true,
+                true,
+                new Hotkey(HotkeyButton.R, HotkeyButton.SELECT),
+                LG10_ONLY,
+                List.of(
+                        new PresetDeploymentDefinition(
+                                PresetDeploymentKind.HOTKEY_LOCAL,
+                                PresetDeploymentDefinition.infra(PresetInfrastructure.HOTKEY_RUNTIME),
+                                LG10_ONLY,
+                                rom -> new PresetDeploymentCost(
+                                        Box14SeedModifierPreset.buildPayload(rom).length, 0, 0, 0, 1),
+                                "Standalone path GAME-VALIDATED on LG1.0; helper is staged before the prompt."
+                        ),
+                        new PresetDeploymentDefinition(
+                                PresetDeploymentKind.SHARED_PERSISTENT_NATIVE,
+                                PresetDeploymentDefinition.infra(
+                                        PresetInfrastructure.SHARED_HOTKEY_RUNTIME,
+                                        PresetInfrastructure.SHARED_NATIVE_STAGING_SERVICE,
+                                        PresetInfrastructure.SB1_GATEWAY,
+                                        PresetInfrastructure.SB2_NATIVE_CATALOG),
+                                Set.of(),
+                                rom -> new PresetDeploymentCost(
+                                        0, PayloadPlacementPlanner.GATEWAY_SIZE,
+                                        PersistentBox14SeedBridge.fieldScriptSize(rom),
+                                        PersistentBox14SeedModule.payload(rom).length,
+                                        1),
+                                "Shared form GAME-VALIDATED on LG1.0 with Party IV: same 72-byte helper, staged by the existing shared native service before the prompt."
+                        )
+                ),
+                List.copyOf(validation),
+                "Reads exactly eight uppercase hexadecimal characters (0-9/A-F) from BOX 14. Invalid input returns without changing gRngValue. Current RFU address/profile is LG1.0 only."
         );
     }
 

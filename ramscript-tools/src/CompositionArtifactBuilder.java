@@ -82,6 +82,7 @@ final class CompositionArtifactBuilder {
             };
             case HOTKEY_LOCAL -> switch (item.preset().id()) {
                 case "seed-modifier" -> HotkeyRuntimeV1.build(plan.rom(), SeedModifierPreset.buildPayload(plan.rom(), seed));
+                case "seed-modifier-box14" -> HotkeyRuntimeV1.build(plan.rom(), Box14SeedModifierPreset.buildPayload(plan.rom()));
                 case "repel" -> HotkeyRuntimeV1.build(plan.rom(), RepelHotkeyPreset.buildPayload());
                 case "party-iv-viewer" -> HotkeyRuntimeV1.build(plan.rom(), PartyIvViewerPreset.buildPayload(plan.rom()));
                 case "party-ev-viewer" -> HotkeyRuntimeV1.build(plan.rom(), PartyEvViewerPreset.buildPayload(plan.rom()));
@@ -108,6 +109,8 @@ final class CompositionArtifactBuilder {
                         PersistentLeadIvViewerModule.MODULE_ID, PersistentLeadIvViewerModule.payload(plan.rom()));
                 case "lead-ev-viewer" -> new PersistentNativeModuleSpec(
                         PersistentLeadEvViewerModule.MODULE_ID, PersistentLeadEvViewerModule.payload(plan.rom()));
+                case "seed-modifier-box14" -> new PersistentNativeModuleSpec(
+                        PersistentBox14SeedModule.MODULE_ID, PersistentBox14SeedModule.payload(plan.rom()));
                 default -> throw unsupported(item.preset().id(), item.deployment().kind());
             });
         }
@@ -117,6 +120,11 @@ final class CompositionArtifactBuilder {
     private static byte[] buildPersistentField(RomProfile rom, ConcretePresetAllocation allocation, int serviceOffset, int seed) {
         return switch (allocation.presetId()) {
             case "seed-modifier" -> SeedModifierPreset.buildPayload(rom, seed);
+            case "seed-modifier-box14" -> {
+                requireService(serviceOffset, allocation.presetId());
+                long target = virtualTargetFromSb2ToRamScript(allocation.sb2FieldScriptOffset(), serviceOffset);
+                yield PersistentBox14SeedBridge.build(rom, target);
+            }
             case "repel" -> RepelHotkeyPreset.buildPayload();
             case "party-iv-viewer" -> {
                 requireService(serviceOffset, allocation.presetId());
