@@ -60,3 +60,14 @@ docs/                canonical docs + reference/history/research/legacy material
 ```
 
 The current development rule is simple: build new presets/content above the validated infrastructure; do not reopen frozen runtimes without a demonstrated blocking feature.
+
+## CLI quick start
+
+The normal `Main` namespace exposes only current production commands. Start with:
+
+```text
+java -cp out Main commands
+java -cp out Main presets
+```
+
+Canonical preset builds use `build-preset-wc3`; object-hosted builds use `build-preset-object-wc3`; cleanup uses `build-toolkit-cleaner-wc3`. Historical and research entrypoints are intentionally hidden from normal discovery but remain reproducible with `java -cp out Main legacy <old-command> ...`.
