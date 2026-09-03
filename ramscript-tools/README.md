@@ -27,7 +27,8 @@ The project documentation is intentionally optimized for fast human/LLM recovery
 - eight Kanto Gym Leader rematch presets.
 - InstallationManifest + Toolkit Cleaner.
 - special Oak Lab Aide early-RNG deployment; Shared `Seed + SID + Party IV` is game-validated on LG1.0.
-- `mute-music` production hotkey preset for FR1.0/FR1.1/LG1.0/LG1.1 (`R+DOWN`), with immediate mute/restore GAME-VALIDATED on real LG1.0 cartridge and source/profile + build support on the other English versions; no extra resident IWRAM.
+- `mute-music` production hotkey preset for FR1.0/FR1.1/LG1.0/LG1.1 (`R+DOWN`), with immediate mute/restore GAME-VALIDATED on real LG1.0 cartridge both standalone and in Shared `Seed + SID + Party IV + Mute`, and source/profile + build support on the other English versions; no extra resident IWRAM.
+  - Shared deployment requires a 4-byte-aligned SB2 Field Script base because its current native installer uses `CPU_SET_BLOCK`; this constraint is enforced by the planner and regression-tested.
 
 ROM modification is outside the project boundary.
 

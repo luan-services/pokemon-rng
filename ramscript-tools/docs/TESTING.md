@@ -49,7 +49,7 @@ GAME-VALIDATED. Entering Pokémon Center 1F during the session changed `gWireles
 
 Earlier direct M4A probes that froze after successfully silencing the BGM were contaminated by an invalid Thumb indirect-call sequence (`mov lr, pc; bx r3`). The corrected helper uses `BL -> local bx r3`, preserving Thumb return state on ARMv4T. The corrected VolumeControl-only probe then ran without freeze; the final map-restart probe additionally fixed immediate OFF restoration. Therefore the old freezes are recorded as an experimental caller/ABI bug, not evidence that stock `m4aMPlayVolumeControl` is unsafe.
 
-The native helper is temporary EWRAM staging only and consumes no new resident IWRAM. Shared/N-hotkey materialization is build-tested but remains **SUPPORTED_NOT_TESTED** until an exact multi-preset composition is exercised in-game. Recommended follow-up coverage includes map warps, Pokémon Center transitions, battle return, cries/fanfares, Surf/bike music and save/reset/session semantics.
+The native helper is temporary EWRAM staging only and consumes no new resident IWRAM. The corrected Shared/N-hotkey path is **GAME-VALIDATED on LG1.0** in the exact `Seed Modifier + Show Secret ID + Party IV Viewer + Mute Music` composition: all four hotkeys worked, and R+DOWN muted/restored music correctly. Recommended follow-up coverage includes map warps, Pokémon Center transitions, battle return, cries/fanfares, Surf/bike music and save/reset/session semantics.
 
 ## LeafGreen 1.0 — BOX 14 Seed Modifier standalone
 
@@ -62,4 +62,6 @@ Additional Pokémon Center observation: while on Center 1F, BOX14 Seed normaliza
 
 ## Mute Music cross-version build support
 
-Production `build-preset-wc3` was exercised for `fr10`, `fr11`, `lg10`, and `lg11`; all four generated WC3 files with valid RamScript checksums and headers. This establishes build support only. Real-cart GAME-VALIDATED status remains limited to the standalone LG1.0 path.
+Production `build-preset-wc3` was exercised for `fr10`, `fr11`, `lg10`, and `lg11`; all four generated WC3 files with valid RamScript checksums and headers. This establishes build support only. Real-cart GAME-VALIDATED status covers standalone LG1.0 and the corrected LG1.0 Shared path; the other ROM profiles remain build-supported only.
+
+- Mute Music Shared first real-cart integration attempt on LG1.0: the Field Script reached `playbgm MUS_DUMMY` + `Overworld_PlaySpecialMapMusic`, but the native toggle did not take effect. Audit found the Shared deployment had declared alignment 1 even though its current `CPU_SET_BLOCK` helper installer requires a 4-byte-aligned Field Script base. Planner contract corrected to alignment 4. The corrected `Seed Modifier + Show Secret ID + Party IV Viewer + Mute Music` Shared build was then retested on real LG1.0 hardware and **passed perfectly**; Shared Mute Music is now GAME-VALIDATED on LG1.0.

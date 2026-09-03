@@ -438,14 +438,16 @@ final class PresetCatalog {
                 String note = "";
                 if (mode != PresetUsageMode.SINGLE_HOTKEY && mode != PresetUsageMode.SHARED_N_HOTKEY) {
                     status = PresetValidationStatus.UNSUPPORTED;
-                } else if (mode == PresetUsageMode.SINGLE_HOTKEY && rom == RomProfile.LEAF_GREEN_EN_10) {
+                } else if (rom == RomProfile.LEAF_GREEN_EN_10) {
                     status = PresetValidationStatus.VALIDATED_IN_GAME;
-                    note = "R+DOWN toggle GAME-VALIDATED on real LG1.0 cartridge: immediate mute and immediate map-music restore without freeze.";
+                    note = mode == PresetUsageMode.SINGLE_HOTKEY
+                            ? "R+DOWN standalone toggle GAME-VALIDATED on real LG1.0 cartridge: immediate mute and immediate map-music restore without freeze."
+                            : "R+DOWN Shared/N-hotkey path GAME-VALIDATED on real LG1.0 cartridge in Seed Modifier + Show Secret ID + Party IV Viewer + Mute Music after enforcing 4-byte SB2 Field Script alignment.";
                 } else {
                     status = PresetValidationStatus.SUPPORTED_NOT_TESTED;
                     note = mode == PresetUsageMode.SINGLE_HOTKEY
                             ? "Exact stock BGM symbols are profiled for this ROM and the production artifact is build-tested; no in-game validation recorded."
-                            : "Shared/N-hotkey materialization uses the same self-contained Field Script/helper payload in SB2; exact Shared composition not yet exercised in-game.";
+                            : "Shared/N-hotkey materialization uses the same self-contained Field Script/helper payload in SB2; supported/build-tested for this ROM, but no in-game validation recorded.";
                 }
                 validation.add(new PresetValidationEntry(mode, rom, status, note));
             }
@@ -463,7 +465,7 @@ final class PresetCatalog {
                         new PresetDeploymentDefinition(
                                 PresetDeploymentKind.HOTKEY_LOCAL,
                                 PresetDeploymentDefinition.infra(PresetInfrastructure.HOTKEY_RUNTIME),
-                                Set.of(),
+                                LG10_ONLY,
                                 rom -> new PresetDeploymentCost(MuteMusicPreset.buildPayload(rom).length, 0, 0, 0, 1),
                                 "Standalone R+DOWN path GAME-VALIDATED on real LG1.0 cartridge. Helper is temporary EWRAM staging; no new resident IWRAM."
                         ),
@@ -472,15 +474,15 @@ final class PresetCatalog {
                                 PresetDeploymentDefinition.infra(
                                         PresetInfrastructure.SHARED_HOTKEY_RUNTIME,
                                         PresetInfrastructure.SB1_GATEWAY),
-                                Set.of(),
+                                LG10_ONLY,
                                 rom -> new PresetDeploymentCost(
                                         0, PayloadPlacementPlanner.GATEWAY_SIZE,
-                                        MuteMusicPreset.buildPayload(rom).length, 0, 1),
-                                "Self-contained hybrid Field Script stored in SB2. Native helper is installed temporarily to EWRAM on activation; Shared resident IWRAM is unchanged."
+                                        MuteMusicPreset.buildPayload(rom).length, 0, 4),
+                                "Self-contained hybrid Field Script stored in SB2. The current AUTO installer selects CPU_SET_BLOCK, so the SB2 Field Script base must remain 4-byte aligned. Native helper is installed temporarily to EWRAM on activation; Shared resident IWRAM is unchanged."
                         )
                 ),
                 List.copyOf(validation),
-                "ON sets gDisableMusic and zeroes only BGM track volume. OFF clears the flag, restores volume, then uses playbgm MUS_DUMMY + Overworld_PlaySpecialMapMusic so the engine immediately re-resolves the correct map/surf/saved BGM. Supported on FR1.0/FR1.1/LG1.0/LG1.1; only standalone LG1.0 is game-validated."
+                "ON sets gDisableMusic and zeroes only BGM track volume. OFF clears the flag, restores volume, then uses playbgm MUS_DUMMY + Overworld_PlaySpecialMapMusic so the engine immediately re-resolves the correct map/surf/saved BGM. Supported on FR1.0/FR1.1/LG1.0/LG1.1; standalone and Shared/N-hotkey LG1.0 paths are game-validated."
         );
     }
 
