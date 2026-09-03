@@ -38,7 +38,7 @@ final class PresetCatalog {
 
 
     static List<PresetDefinition> all() {
-        return List.of(seedModifier(), box14SeedModifier(), repel(), partyIvViewer(), leadIvViewer(), partyEvViewer(), leadEvViewer(), showSecretId(), tradeEvolution());
+        return List.of(seedModifier(), box14SeedModifier(), repel(), partyIvViewer(), leadIvViewer(), partyEvViewer(), leadEvViewer(), showSecretId(), muteMusic(), tradeEvolution());
     }
 
     static PresetDefinition byId(String id) {
@@ -429,6 +429,60 @@ final class PresetCatalog {
         );
     }
 
+
+    static PresetDefinition muteMusic() {
+        java.util.ArrayList<PresetValidationEntry> validation = new java.util.ArrayList<>();
+        for (RomProfile rom : RomProfile.values()) {
+            for (PresetUsageMode mode : PresetUsageMode.values()) {
+                PresetValidationStatus status;
+                String note = "";
+                if (mode != PresetUsageMode.SINGLE_HOTKEY && mode != PresetUsageMode.SHARED_N_HOTKEY) {
+                    status = PresetValidationStatus.UNSUPPORTED;
+                } else if (mode == PresetUsageMode.SINGLE_HOTKEY && rom == RomProfile.LEAF_GREEN_EN_10) {
+                    status = PresetValidationStatus.VALIDATED_IN_GAME;
+                    note = "R+DOWN toggle GAME-VALIDATED on real LG1.0 cartridge: immediate mute and immediate map-music restore without freeze.";
+                } else {
+                    status = PresetValidationStatus.SUPPORTED_NOT_TESTED;
+                    note = mode == PresetUsageMode.SINGLE_HOTKEY
+                            ? "Exact stock BGM symbols are profiled for this ROM and the production artifact is build-tested; no in-game validation recorded."
+                            : "Shared/N-hotkey materialization uses the same self-contained Field Script/helper payload in SB2; exact Shared composition not yet exercised in-game.";
+                }
+                validation.add(new PresetValidationEntry(mode, rom, status, note));
+            }
+        }
+
+        return new PresetDefinition(
+                "mute-music",
+                "Mute Music",
+                PresetPayloadType.HYBRID_NATIVE,
+                true,
+                true,
+                MuteMusicPreset.HOTKEY,
+                ALL_PROFILES,
+                List.of(
+                        new PresetDeploymentDefinition(
+                                PresetDeploymentKind.HOTKEY_LOCAL,
+                                PresetDeploymentDefinition.infra(PresetInfrastructure.HOTKEY_RUNTIME),
+                                Set.of(),
+                                rom -> new PresetDeploymentCost(MuteMusicPreset.buildPayload(rom).length, 0, 0, 0, 1),
+                                "Standalone R+DOWN path GAME-VALIDATED on real LG1.0 cartridge. Helper is temporary EWRAM staging; no new resident IWRAM."
+                        ),
+                        new PresetDeploymentDefinition(
+                                PresetDeploymentKind.SHARED_PERSISTENT_FIELD_SCRIPT,
+                                PresetDeploymentDefinition.infra(
+                                        PresetInfrastructure.SHARED_HOTKEY_RUNTIME,
+                                        PresetInfrastructure.SB1_GATEWAY),
+                                Set.of(),
+                                rom -> new PresetDeploymentCost(
+                                        0, PayloadPlacementPlanner.GATEWAY_SIZE,
+                                        MuteMusicPreset.buildPayload(rom).length, 0, 1),
+                                "Self-contained hybrid Field Script stored in SB2. Native helper is installed temporarily to EWRAM on activation; Shared resident IWRAM is unchanged."
+                        )
+                ),
+                List.copyOf(validation),
+                "ON sets gDisableMusic and zeroes only BGM track volume. OFF clears the flag, restores volume, then uses playbgm MUS_DUMMY + Overworld_PlaySpecialMapMusic so the engine immediately re-resolves the correct map/surf/saved BGM. Supported on FR1.0/FR1.1/LG1.0/LG1.1; only standalone LG1.0 is game-validated."
+        );
+    }
 
     static PresetDefinition tradeEvolution() {
         java.util.ArrayList<PresetValidationEntry> validation = new java.util.ArrayList<>();

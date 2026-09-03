@@ -33,7 +33,10 @@ enum RomProfile {
             0x0300537CL,
             0x080568C5L,
             0x08183560L,
-            0x081835A0L
+            0x081835A0L,
+            0x03005080L,
+            0x03007300L,
+            0x081DE0BCL
     ),
 
     LEAF_GREEN_EN_10(
@@ -70,7 +73,10 @@ enum RomProfile {
             0x0300537CL,
             0x080568C5L,
             0x0818353CL,
-            0x0818357CL
+            0x0818357CL,
+            0x03005080L,
+            0x03007300L,
+            0x081DE0BCL
     ),
 
     FIRE_RED_EN_11(
@@ -107,7 +113,10 @@ enum RomProfile {
             0x0300537CL,
             0x080568D9L,
             0x081835D8L,
-            0x08183618L
+            0x08183618L,
+            0x03005080L,
+            0x03007300L,
+            0x081DE0D0L
     ),
 
     LEAF_GREEN_EN_11(
@@ -144,7 +153,10 @@ enum RomProfile {
             0x0300537CL,
             0x080568D9L,
             0x081835B4L,
-            0x081835F4L
+            0x081835F4L,
+            0x03005080L,
+            0x03007300L,
+            0x081DE0D0L
     );
 
     enum ValidationStatus {
@@ -211,6 +223,11 @@ enum RomProfile {
     final long trainerProbeIntroText;
     final long trainerProbeDefeatText;
 
+    // Mute Music stock BGM control symbols.
+    final long gDisableMusic;
+    final long gMPlayInfoBgm;
+    final long m4aMPlayVolumeControlThumb;
+
     RomProfile(
             String id,
             String displayName,
@@ -245,7 +262,10 @@ enum RomProfile {
             long cb2AfterEvolution,
             long cb2ReturnToFieldContinueScriptThumb,
             long trainerProbeIntroText,
-            long trainerProbeDefeatText
+            long trainerProbeDefeatText,
+            long gDisableMusic,
+            long gMPlayInfoBgm,
+            long m4aMPlayVolumeControlThumb
     ) {
         this.id = id;
         this.displayName = displayName;
@@ -281,6 +301,9 @@ enum RomProfile {
         this.cb2ReturnToFieldContinueScriptThumb = cb2ReturnToFieldContinueScriptThumb;
         this.trainerProbeIntroText = trainerProbeIntroText;
         this.trainerProbeDefeatText = trainerProbeDefeatText;
+        this.gDisableMusic = gDisableMusic;
+        this.gMPlayInfoBgm = gMPlayInfoBgm;
+        this.m4aMPlayVolumeControlThumb = m4aMPlayVolumeControlThumb;
     }
 
     String id() {

@@ -189,6 +189,14 @@ final class RamScriptBuilder {
         return this;
     }
 
+    RamScriptBuilder comparePtrToValue(long address, int value) {
+        opcode(0x1F);
+        u32(address);
+        u8(value);
+        return this;
+    }
+
+
     RamScriptBuilder setFlag(int flag) {
         opcode(0x29);
         u16(flag);
@@ -506,6 +514,13 @@ final class RamScriptBuilder {
 
     RamScriptBuilder waitFanfare() {
         opcode(0x32);
+        return this;
+    }
+
+    RamScriptBuilder playBgm(int songId, boolean saveSong) {
+        opcode(0x33);
+        u16(songId);
+        u8(saveSong ? 1 : 0);
         return this;
     }
 

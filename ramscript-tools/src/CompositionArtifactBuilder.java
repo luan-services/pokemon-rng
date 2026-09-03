@@ -88,6 +88,7 @@ final class CompositionArtifactBuilder {
                 case "party-ev-viewer" -> HotkeyRuntimeV1.build(plan.rom(), PartyEvViewerPreset.buildPayload(plan.rom()));
                 case "lead-iv-viewer" -> HotkeyRuntimeV1.build(plan.rom(), LeadIvViewerPreset.buildPayload(plan.rom()));
                 case "lead-ev-viewer" -> HotkeyRuntimeV1.build(plan.rom(), LeadEvViewerPreset.buildPayload(plan.rom()));
+                case "mute-music" -> HotkeyRuntimeV1.build(plan.rom(), MuteMusicPreset.buildPayload(plan.rom()));
                 default -> throw unsupported(item.preset().id(), item.deployment().kind());
             };
             default -> throw new IllegalArgumentException("composition is not local-only");
@@ -126,6 +127,7 @@ final class CompositionArtifactBuilder {
                 yield PersistentBox14SeedBridge.build(rom, target);
             }
             case "repel" -> RepelHotkeyPreset.buildPayload();
+            case "mute-music" -> MuteMusicPreset.buildPayload(rom);
             case "party-iv-viewer" -> {
                 requireService(serviceOffset, allocation.presetId());
                 long target = virtualTargetFromSb2ToRamScript(allocation.sb2FieldScriptOffset(), serviceOffset);
