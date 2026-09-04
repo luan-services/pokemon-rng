@@ -5,4 +5,4 @@ dummy-saves
 archive
 ramscript-tools/tests/*
 ramscript-tools/docs/*
-ramscript-tools/*.md
+ramscript-tools/PROJECT_HANDOFF.md
