@@ -127,6 +127,9 @@ final class LegacyMain {
                 case "build-repel-deliveryman-wc3" -> buildRepelDeliverymanWc3(args);
                 case "build-seed-repel-combo-bin" -> buildSeedRepelComboBin(args);
                 case "build-seed-repel-combo-wc3" -> buildSeedRepelComboWc3(args);
+                case "build-flicker-ewram-probe-wc3" -> buildFlickerEwramProbeWc3(args);
+                case "build-flicker-ewram-probe-install-wc3" -> buildFlickerEwramProbeInstallWc3(args);
+                case "build-flicker-ewram-probe-check-wc3" -> buildFlickerEwramProbeCheckWc3(args);
                 case "build-persistence-probe-install-wc3" -> buildPersistenceProbeInstallWc3(args);
                 case "build-persistence-probe-check-wc3" -> buildPersistenceProbeCheckWc3(args);
                 case "build-persistence-400-install-wc3" -> buildPersistence400InstallWc3(args);
@@ -1949,6 +1952,29 @@ final class LegacyMain {
         RomProfile rom = RomProfile.fromId(args[1]);
         buildIntoWc3(PersistentShowSecretIdPreset.buildLauncher(rom), Path.of(args[2]), Path.of(args[3]));
         System.out.println("Persistent Show Secret ID launcher built.");
+    }
+
+
+    private static void buildFlickerEwramProbeWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-flicker-ewram-probe-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        buildIntoWc3(FlickerRegionProbePreset.build(rom), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Flicker EWRAM single-session probe built.");
+        System.out.println("zero -> install, exact pattern -> OK, any other state -> FAILED without repair");
+    }
+
+    private static void buildFlickerEwramProbeInstallWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-flicker-ewram-probe-install-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        buildIntoWc3(FlickerRegionProbePreset.build(rom), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Flicker EWRAM probe installer built: writes 68 bytes at 0x02022B08..0x02022B4B.");
+    }
+
+    private static void buildFlickerEwramProbeCheckWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-flicker-ewram-probe-check-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        buildIntoWc3(FlickerRegionProbePreset.build(rom), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Flicker EWRAM probe checker built: verifies all 68 bytes at 0x02022B08..0x02022B4B.");
     }
 
     private static void buildPersistenceProbeInstallWc3(String[] args) throws Exception {

@@ -73,3 +73,7 @@ java -cp out Main presets
 ```
 
 Canonical preset builds use `build-preset-wc3`; object-hosted builds use `build-preset-object-wc3`; cleanup uses `build-toolkit-cleaner-wc3`. Historical and research entrypoints are intentionally hidden from normal discovery but remain reproducible with `java -cp out Main legacy <old-command> ...`.
+
+## ABI fix
+
+The initial experimental probe used callee-saved Thumb registers r4/r5 without preserving them across `callnative`, which could corrupt the Field Script interpreter state and prevent the confirmation message from appearing. This package uses only caller-saved r0-r3 in both writer and checker.
