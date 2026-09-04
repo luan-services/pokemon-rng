@@ -1,5 +1,5 @@
 /*
-   Experimental convenience variant of Seed Modifier.
+   Production BOX 14 convenience variant of Seed Modifier.
 
    The normal seed-modifier remains unchanged. This variant reads the desired
    seed from the eight-character uppercase hexadecimal name of BOX 14.

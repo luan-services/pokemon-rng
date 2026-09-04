@@ -29,7 +29,7 @@ final class SharedHotkeyRuntime {
         }
     }
 
-    /* Experimental extension hook. Default production compose paths never pass
+    /* Resident-sidecar extension hook. Ordinary production compose paths never pass
        this record, so their resident bytes and installer layout stay unchanged. */
     record ResidentSidecar(long address, long callbackThumb, byte[] code) {
         ResidentSidecar {

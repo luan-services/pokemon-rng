@@ -90,6 +90,7 @@ final class CompositionArtifactBuilder {
                 case "seed-modifier-box14" -> HotkeyRuntimeV1.build(plan.rom(), Box14SeedModifierPreset.buildPayload(plan.rom()));
                 case "repel" -> HotkeyRuntimeV1.build(plan.rom(), RepelHotkeyPreset.buildPayload());
                 case "party-iv-viewer" -> HotkeyRuntimeV1.build(plan.rom(), PartyIvViewerPreset.buildPayload(plan.rom()));
+                case "show-secret-id" -> HotkeyRuntimeV1.build(plan.rom(), ShowSecretIdPreset.buildScript(plan.rom()));
                 case "party-ev-viewer" -> HotkeyRuntimeV1.build(plan.rom(), PartyEvViewerPreset.buildPayload(plan.rom()));
                 case "lead-iv-viewer" -> HotkeyRuntimeV1.build(plan.rom(), LeadIvViewerPreset.buildPayload(plan.rom()));
                 case "lead-ev-viewer" -> HotkeyRuntimeV1.build(plan.rom(), LeadEvViewerPreset.buildPayload(plan.rom()));

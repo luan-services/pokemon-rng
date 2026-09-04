@@ -1,6 +1,6 @@
 import java.util.List;
 
-/* Experimental Run + Bike Anywhere sidecar for HotkeyRuntimeV1.
+/* Run + Bike Anywhere sidecar for HotkeyRuntimeV1.
 
    The frozen Runtime V1 is not modified. A 63-byte callback/state sidecar is
    copied into the already game-validated 68-byte EWRAM tail at 02022B08.

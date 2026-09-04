@@ -4,9 +4,9 @@ import java.util.List;
 /*
    Converts a concrete placement into temporary installer stages.
 
-   Build 32 is still dry-run only: this class does not emit WC3 files. It models
-   the already-validated batch-copy installer contract exactly enough to pack
-   <=255-byte copy chunks under the 995-byte RamScript ceiling.
+   This planner models the validated batch-copy installer contract and packs
+   <=255-byte copy chunks under the 995-byte temporary RamScript ceiling.
+   InstallationEmitter materializes the resulting stages.
 */
 final class CompositionInstallationPlanner {
     private static final long VIRTUAL_BASE = HotkeyRuntimeV1.VIRTUAL_BASE;

@@ -1,12 +1,12 @@
 /*
-   Build-36 probe helper.
+   Historical one-shot Run Anywhere native helper.
 
    FR/LG IsRunningDisallowed() first checks gMapHeader.allowRunning. The bit is
    bit 1 of the byte at MapHeader+0x19. This helper preserves every other flag
    and ORs only that bit.
 
    It stages in EWRAM (gStringVar4+0x140), deliberately avoiding any new IWRAM
-   reservation. The probe changes only the currently loaded map header; a map
+   reservation. This helper changes only the currently loaded map header; a map
    load is expected to restore the header from ROM.
 */
 final class RunAnywhereNativeHelper {

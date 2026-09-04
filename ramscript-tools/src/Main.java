@@ -60,10 +60,12 @@ public final class Main {
         System.out.println("  presets                          List production PresetCatalog entries");
         System.out.println("  preset-metadata <rom>            Show preset deployment/cost metadata");
         System.out.println("  preset-validation <rom>          Show validation matrix");
-        System.out.println("  plan-preset ...                  Plan deliveryman/hotkey composition");
+        System.out.println("  plan-preset <rom> <deliveryman|hotkey> <preset-id> [preset-id ...]");
+        System.out.println("                                   Dry-run composition, placement and capacity");
         System.out.println("  build-preset-wc3 ...             Build production deliveryman/hotkey preset(s)");
         System.out.println("  build-preset-object-wc3 ...      Build production preset(s) on a named object host");
-        System.out.println("  build-toolkit-cleaner-wc3 ...    Build the production Toolkit Cleaner");
+        System.out.println("  build-toolkit-cleaner-wc3 <rom> <input.wc3> <output.wc3> [--wipe-flags] [--exclude <FLAG_ID>]...");
+        System.out.println("                                   Build the production Toolkit Cleaner");
         System.out.println("  toolkit-cleaner-metadata         Show Toolkit Cleaner metadata");
         System.out.println("  build-gift-bin / build-gift-wc3  Build named gift/event references");
         System.out.println("  build-item-gift-*                Build one-time item gift utility");

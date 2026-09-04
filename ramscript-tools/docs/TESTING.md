@@ -53,7 +53,7 @@ The native helper is temporary EWRAM staging only and consumes no new resident I
 
 ## LeafGreen 1.0 — BOX 14 Seed Modifier standalone
 
-GAME-VALIDATED. BOX 14 was named with an eight-digit uppercase hexadecimal seed and the experimental standalone R+SELECT preset applied it successfully. Frame-by-frame observation showed the seed change at the same visible textbox-close moment as the fixed Seed Modifier; no additional frame delay was observed. The 72-byte helper validates every character as `0-9` or `A-F`; invalid input returns without writing `gRngValue`.
+GAME-VALIDATED. BOX 14 was named with an eight-digit uppercase hexadecimal seed and the standalone R+SELECT preset applied it successfully. Frame-by-frame observation showed the seed change at the same visible textbox-close moment as the fixed Seed Modifier; no additional frame delay was observed. The 72-byte helper validates every character as `0-9` or `A-F`; invalid input returns without writing `gRngValue`.
 
 The Shared persistent-native integration is also GAME-VALIDATED on LG1.0 in the `BOX14 + Party IV` composition. The same 72-byte helper is stored in the SB2 native catalog, staged by the existing shared service before the prompt, and entered through one stock `callnative` after A. Both BOX14 Seed and Party IV worked in-game. `BOX14 + Party IV + Repel` and `BOX14 + Party IV + Repel + SID` remain BUILD-TESTED until those exact larger compositions are exercised in-game.
 
@@ -65,3 +65,35 @@ Additional Pokémon Center observation: while on Center 1F, BOX14 Seed normaliza
 Production `build-preset-wc3` was exercised for `fr10`, `fr11`, `lg10`, and `lg11`; all four generated WC3 files with valid RamScript checksums and headers. This establishes build support only. Real-cart GAME-VALIDATED status covers standalone LG1.0 and the corrected LG1.0 Shared path; the other ROM profiles remain build-supported only.
 
 - Mute Music Shared first real-cart integration attempt on LG1.0: the Field Script reached `playbgm MUS_DUMMY` + `Overworld_PlaySpecialMapMusic`, but the native toggle did not take effect. Audit found the Shared deployment had declared alignment 1 even though its current `CPU_SET_BLOCK` helper installer requires a 4-byte-aligned Field Script base. Planner contract corrected to alignment 4. The corrected `Seed Modifier + Show Secret ID + Party IV Viewer + Mute Music` Shared build was then retested on real LG1.0 hardware and **passed perfectly**; Shared Mute Music is now GAME-VALIDATED on LG1.0.
+
+## Run Anywhere / Run + Bike Anywhere — LG1.0
+
+Recorded real-cart results:
+
+- 68-byte fixed-EWRAM sentinel at `0x02022B08..0x02022B4B`: install + immediate verify PASS; after Brock defeat text, verify PASS.
+- Run Anywhere HotkeyRuntimeV1: toggle and map-transition persistence PASS; continued working after Brock.
+- Run Anywhere Shared integration with Seed Modifier + Mute Music: all selected presets PASS.
+- catalog/planner Run Anywhere in a smaller valid Shared composition: PASS.
+- `seed-modifier-box14 + repel + party-iv-viewer + run-bike-anywhere`: planner-generated two install stages + runtime; all four presets PASS on real LG1.0 hardware. This validates the `SHARED_PERSISTENT_NATIVE` Run+Bike placement selected by reuse of the existing shared native staging service.
+
+Do not mark Run+Bike standalone V1 as GAME-VALIDATED until that exact standalone cart path is exercised.
+
+## Exhaustive preset-combination audit
+
+`PresetCombinationAuditTest` enumerates every subset of the current hotkey catalog up to the 8-binding Shared limit on all four English FR/LG profiles. For each subset, one of two outcomes is required:
+
+1. the planner rejects it cleanly for ROM support, duplicate hotkey/fixed-resource conflict, Runtime/SB capacity or another explicit constraint; or
+2. the plan succeeds, in which case local/shared materialization, installation planning and installation emission must all succeed.
+
+Current catalog snapshot (11 hotkey-capable preset IDs; subsets up to 8 bindings):
+
+```text
+FR1.0  1980 considered,  89 accepted/materialized, 0 planner/materializer mismatches
+LG1.0  1980 considered, 272 accepted/materialized, 0 planner/materializer mismatches
+FR1.1  1980 considered,  89 accepted/materialized, 0 planner/materializer mismatches
+LG1.1  1980 considered,  89 accepted/materialized, 0 planner/materializer mismatches
+```
+
+The high rejection count is expected and does **not** mean Shared is hard-coded to a few packs. Most rejected larger sets exceed the fixed SB2 payload reservation; other rejections are default-hotkey collisions, the Run Anywhere/Run+Bike fixed-EWRAM ownership conflict, unsupported ROM-specific presets, or exact Runtime RamScript limits. The authoritative user flow remains: request the desired preset set with `build-preset-wc3`; the planner chooses deployment automatically or rejects the set with a concrete reason.
+
+This audit found a real catalog/materializer parity bug during cleanup: standalone `show-secret-id` was plan-able as `HOTKEY_LOCAL` but missing from `CompositionArtifactBuilder.buildLocal`. The missing materializer was added and a real `build-preset-wc3 lg10 hotkey ... show-secret-id` smoke build now succeeds.

@@ -12,12 +12,22 @@ final class PresetCatalog {
     private static final Set<RomProfile> ALL_PROFILES = Set.copyOf(EnumSet.allOf(RomProfile.class));
     private static final Set<RomProfile> FR10_VALIDATED = Set.of(RomProfile.FIRE_RED_EN_10);
     private static final Set<RomProfile> LG10_ONLY = Set.of(RomProfile.LEAF_GREEN_EN_10);
+    private static final Set<RomProfile> FR10_LG10_VALIDATED = Set.of(
+            RomProfile.FIRE_RED_EN_10, RomProfile.LEAF_GREEN_EN_10);
 
     private PresetCatalog() {}
 
     private static List<PresetValidationEntry> validationMatrix(
             Set<PresetUsageMode> supportedModes,
             Set<PresetUsageMode> fr10ValidatedModes
+    ) {
+        return validationMatrix(supportedModes, fr10ValidatedModes, Set.of());
+    }
+
+    private static List<PresetValidationEntry> validationMatrix(
+            Set<PresetUsageMode> supportedModes,
+            Set<PresetUsageMode> fr10ValidatedModes,
+            Set<PresetUsageMode> lg10ValidatedModes
     ) {
         java.util.ArrayList<PresetValidationEntry> out = new java.util.ArrayList<>();
         for (RomProfile rom : RomProfile.values()) {
@@ -26,6 +36,8 @@ final class PresetCatalog {
                 if (!supportedModes.contains(mode)) {
                     status = PresetValidationStatus.UNSUPPORTED;
                 } else if (rom == RomProfile.FIRE_RED_EN_10 && fr10ValidatedModes.contains(mode)) {
+                    status = PresetValidationStatus.VALIDATED_IN_GAME;
+                } else if (rom == RomProfile.LEAF_GREEN_EN_10 && lg10ValidatedModes.contains(mode)) {
                     status = PresetValidationStatus.VALIDATED_IN_GAME;
                 } else {
                     status = PresetValidationStatus.SUPPORTED_NOT_TESTED;
@@ -71,7 +83,7 @@ final class PresetCatalog {
                         new PresetDeploymentDefinition(
                                 PresetDeploymentKind.HOTKEY_LOCAL,
                                 PresetDeploymentDefinition.infra(PresetInfrastructure.HOTKEY_RUNTIME),
-                                FR10_VALIDATED,
+                                FR10_LG10_VALIDATED,
                                 rom -> new PresetDeploymentCost(
                                         SeedModifierPreset.buildPayload(rom, 0x1234).length,
                                         0, 0, 0, 1),
@@ -82,7 +94,7 @@ final class PresetCatalog {
                                 PresetDeploymentDefinition.infra(
                                         PresetInfrastructure.SHARED_HOTKEY_RUNTIME,
                                         PresetInfrastructure.SB1_GATEWAY),
-                                FR10_VALIDATED,
+                                FR10_LG10_VALIDATED,
                                 rom -> new PresetDeploymentCost(
                                         0, PayloadPlacementPlanner.GATEWAY_SIZE,
                                         SeedModifierPreset.buildPayload(rom, 0x1234).length, 0, 1),
@@ -91,7 +103,8 @@ final class PresetCatalog {
                 ),
                 validationMatrix(
                         Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY),
-                        Set.of(PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY)),
+                        Set.of(PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY),
+                        Set.of(PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY)),
                 "Seed value is a build parameter; the prompt is fixed-width 8-hex-digit text, so payload size is invariant across the full u32 range."
         );
     }
@@ -140,7 +153,7 @@ final class PresetCatalog {
                                         PresetInfrastructure.SHARED_NATIVE_STAGING_SERVICE,
                                         PresetInfrastructure.SB1_GATEWAY,
                                         PresetInfrastructure.SB2_NATIVE_CATALOG),
-                                Set.of(),
+                                LG10_ONLY,
                                 rom -> new PresetDeploymentCost(
                                         0, PayloadPlacementPlanner.GATEWAY_SIZE,
                                         PersistentBox14SeedBridge.fieldScriptSize(rom),
@@ -183,7 +196,7 @@ final class PresetCatalog {
                                 PresetDeploymentDefinition.infra(
                                         PresetInfrastructure.SHARED_HOTKEY_RUNTIME,
                                         PresetInfrastructure.SB1_GATEWAY),
-                                FR10_VALIDATED,
+                                FR10_LG10_VALIDATED,
                                 rom -> new PresetDeploymentCost(
                                         0, PayloadPlacementPlanner.GATEWAY_SIZE,
                                         RepelHotkeyPreset.buildPayload().length, 0, 1),
@@ -192,7 +205,8 @@ final class PresetCatalog {
                 ),
                 validationMatrix(
                         Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY),
-                        Set.of(PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY)),
+                        Set.of(PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY),
+                        Set.of(PresetUsageMode.SHARED_N_HOTKEY)),
                 "Pure Field Script; does not require the shared native staging service."
         );
     }
@@ -227,7 +241,7 @@ final class PresetCatalog {
                                         PresetInfrastructure.SHARED_NATIVE_STAGING_SERVICE,
                                         PresetInfrastructure.SB1_GATEWAY,
                                         PresetInfrastructure.SB2_NATIVE_CATALOG),
-                                FR10_VALIDATED,
+                                FR10_LG10_VALIDATED,
                                 rom -> {
                                     SharedPersistentNativeComposition.Layout layout =
                                             SharedPersistentNativeComposition.layout(rom, 0x1234);
@@ -242,7 +256,8 @@ final class PresetCatalog {
                 ),
                 validationMatrix(
                         Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY),
-                        Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY)),
+                        Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY),
+                        Set.of(PresetUsageMode.SHARED_N_HOTKEY)),
                 "Complex native preset used to validate alignment, staging and shared-native composition."
         );
     }
@@ -409,7 +424,7 @@ final class PresetCatalog {
                                         PresetInfrastructure.SHARED_NATIVE_STAGING_SERVICE,
                                         PresetInfrastructure.SB1_GATEWAY,
                                         PresetInfrastructure.SB2_NATIVE_CATALOG),
-                                FR10_VALIDATED,
+                                FR10_LG10_VALIDATED,
                                 rom -> {
                                     SharedPersistentNativeComposition.Layout layout =
                                             SharedPersistentNativeComposition.layout(rom, 0x1234);
@@ -424,7 +439,8 @@ final class PresetCatalog {
                 ),
                 validationMatrix(
                         Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY),
-                        Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SHARED_N_HOTKEY)),
+                        Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SHARED_N_HOTKEY),
+                        Set.of(PresetUsageMode.SHARED_N_HOTKEY)),
                 "Deliveryman/local remains cheaper for a standalone SID request; persistent-native becomes useful in shared compositions."
         );
     }
@@ -546,10 +562,13 @@ final class PresetCatalog {
                 String note = "";
                 if (rom == RomProfile.LEAF_GREEN_EN_10
                         && (mode == PresetUsageMode.SINGLE_HOTKEY || mode == PresetUsageMode.SHARED_N_HOTKEY)) {
-                    status = PresetValidationStatus.SUPPORTED_NOT_TESTED;
-                    note = mode == PresetUsageMode.SINGLE_HOTKEY
-                            ? "Build-tested HotkeyRuntimeV1 + 63-byte fixed-EWRAM sidecar; real-cart validation pending."
-                            : "Build-tested SharedHotkeyRuntime + 63-byte fixed-EWRAM sidecar; real-cart validation pending.";
+                    if (mode == PresetUsageMode.SHARED_N_HOTKEY) {
+                        status = PresetValidationStatus.VALIDATED_IN_GAME;
+                        note = "GAME-VALIDATED on LG1.0 in the planner-generated BOX14 Seed + Repel + Party IV + Run + Bike composition; toggle, coexistence and fixed-EWRAM sidecar all worked on real hardware.";
+                    } else {
+                        status = PresetValidationStatus.SUPPORTED_NOT_TESTED;
+                        note = "Build-tested HotkeyRuntimeV1 + 63-byte fixed-EWRAM sidecar; exact standalone real-cart path not yet recorded.";
+                    }
                 }
                 validation.add(new PresetValidationEntry(mode, rom, status, note));
             }
@@ -592,7 +611,7 @@ final class PresetCatalog {
                                         PresetInfrastructure.SB1_GATEWAY,
                                         PresetInfrastructure.SB2_NATIVE_CATALOG,
                                         PresetInfrastructure.RUN_BIKE_ANYWHERE_EWRAM_SIDECAR),
-                                Set.of(),
+                                LG10_ONLY,
                                 rom -> new PresetDeploymentCost(
                                         0, PayloadPlacementPlanner.GATEWAY_SIZE,
                                         PersistentRunBikeAnywhereBridge.fieldScriptSize(rom),

@@ -1,8 +1,8 @@
 /* Per-preset storage cost for one deployment mode.
 
    Shared runtime/service bytes intentionally do NOT live here. They are
-   represented by PresetInfrastructure and will be accounted for once by the
-   future composition planner.
+   represented by PresetInfrastructure and are accounted for once by the
+   composition planner.
 */
 record PresetDeploymentCost(
         int ramScriptPayloadBytes,

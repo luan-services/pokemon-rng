@@ -32,23 +32,16 @@ The project documentation is intentionally optimized for fast human/LLM recovery
 
 ROM modification is outside the project boundary.
 
-## Experimental Run Anywhere V1 toggle probe
+## Run Anywhere / Run + Bike Anywhere
 
-This branch also contains the standalone `RunAnywhereHotkeyRuntimeV1` experiment. The previously tested one-way build is GAME-VALIDATED on real LeafGreen 1.0 for installation, indoor running and persistence across map transitions (including after Brock). The ON/OFF build in this package is a new experimental refinement and still requires hardware validation.
+The mobility presets are production catalog features, not active probes.
 
-- hotkey: `R+SELECT`
-- ON/OFF feedback: sound effect `0x66` (click)
-- fixed EWRAM reservation: `0x02022B08..0x02022B4B` (68 bytes validated by the earlier hardware probe)
-- resident bytes used by this build: 54 bytes
-- toggle helper: 64-byte one-shot native staged at `gStringVar4+0x140` through the existing `CPU_SET_BLOCK` helper installer
-- OFF restores the current map's captured stock `allowRunning` bit instead of blindly clearing it
-- session-only: reset/reboot removes both Runtime V1 and the EWRAM sidecar
+- `run-anywhere` — default `R+RIGHT`; standalone V1 and Shared are GAME-VALIDATED on LG1.0.
+- `run-bike-anywhere` — default `R+RIGHT`; Shared is GAME-VALIDATED on LG1.0; standalone V1 remains build-tested until that exact cart path is recorded.
+- both use the GAME-VALIDATED fixed-EWRAM session reservation `0x02022B08..0x02022B4B` and are mutually exclusive.
+- the planner chooses local vs persistent-native Run+Bike placement from the whole composition.
 
-Build a WC3 with:
-
-```text
-java -cp out Main legacy build-run-anywhere-hotkey-v1-wc3 lg10 input.wc3 output.wc3
-```
+The planner-generated `seed-modifier-box14 + repel + party-iv-viewer + run-bike-anywhere` composition is GAME-VALIDATED on real LG1.0 hardware. See `docs/reference/features/RUN_AND_BIKE_ANYWHERE.md` for the architecture, Brock audit, validation evidence and the rejected predecessor.
 
 ## Build and production test
 
@@ -64,7 +57,7 @@ javac -encoding UTF-8 -d out $sources.FullName
 java -cp out ProductionTestRunner
 ```
 
-The historical `TestRunner` is retained as a broader regression/provenance suite and may contain known stale assertions. `ProductionTestRunner` is the focused production gate.
+`ProductionTestRunner` is the focused production gate and includes an exhaustive catalog-combination audit for FR1.0, LG1.0, FR1.1 and LG1.1: every hotkey subset up to the 8-binding Shared limit is either rejected by the planner or must successfully materialize and emit. `TestRunner` remains the broader historical regression/provenance suite.
 
 ## Project layout
 

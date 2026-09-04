@@ -1,5 +1,5 @@
 /*
-   Experimental BOX 14 seed decoder for FR/LG English profiles.
+   BOX 14 seed decoder used by the production Seed Modifier variant.
 
    Reads exactly eight Gen III uppercase hexadecimal characters from the name
    of BOX 14 (PokemonStorage.boxNames[13]), converts them to a u32 desired RNG

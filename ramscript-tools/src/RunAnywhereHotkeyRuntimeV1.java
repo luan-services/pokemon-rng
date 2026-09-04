@@ -1,7 +1,7 @@
 import java.util.List;
 
 /*
-   Experimental standalone Run Anywhere + HotkeyRuntimeV1 toggle probe.
+   Production standalone Run Anywhere + HotkeyRuntimeV1 toggle runtime.
 
    The frozen HotkeyRuntimeV1 implementation is not modified. This specialized
    build reuses its validated native installer blob and patches only the copy
