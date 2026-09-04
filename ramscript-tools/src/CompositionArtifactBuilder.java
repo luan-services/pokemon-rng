@@ -30,10 +30,15 @@ final class CompositionArtifactBuilder {
             components.put("native-catalog", buildNativeCatalog(plan));
         }
 
-        int serviceOffset = -1;
-        if (plan.infrastructure().contains(PresetInfrastructure.SHARED_NATIVE_STAGING_SERVICE)) {
-            serviceOffset = SharedPersistentNativeStagingService.offsetForBindings(plan.hotkeyBindings(), 4);
-        }
+        boolean runAnywhere = plan.infrastructure().contains(PresetInfrastructure.RUN_ANYWHERE_EWRAM_SIDECAR);
+        boolean runBikeAnywhere = plan.infrastructure().contains(PresetInfrastructure.RUN_BIKE_ANYWHERE_EWRAM_SIDECAR);
+        boolean nativeService = plan.infrastructure().contains(PresetInfrastructure.SHARED_NATIVE_STAGING_SERVICE);
+        boolean mobilityLocalPayload = plan.selections().stream().anyMatch(item ->
+                item.deployment().kind() == PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT
+                        && (item.preset().id().equals("run-anywhere") || item.preset().id().equals("run-bike-anywhere")));
+        SharedRuntimeSupportLayout supportLayout = SharedRuntimeSupportLayout.build(
+                plan.rom(), plan.hotkeyBindings(), runAnywhere, runBikeAnywhere, mobilityLocalPayload, nativeService, NATIVE_STAGING_CAPACITY);
+        int serviceOffset = supportLayout.serviceOffset();
 
         for (ConcretePresetAllocation allocation : layout.allocations()) {
             if (allocation.hasGateway()) {
@@ -89,6 +94,8 @@ final class CompositionArtifactBuilder {
                 case "lead-iv-viewer" -> HotkeyRuntimeV1.build(plan.rom(), LeadIvViewerPreset.buildPayload(plan.rom()));
                 case "lead-ev-viewer" -> HotkeyRuntimeV1.build(plan.rom(), LeadEvViewerPreset.buildPayload(plan.rom()));
                 case "mute-music" -> HotkeyRuntimeV1.build(plan.rom(), MuteMusicPreset.buildPayload(plan.rom()));
+                case "run-anywhere" -> RunAnywhereHotkeyRuntimeV1.build(plan.rom());
+                case "run-bike-anywhere" -> RunBikeAnywhereHotkeyRuntimeV1.build(plan.rom());
                 default -> throw unsupported(item.preset().id(), item.deployment().kind());
             };
             default -> throw new IllegalArgumentException("composition is not local-only");
@@ -112,6 +119,8 @@ final class CompositionArtifactBuilder {
                         PersistentLeadEvViewerModule.MODULE_ID, PersistentLeadEvViewerModule.payload(plan.rom()));
                 case "seed-modifier-box14" -> new PersistentNativeModuleSpec(
                         PersistentBox14SeedModule.MODULE_ID, PersistentBox14SeedModule.payload(plan.rom()));
+                case "run-bike-anywhere" -> new PersistentNativeModuleSpec(
+                        PersistentRunBikeAnywhereModule.MODULE_ID, PersistentRunBikeAnywhereModule.payload(plan.rom()));
                 default -> throw unsupported(item.preset().id(), item.deployment().kind());
             });
         }
@@ -128,6 +137,11 @@ final class CompositionArtifactBuilder {
             }
             case "repel" -> RepelHotkeyPreset.buildPayload();
             case "mute-music" -> MuteMusicPreset.buildPayload(rom);
+            case "run-bike-anywhere" -> {
+                requireService(serviceOffset, allocation.presetId());
+                long target = virtualTargetFromSb2ToRamScript(allocation.sb2FieldScriptOffset(), serviceOffset);
+                yield PersistentRunBikeAnywhereBridge.build(rom, target);
+            }
             case "party-iv-viewer" -> {
                 requireService(serviceOffset, allocation.presetId());
                 long target = virtualTargetFromSb2ToRamScript(allocation.sb2FieldScriptOffset(), serviceOffset);
@@ -201,27 +215,52 @@ final class CompositionArtifactBuilder {
         HotkeyButton modifier = null;
         Map<String, ConcretePresetAllocation> byId = new HashMap<>();
         for (ConcretePresetAllocation allocation : plan.concreteLayout().allocations()) byId.put(allocation.presetId(), allocation);
+
+        boolean runAnywhere = plan.infrastructure().contains(PresetInfrastructure.RUN_ANYWHERE_EWRAM_SIDECAR);
+        boolean runBikeAnywhere = plan.infrastructure().contains(PresetInfrastructure.RUN_BIKE_ANYWHERE_EWRAM_SIDECAR);
+        boolean residentMobilitySidecar = runAnywhere || runBikeAnywhere;
+        boolean nativeService = plan.infrastructure().contains(PresetInfrastructure.SHARED_NATIVE_STAGING_SERVICE);
+        boolean mobilityLocalPayload = plan.selections().stream().anyMatch(item ->
+                item.deployment().kind() == PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT
+                        && (item.preset().id().equals("run-anywhere") || item.preset().id().equals("run-bike-anywhere")));
+        SharedRuntimeSupportLayout supportLayout = SharedRuntimeSupportLayout.build(
+                plan.rom(), plan.hotkeyBindings(), runAnywhere, runBikeAnywhere, mobilityLocalPayload, nativeService, NATIVE_STAGING_CAPACITY);
+
         for (HotkeyBinding binding : plan.concreteLayout().bindingPlan().bindings()) {
             ConcretePresetAllocation allocation = byId.get(binding.presetId());
-            if (allocation == null || !allocation.hasGateway()) throw new IllegalArgumentException("shared binding has no gateway: " + binding.presetId());
+            if (allocation == null) throw new IllegalArgumentException("shared binding has no allocation: " + binding.presetId());
             if (modifier == null) modifier = binding.hotkey().heldButton();
-            entries.add(new SharedHotkeyDispatcher.Entry(binding.hotkey().pressedButton(), gatewayDelta(allocation.sb1GatewayOffset())));
+            int target;
+            if (allocation.deploymentKind() == PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT) {
+                if ((!binding.presetId().equals("run-anywhere") && !binding.presetId().equals("run-bike-anywhere"))
+                        || supportLayout.runAnywhereOffset() < 0) {
+                    throw new IllegalArgumentException("unsupported shared-local binding: " + binding.presetId());
+                }
+                target = supportLayout.runAnywhereOffset();
+            } else {
+                if (!allocation.hasGateway()) throw new IllegalArgumentException("shared binding has no gateway: " + binding.presetId());
+                target = gatewayDelta(allocation.sb1GatewayOffset());
+            }
+            entries.add(new SharedHotkeyDispatcher.Entry(binding.hotkey().pressedButton(), target));
         }
         if (modifier == null) throw new IllegalArgumentException("shared runtime has no bindings");
 
-        byte[] service = new byte[0];
-        int alignment = 1;
-        if (plan.infrastructure().contains(PresetInfrastructure.SHARED_NATIVE_STAGING_SERVICE)) {
-            SharedPersistentNativeStagingService.Build build = SharedPersistentNativeStagingService.build(
-                    plan.rom(), serviceOffset, plan.rom().stringVar4 + 0x140L, NATIVE_STAGING_CAPACITY);
-            service = build.fieldScript();
-            alignment = build.requiredBaseAlignment();
+        if (objectTarget != null && residentMobilitySidecar) {
+            throw new IllegalArgumentException("mobility shared-local sidecars are not yet exposed through object-bound final runtime installation");
         }
         if (objectTarget == null) {
-            return SharedHotkeyRuntime.compose(plan.rom(), modifier, entries, service, alignment);
+            SharedHotkeyRuntime.ResidentSidecar mobilitySidecar = runBikeAnywhere
+                    ? RunBikeAnywhereSharedPreset.residentSidecar(plan.rom())
+                    : (runAnywhere ? RunAnywhereSharedPreset.residentSidecar(plan.rom()) : null);
+            return residentMobilitySidecar
+                    ? SharedHotkeyRuntime.composeWithResidentSidecarNativeCopy(
+                            plan.rom(), modifier, entries, supportLayout.support(), supportLayout.alignment(),
+                            mobilitySidecar)
+                    : SharedHotkeyRuntime.compose(
+                            plan.rom(), modifier, entries, supportLayout.support(), supportLayout.alignment());
         }
         return EarlyObjectBoundSharedHotkeyInstaller.compose(
-                plan.rom(), modifier, entries, service, alignment, objectTarget
+                plan.rom(), modifier, entries, supportLayout.support(), supportLayout.alignment(), objectTarget
         );
     }
 

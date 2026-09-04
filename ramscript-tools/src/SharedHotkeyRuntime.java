@@ -29,6 +29,18 @@ final class SharedHotkeyRuntime {
         }
     }
 
+    /* Experimental extension hook. Default production compose paths never pass
+       this record, so their resident bytes and installer layout stay unchanged. */
+    record ResidentSidecar(long address, long callbackThumb, byte[] code) {
+        ResidentSidecar {
+            if ((address & 1L) != 0) throw new IllegalArgumentException("sidecar address must be even");
+            if (callbackThumb != (address | 1L)) throw new IllegalArgumentException("sidecar callback must be address|1");
+            if (code == null || code.length == 0) throw new IllegalArgumentException("sidecar code must not be empty");
+            code = code.clone();
+        }
+        @Override public byte[] code() { return code.clone(); }
+    }
+
     private SharedHotkeyRuntime() {}
 
     static TriggerBuildResult compose(
@@ -36,7 +48,7 @@ final class SharedHotkeyRuntime {
             HotkeyButton modifier,
             List<SharedHotkeyDispatcher.Entry> entries
     ) {
-        return compose(rom, modifier, entries, new byte[0], 1, null);
+        return composeInternal(rom, modifier, entries, new byte[0], 1, null, null, false);
     }
 
     static TriggerBuildResult compose(
@@ -46,7 +58,7 @@ final class SharedHotkeyRuntime {
             byte[] sharedSupport,
             int sharedSupportAlignment
     ) {
-        return compose(rom, modifier, entries, sharedSupport, sharedSupportAlignment, null);
+        return composeInternal(rom, modifier, entries, sharedSupport, sharedSupportAlignment, null, null, false);
     }
 
     static TriggerBuildResult compose(
@@ -57,13 +69,56 @@ final class SharedHotkeyRuntime {
             int sharedSupportAlignment,
             ResidentMaintenance maintenance
     ) {
+        return composeInternal(rom, modifier, entries, sharedSupport, sharedSupportAlignment, maintenance, null, false);
+    }
+
+    static TriggerBuildResult composeWithResidentSidecar(
+            RomProfile rom,
+            HotkeyButton modifier,
+            List<SharedHotkeyDispatcher.Entry> entries,
+            byte[] sharedSupport,
+            int sharedSupportAlignment,
+            ResidentSidecar sidecar
+    ) {
+        if (sidecar == null) throw new IllegalArgumentException("sidecar must not be null");
+        return composeInternal(rom, modifier, entries, sharedSupport, sharedSupportAlignment, null, sidecar, false);
+    }
+
+    /* Catalog integration variant. Unlike the already game-validated probe path
+       above, this packs the EWRAM sidecar into the temporary native installer
+       and copies it with a compact Thumb loop. Default/probe output remains
+       byte-for-byte unchanged. */
+    static TriggerBuildResult composeWithResidentSidecarNativeCopy(
+            RomProfile rom,
+            HotkeyButton modifier,
+            List<SharedHotkeyDispatcher.Entry> entries,
+            byte[] sharedSupport,
+            int sharedSupportAlignment,
+            ResidentSidecar sidecar
+    ) {
+        if (sidecar == null) throw new IllegalArgumentException("sidecar must not be null");
+        return composeInternal(rom, modifier, entries, sharedSupport, sharedSupportAlignment, null, sidecar, true);
+    }
+
+    private static TriggerBuildResult composeInternal(
+            RomProfile rom,
+            HotkeyButton modifier,
+            List<SharedHotkeyDispatcher.Entry> entries,
+            byte[] sharedSupport,
+            int sharedSupportAlignment,
+            ResidentMaintenance maintenance,
+            ResidentSidecar sidecar,
+            boolean nativeCopySidecar
+    ) {
         validate(rom, modifier, entries);
         if (sharedSupport == null) throw new IllegalArgumentException("sharedSupport must not be null");
         if (sharedSupportAlignment < 1 || (sharedSupportAlignment & (sharedSupportAlignment - 1)) != 0) {
             throw new IllegalArgumentException("sharedSupportAlignment must be a positive power of two");
         }
         byte[] dispatcher = SharedHotkeyDispatcher.build(entries);
-        byte[] nativeBlob = nativeInstallerBlob(rom, modifier, maintenance != null);
+        byte[] nativeBlob = nativeCopySidecar
+                ? nativeInstallerBlobWithSidecarCopy(rom, modifier, sidecar)
+                : nativeInstallerBlob(rom, modifier, maintenance != null, sidecar == null ? null : sidecar.callbackThumb());
 
         int afterDispatcher = PAYLOAD_OFFSET + dispatcher.length;
         int sharedSupportOffset = align(afterDispatcher, sharedSupportAlignment);
@@ -74,7 +129,9 @@ final class SharedHotkeyRuntime {
                 : maintenanceBootstrapBytes(nativeBlobOffset, maintenance.offset());
         int fieldInstallerOffset = nativeBlobOffset + nativeBlob.length;
 
-        byte[] fieldInstaller = new FieldScriptWriter()
+        FieldScriptWriter installer = new FieldScriptWriter();
+        if (sidecar != null && !nativeCopySidecar) installer.writeBytes(sidecar.address(), sidecar.code());
+        byte[] fieldInstaller = installer
                 .writeBytes(HotkeyRuntimeV1.BOOTSTRAP_ADDRESS, bootstrap)
                 .callNative(HotkeyRuntimeV1.BOOTSTRAP_ADDRESS | 1L)
                 .returnRam()
@@ -168,7 +225,7 @@ final class SharedHotkeyRuntime {
     }
 
     static int nativeBlobSize(RomProfile rom, HotkeyButton modifier) {
-        return nativeInstallerBlob(rom, modifier, false).length;
+        return nativeInstallerBlob(rom, modifier, false, null).length;
     }
 
     /*
@@ -184,15 +241,15 @@ final class SharedHotkeyRuntime {
             RomProfile rom,
             HotkeyButton modifier
     ) {
-        return residentBlocks(rom, modifier, false);
+        return residentBlocks(rom, modifier, false, null);
     }
 
     static int dispatcherSize(int bindings) {
         return SharedHotkeyDispatcher.sizeForBindings(bindings);
     }
 
-    private static byte[] nativeInstallerBlob(RomProfile rom, HotkeyButton modifier, boolean maintenance) {
-        List<RuntimeV1ResidentBlocks.Block> blocks = residentBlocks(rom, modifier, maintenance);
+    private static byte[] nativeInstallerBlob(RomProfile rom, HotkeyButton modifier, boolean maintenance, Long postMapCallbackThumb) {
+        List<RuntimeV1ResidentBlocks.Block> blocks = residentBlocks(rom, modifier, maintenance, postMapCallbackThumb);
         int residentBytes = totalResidentBytes(blocks);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
@@ -256,7 +313,89 @@ final class SharedHotkeyRuntime {
         return blob;
     }
 
-    private static List<RuntimeV1ResidentBlocks.Block> residentBlocks(RomProfile rom, HotkeyButton modifier, boolean maintenance) {
+    private static byte[] nativeInstallerBlobWithSidecarCopy(
+            RomProfile rom,
+            HotkeyButton modifier,
+            ResidentSidecar sidecar
+    ) {
+        List<RuntimeV1ResidentBlocks.Block> blocks = residentBlocks(
+                rom, modifier, false, sidecar.callbackThumb());
+        int blockCount = blocks.size();
+        int residentBytes = totalResidentBytes(blocks);
+        final int codeAndLiteralsSize = 0x4C;
+        int descriptorOffset = codeAndLiteralsSize;
+        int residentDataOffset = descriptorOffset + blockCount * 4;
+
+        byte[] head = new byte[codeAndLiteralsSize];
+        int[] insn = {
+                0xB4F0,       // push {r4-r7}
+                0,            // adr r4, descriptors
+                0,            // adr r6, resident data
+                0x2703,       // movs r7,#3
+                0x063F,       // lsls r7,r7,#24 => 03000000
+                0x2500,       // movs r5,#count (patched)
+                0x8821, 0x8862, 0x3404, 0x19C9,
+                0x7833, 0x700B, 0x3601, 0x3101, 0x3A01, 0xD1F9,
+                0x3D01, 0xD1F3,
+                0,            // ldr r0, sidecar destination
+                0x2200 | sidecar.code().length,
+                0x7833,       // sidecar copy: ldrb r3,[r6]
+                0x7003,       // strb r3,[r0]
+                0x3601,       // adds r6,#1
+                0x3001,       // adds r0,#1
+                0x3A01,       // subs r2,#1
+                0xD1F9,       // bne sidecar copy loop
+                0,            // ldr r0, VBlank hook
+                0,            // ldr r1, supervisor|1
+                0x6001,
+                0xBCF0,
+                0x4770,
+                0x46C0
+        };
+        for (int i = 0; i < insn.length; i++) putU16(head, i * 2, insn[i]);
+        putU16(head, 0x02, thumbAdr(4, 0x02, descriptorOffset));
+        putU16(head, 0x04, thumbAdr(6, 0x04, residentDataOffset));
+        head[0x0A] = (byte) blockCount;
+        putU16(head, 0x24, thumbLdrLiteral(0, 0x24, 0x40));
+        putU16(head, 0x34, thumbLdrLiteral(0, 0x34, 0x44));
+        putU16(head, 0x36, thumbLdrLiteral(1, 0x36, 0x48));
+        putU32(head, 0x40, sidecar.address());
+        putU32(head, 0x44, 0x03003550L);
+        putU32(head, 0x48, 0x03003F43L);
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        out.writeBytes(head);
+        for (RuntimeV1ResidentBlocks.Block block : blocks) {
+            if ((block.address() & 0xFFFF0000L) != 0x03000000L) {
+                throw new IllegalStateException("shared runtime block outside IWRAM");
+            }
+            u16(out, (int) (block.address() & 0xFFFF));
+            u16(out, block.data().length);
+        }
+        for (RuntimeV1ResidentBlocks.Block block : blocks) out.writeBytes(block.data());
+        out.writeBytes(sidecar.code());
+
+        byte[] blob = out.toByteArray();
+        int expected = codeAndLiteralsSize + blockCount * 4 + residentBytes + sidecar.code().length;
+        if (blob.length != expected) throw new IllegalStateException("shared sidecar native blob size mismatch");
+        return blob;
+    }
+
+    private static int thumbAdr(int rd, int insnOffset, int targetOffset) {
+        int base = (insnOffset + 4) & ~3;
+        int delta = targetOffset - base;
+        if (delta < 0 || (delta & 3) != 0 || delta / 4 > 255) throw new IllegalArgumentException("ADR target out of range");
+        return 0xA000 | (rd << 8) | (delta / 4);
+    }
+
+    private static int thumbLdrLiteral(int rt, int insnOffset, int literalOffset) {
+        int base = (insnOffset + 4) & ~3;
+        int delta = literalOffset - base;
+        if (delta < 0 || (delta & 3) != 0 || delta / 4 > 255) throw new IllegalArgumentException("literal target out of range");
+        return 0x4800 | (rt << 8) | (delta / 4);
+    }
+
+    private static List<RuntimeV1ResidentBlocks.Block> residentBlocks(RomProfile rom, HotkeyButton modifier, boolean maintenance, Long postMapCallbackThumb) {
         // Start from the exact single-hotkey V1 blocks so stage1/stage2,
         // validator, supervisor, thunks and their addresses stay unchanged.
         List<RuntimeV1ResidentBlocks.Block> base = RuntimeV1ResidentBlocks.build(rom, Hotkey.DEFAULT);
@@ -269,6 +408,10 @@ final class SharedHotkeyRuntime {
                 out.add(new RuntimeV1ResidentBlocks.Block(block.address(), wrapperBytesForTest(rom, modifier)));
             } else if (block.address() == RuntimeV1ResidentBlocks.SAFETY_GATE) {
                 out.add(new RuntimeV1ResidentBlocks.Block(block.address(), safetyGateBytesForTest()));
+            } else if (postMapCallbackThumb != null && block.address() == RuntimeV1ResidentBlocks.SUPERVISOR_LITERALS) {
+                byte[] literals = block.data().clone();
+                putU32(literals, 8, postMapCallbackThumb);
+                out.add(new RuntimeV1ResidentBlocks.Block(block.address(), literals));
             } else {
                 out.add(block);
             }

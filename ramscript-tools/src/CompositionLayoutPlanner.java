@@ -94,7 +94,8 @@ final class CompositionLayoutPlanner {
     private static boolean requiresHotkey(PresetDeploymentKind kind) {
         return kind == PresetDeploymentKind.HOTKEY_LOCAL
                 || kind == PresetDeploymentKind.SHARED_PERSISTENT_FIELD_SCRIPT
-                || kind == PresetDeploymentKind.SHARED_PERSISTENT_NATIVE;
+                || kind == PresetDeploymentKind.SHARED_PERSISTENT_NATIVE
+                || kind == PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT;
     }
 
     private static int align(int value, int alignment) {

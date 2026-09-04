@@ -32,6 +32,24 @@ The project documentation is intentionally optimized for fast human/LLM recovery
 
 ROM modification is outside the project boundary.
 
+## Experimental Run Anywhere V1 toggle probe
+
+This branch also contains the standalone `RunAnywhereHotkeyRuntimeV1` experiment. The previously tested one-way build is GAME-VALIDATED on real LeafGreen 1.0 for installation, indoor running and persistence across map transitions (including after Brock). The ON/OFF build in this package is a new experimental refinement and still requires hardware validation.
+
+- hotkey: `R+SELECT`
+- ON/OFF feedback: sound effect `0x66` (click)
+- fixed EWRAM reservation: `0x02022B08..0x02022B4B` (68 bytes validated by the earlier hardware probe)
+- resident bytes used by this build: 54 bytes
+- toggle helper: 64-byte one-shot native staged at `gStringVar4+0x140` through the existing `CPU_SET_BLOCK` helper installer
+- OFF restores the current map's captured stock `allowRunning` bit instead of blindly clearing it
+- session-only: reset/reboot removes both Runtime V1 and the EWRAM sidecar
+
+Build a WC3 with:
+
+```text
+java -cp out Main legacy build-run-anywhere-hotkey-v1-wc3 lg10 input.wc3 output.wc3
+```
+
 ## Build and production test
 
 Compile recursively; do not use `src/*.java` as the whole-project validation command.
@@ -73,7 +91,3 @@ java -cp out Main presets
 ```
 
 Canonical preset builds use `build-preset-wc3`; object-hosted builds use `build-preset-object-wc3`; cleanup uses `build-toolkit-cleaner-wc3`. Historical and research entrypoints are intentionally hidden from normal discovery but remain reproducible with `java -cp out Main legacy <old-command> ...`.
-
-## ABI fix
-
-The initial experimental probe used callee-saved Thumb registers r4/r5 without preserving them across `callnative`, which could corrupt the Field Script interpreter state and prevent the confirmation message from appearing. This package uses only caller-saved r0-r3 in both writer and checker.

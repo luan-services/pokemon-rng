@@ -38,7 +38,7 @@ final class PresetCatalog {
 
 
     static List<PresetDefinition> all() {
-        return List.of(seedModifier(), box14SeedModifier(), repel(), partyIvViewer(), leadIvViewer(), partyEvViewer(), leadEvViewer(), showSecretId(), muteMusic(), tradeEvolution());
+        return List.of(seedModifier(), box14SeedModifier(), repel(), partyIvViewer(), leadIvViewer(), partyEvViewer(), leadEvViewer(), showSecretId(), muteMusic(), runAnywhere(), runBikeAnywhere(), tradeEvolution());
     }
 
     static PresetDefinition byId(String id) {
@@ -483,6 +483,125 @@ final class PresetCatalog {
                 ),
                 List.copyOf(validation),
                 "ON sets gDisableMusic and zeroes only BGM track volume. OFF clears the flag, restores volume, then uses playbgm MUS_DUMMY + Overworld_PlaySpecialMapMusic so the engine immediately re-resolves the correct map/surf/saved BGM. Supported on FR1.0/FR1.1/LG1.0/LG1.1; standalone and Shared/N-hotkey LG1.0 paths are game-validated."
+        );
+    }
+
+    static PresetDefinition runAnywhere() {
+        java.util.ArrayList<PresetValidationEntry> validation = new java.util.ArrayList<>();
+        for (RomProfile rom : RomProfile.values()) {
+            for (PresetUsageMode mode : PresetUsageMode.values()) {
+                PresetValidationStatus status = PresetValidationStatus.UNSUPPORTED;
+                String note = "";
+                if (rom == RomProfile.LEAF_GREEN_EN_10
+                        && (mode == PresetUsageMode.SINGLE_HOTKEY || mode == PresetUsageMode.SHARED_N_HOTKEY)) {
+                    status = PresetValidationStatus.VALIDATED_IN_GAME;
+                    note = mode == PresetUsageMode.SINGLE_HOTKEY
+                            ? "HotkeyRuntimeV1 + fixed EWRAM sidecar toggle GAME-VALIDATED on LG1.0 across map transitions and after Brock."
+                            : "SharedHotkeyRuntime + fixed EWRAM sidecar GAME-VALIDATED on LG1.0 together with Seed Modifier and Mute Music.";
+                }
+                validation.add(new PresetValidationEntry(mode, rom, status, note));
+            }
+        }
+
+        return new PresetDefinition(
+                "run-anywhere",
+                "Run Anywhere",
+                PresetPayloadType.FIELD_SCRIPT,
+                true,
+                false,
+                RunAnywhereSharedPreset.HOTKEY,
+                LG10_ONLY,
+                List.of(
+                        new PresetDeploymentDefinition(
+                                PresetDeploymentKind.HOTKEY_LOCAL,
+                                PresetDeploymentDefinition.infra(
+                                        PresetInfrastructure.HOTKEY_RUNTIME,
+                                        PresetInfrastructure.RUN_ANYWHERE_EWRAM_SIDECAR),
+                                LG10_ONLY,
+                                rom -> new PresetDeploymentCost(
+                                        RunAnywhereHotkeyRuntimeV1.buildPayload(rom).length, 0, 0, 0, 4),
+                                "Standalone HotkeyRuntimeV1 toggle with 54-byte post-map callback in fixed EWRAM 02022B08."
+                        ),
+                        new PresetDeploymentDefinition(
+                                PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT,
+                                PresetDeploymentDefinition.infra(
+                                        PresetInfrastructure.SHARED_HOTKEY_RUNTIME,
+                                        PresetInfrastructure.RUN_ANYWHERE_EWRAM_SIDECAR),
+                                LG10_ONLY,
+                                rom -> new PresetDeploymentCost(
+                                        RunAnywhereSharedPreset.localPayloadSize(rom), 0, 0, 0, 4),
+                                "Shared form keeps its toggle Field Script in the final Runtime RamScript and consumes no SB1/SB2 payload space."
+                        )
+                ),
+                List.copyOf(validation),
+                "Session-resident feature. The 54-byte callback/state sidecar uses the game-validated sFlickerArray tail at 02022B08; reset/reboot requires runtime reactivation."
+        );
+    }
+
+    static PresetDefinition runBikeAnywhere() {
+        java.util.ArrayList<PresetValidationEntry> validation = new java.util.ArrayList<>();
+        for (RomProfile rom : RomProfile.values()) {
+            for (PresetUsageMode mode : PresetUsageMode.values()) {
+                PresetValidationStatus status = PresetValidationStatus.UNSUPPORTED;
+                String note = "";
+                if (rom == RomProfile.LEAF_GREEN_EN_10
+                        && (mode == PresetUsageMode.SINGLE_HOTKEY || mode == PresetUsageMode.SHARED_N_HOTKEY)) {
+                    status = PresetValidationStatus.SUPPORTED_NOT_TESTED;
+                    note = mode == PresetUsageMode.SINGLE_HOTKEY
+                            ? "Build-tested HotkeyRuntimeV1 + 63-byte fixed-EWRAM sidecar; real-cart validation pending."
+                            : "Build-tested SharedHotkeyRuntime + 63-byte fixed-EWRAM sidecar; real-cart validation pending.";
+                }
+                validation.add(new PresetValidationEntry(mode, rom, status, note));
+            }
+        }
+
+        return new PresetDefinition(
+                "run-bike-anywhere",
+                "Run + Bike Anywhere",
+                PresetPayloadType.HYBRID_NATIVE,
+                true,
+                false,
+                RunBikeAnywhereSharedPreset.HOTKEY,
+                LG10_ONLY,
+                List.of(
+                        new PresetDeploymentDefinition(
+                                PresetDeploymentKind.HOTKEY_LOCAL,
+                                PresetDeploymentDefinition.infra(
+                                        PresetInfrastructure.HOTKEY_RUNTIME,
+                                        PresetInfrastructure.RUN_BIKE_ANYWHERE_EWRAM_SIDECAR),
+                                Set.of(),
+                                rom -> new PresetDeploymentCost(
+                                        RunBikeAnywhereHotkeyRuntimeV1.buildPayload(rom).length, 0, 0, 0, 4),
+                                "Standalone V1 toggle; 63-byte post-map callback in fixed EWRAM 02022B08."
+                        ),
+                        new PresetDeploymentDefinition(
+                                PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT,
+                                PresetDeploymentDefinition.infra(
+                                        PresetInfrastructure.SHARED_HOTKEY_RUNTIME,
+                                        PresetInfrastructure.RUN_BIKE_ANYWHERE_EWRAM_SIDECAR),
+                                Set.of(),
+                                rom -> new PresetDeploymentCost(
+                                        RunBikeAnywhereSharedPreset.localPayloadSize(rom), 0, 0, 0, 4),
+                                "Shared-local toggle stages a temporary helper; no SB1/SB2 payload space is consumed."
+                        ),
+                        new PresetDeploymentDefinition(
+                                PresetDeploymentKind.SHARED_PERSISTENT_NATIVE,
+                                PresetDeploymentDefinition.infra(
+                                        PresetInfrastructure.SHARED_HOTKEY_RUNTIME,
+                                        PresetInfrastructure.SHARED_NATIVE_STAGING_SERVICE,
+                                        PresetInfrastructure.SB1_GATEWAY,
+                                        PresetInfrastructure.SB2_NATIVE_CATALOG,
+                                        PresetInfrastructure.RUN_BIKE_ANYWHERE_EWRAM_SIDECAR),
+                                Set.of(),
+                                rom -> new PresetDeploymentCost(
+                                        0, PayloadPlacementPlanner.GATEWAY_SIZE,
+                                        PersistentRunBikeAnywhereBridge.fieldScriptSize(rom),
+                                        PersistentRunBikeAnywhereModule.payload(rom).length, 1),
+                                "When another selected preset already needs the shared native staging service, the planner can place the toggle helper in SB2 instead of spending Runtime RamScript bytes."
+                        )
+                ),
+                List.copyOf(validation),
+                "Session-resident feature. Forces gMapHeader.bikingAllowed and allowRunning while armed, restoring both stock permissions on OFF. Uses the same fixed EWRAM region as run-anywhere, so the two presets are mutually exclusive."
         );
     }
 

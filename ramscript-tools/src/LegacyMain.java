@@ -121,15 +121,14 @@ final class LegacyMain {
                 case "build-lead-ev-viewer-wc3" -> buildLeadEvViewerWc3(args);
                 case "build-lead-ev-viewer-hotkey-wc3" -> buildLeadEvViewerHotkeyWc3(args);
                 case "build-run-anywhere-probe-wc3" -> buildRunAnywhereProbeWc3(args);
+                case "build-run-anywhere-hotkey-v1-wc3" -> buildRunAnywhereHotkeyV1Wc3(args);
+                case "build-run-anywhere-shared-probe-wc3" -> buildRunAnywhereSharedProbeWc3(args);
                 case "build-run-anywhere-shared-runtime-wc3" -> buildRunAnywhereSharedRuntimeWc3(args);
                 case "build-repel-hotkey-bin" -> buildRepelHotkeyBin(args);
                 case "build-repel-hotkey-wc3" -> buildRepelHotkeyWc3(args);
                 case "build-repel-deliveryman-wc3" -> buildRepelDeliverymanWc3(args);
                 case "build-seed-repel-combo-bin" -> buildSeedRepelComboBin(args);
                 case "build-seed-repel-combo-wc3" -> buildSeedRepelComboWc3(args);
-                case "build-flicker-ewram-probe-wc3" -> buildFlickerEwramProbeWc3(args);
-                case "build-flicker-ewram-probe-install-wc3" -> buildFlickerEwramProbeInstallWc3(args);
-                case "build-flicker-ewram-probe-check-wc3" -> buildFlickerEwramProbeCheckWc3(args);
                 case "build-persistence-probe-install-wc3" -> buildPersistenceProbeInstallWc3(args);
                 case "build-persistence-probe-check-wc3" -> buildPersistenceProbeCheckWc3(args);
                 case "build-persistence-400-install-wc3" -> buildPersistence400InstallWc3(args);
@@ -1331,6 +1330,46 @@ final class LegacyMain {
     }
 
 
+    private static void buildRunAnywhereSharedProbeWc3(String[] args) throws Exception {
+        if (args.length != 6 || !args[4].equalsIgnoreCase("--seed")) {
+            throw new IllegalArgumentException(
+                    "Usage: build-run-anywhere-shared-probe-wc3 <rom> <input.wc3> <output-prefix> --seed <hex>"
+            );
+        }
+        RomProfile rom = RomProfile.fromId(args[1]);
+        Path input = Path.of(args[2]);
+        String prefix = args[3];
+        int seed = parseSeed(args[5]);
+
+        // First shared-cart probe intentionally keeps the already validated
+        // persistent composition simple: Seed + Mute remain ordinary production
+        // shared-persistent presets; Run Anywhere is a local Runtime-RamScript
+        // extension and therefore consumes no additional SB1/SB2 storage.
+        PresetCompositionPlan base = PresetCompositionPlanner.planHotkeys(
+                rom, List.of("seed-modifier", "mute-music"));
+        InstallationPlan plan = CompositionInstallationPlanner.plan(base);
+        InstallationEmitter.EmittedInstallation emitted = InstallationEmitter.emit(plan, seed);
+
+        for (InstallationEmitter.EmittedStage stage : emitted.persistentStages()) {
+            Path output = Path.of(prefix + "-" + stage.name() + ".wc3");
+            buildIntoWc3(stage.ramScript(), input, output);
+            System.out.println("Generated unchanged production persistent stage: " + output);
+        }
+
+        TriggerBuildResult runtime = RunAnywhereSharedHotkeyProbe.buildRuntime(base);
+        Path runtimeOutput = Path.of(prefix + "-runtime.wc3");
+        buildIntoWc3(runtime.ramScript(), input, runtimeOutput);
+        System.out.println("Generated experimental Shared + Run Anywhere runtime: " + runtimeOutput);
+        System.out.println("  R+SELECT: Seed Modifier");
+        System.out.println("  R+DOWN:   Mute Music");
+        System.out.println("  R+RIGHT:  Run Anywhere ON/OFF (SE 0x66)");
+        System.out.printf("  EWRAM sidecar: 0x%08X..0x%08X%n",
+                RunAnywhereHotkeyRuntimeV1.SIDECAR_ADDRESS,
+                RunAnywhereHotkeyRuntimeV1.SIDECAR_ADDRESS + RunAnywhereHotkeyRuntimeV1.SIDECAR_RESERVED_SIZE - 1);
+        System.out.println("  Runtime bytes: " + runtime.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  Persistent SB1/SB2 layout is the ordinary Seed + Mute production plan; Run Anywhere adds no persistent write.");
+    }
+
     private static void buildRunAnywhereSharedRuntimeWc3(String[] args) throws Exception {
         if (args.length < 5) {
             throw new IllegalArgumentException(
@@ -1347,6 +1386,31 @@ final class LegacyMain {
         System.out.println("Run Anywhere shared runtime generated: " + output);
         System.out.println("No additional IWRAM block is reserved.");
         System.out.println("Runtime bytes: " + runtime.totalScriptBytes() + " / " + RamScript.SCRIPT_SIZE);
+    }
+
+    private static void buildRunAnywhereHotkeyV1Wc3(String[] args) throws Exception {
+        if (args.length != 4) {
+            throw new IllegalArgumentException(
+                    "Usage: build-run-anywhere-hotkey-v1-wc3 <rom> <input.wc3> <output.wc3>"
+            );
+        }
+        RomProfile rom = RomProfile.fromId(args[1]);
+        RamScript script = RunAnywhereHotkeyRuntimeV1.build(rom);
+        buildIntoWc3(script, Path.of(args[2]), Path.of(args[3]));
+        System.out.println();
+        System.out.println("Run Anywhere Hotkey Runtime V1 probe:");
+        System.out.println("  ROM:               " + rom.displayName());
+        System.out.println("  hotkey:            " + RunAnywhereHotkeyRuntimeV1.HOTKEY.displayName());
+        System.out.printf("  sidecar:           0x%08X..0x%08X (%d bytes EWRAM)%n",
+                RunAnywhereHotkeyRuntimeV1.SIDECAR_ADDRESS,
+                RunAnywhereHotkeyRuntimeV1.SIDECAR_ADDRESS + RunAnywhereHotkeyRuntimeV1.SIDECAR_RESERVED_SIZE - 1,
+                RunAnywhereHotkeyRuntimeV1.SIDECAR_RESERVED_SIZE);
+        System.out.printf("  callback entry:    0x%08X%n", RunAnywhereHotkeyRuntimeV1.CALLBACK_THUMB);
+                System.out.printf("  state byte:        0x%08X%n", RunAnywhereHotkeyRuntimeV1.STATE_ADDRESS);
+        System.out.println("  hotkey behavior:   toggle ON/OFF; SE 0x66 click feedback");
+        System.out.printf("  allowRunning byte: 0x%08X%n", rom.mapHeader + RunAnywhereNativeHelper.ALLOW_RUNNING_OFFSET);
+        System.out.println("  persistence:       current session only; reset removes Runtime V1 + sidecar");
+        System.out.println("  total script:      " + RunAnywhereHotkeyRuntimeV1.scriptSize(rom) + " / " + RamScript.SCRIPT_SIZE);
     }
 
     private static void buildRunAnywhereProbeWc3(String[] args) throws Exception {
@@ -1952,29 +2016,6 @@ final class LegacyMain {
         RomProfile rom = RomProfile.fromId(args[1]);
         buildIntoWc3(PersistentShowSecretIdPreset.buildLauncher(rom), Path.of(args[2]), Path.of(args[3]));
         System.out.println("Persistent Show Secret ID launcher built.");
-    }
-
-
-    private static void buildFlickerEwramProbeWc3(String[] args) throws Exception {
-        if (args.length != 4) throw new IllegalArgumentException("Usage: build-flicker-ewram-probe-wc3 <rom> <input.wc3> <output.wc3>");
-        RomProfile rom = RomProfile.fromId(args[1]);
-        buildIntoWc3(FlickerRegionProbePreset.build(rom), Path.of(args[2]), Path.of(args[3]));
-        System.out.println("Flicker EWRAM single-session probe built.");
-        System.out.println("zero -> install, exact pattern -> OK, any other state -> FAILED without repair");
-    }
-
-    private static void buildFlickerEwramProbeInstallWc3(String[] args) throws Exception {
-        if (args.length != 4) throw new IllegalArgumentException("Usage: build-flicker-ewram-probe-install-wc3 <rom> <input.wc3> <output.wc3>");
-        RomProfile rom = RomProfile.fromId(args[1]);
-        buildIntoWc3(FlickerRegionProbePreset.build(rom), Path.of(args[2]), Path.of(args[3]));
-        System.out.println("Flicker EWRAM probe installer built: writes 68 bytes at 0x02022B08..0x02022B4B.");
-    }
-
-    private static void buildFlickerEwramProbeCheckWc3(String[] args) throws Exception {
-        if (args.length != 4) throw new IllegalArgumentException("Usage: build-flicker-ewram-probe-check-wc3 <rom> <input.wc3> <output.wc3>");
-        RomProfile rom = RomProfile.fromId(args[1]);
-        buildIntoWc3(FlickerRegionProbePreset.build(rom), Path.of(args[2]), Path.of(args[3]));
-        System.out.println("Flicker EWRAM probe checker built: verifies all 68 bytes at 0x02022B08..0x02022B4B.");
     }
 
     private static void buildPersistenceProbeInstallWc3(String[] args) throws Exception {
