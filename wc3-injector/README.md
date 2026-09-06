@@ -1,15 +1,22 @@
 # wc3-injector
 
-Small Java 21 command-line tool for Pokémon FireRed/LeafGreen Gen III save files.
+Small Java 21 tool for Pokémon FireRed/LeafGreen Gen III save files.
 
-It can:
+It provides both:
+
+- a human-oriented command-line interface;
+- a stable machine-facing JSON API v1 intended for the desktop application and other integrations.
+
+The core can:
 
 - inject a complete `.wc3` into the active FR/LG save slot;
 - extract the currently saved Wonder Card + RamScript back into a standard `0x58C`-byte `.wc3`;
 - inspect both save slots and identify the active valid slot;
 - validate a `.wc3` before injection.
 
-No Maven, Gradle, or Java packages are used.
+There is intentionally no separate "extract RamScript `.bin`" operation. The supported extraction unit is the full WC3 file.
+
+No Maven, Gradle, external JSON library, or Java package migration is required.
 
 ## Project layout
 
@@ -17,6 +24,8 @@ No Maven, Gradle, or Java packages are used.
 wc3-injector/
 ├── src/
 │   ├── Main.java
+│   ├── ApiV1.java
+│   ├── Json.java
 │   ├── Binary.java
 │   ├── Crc16.java
 │   ├── FireRedLeafGreenSave.java
@@ -26,11 +35,14 @@ wc3-injector/
 ├── tests/
 │   └── TestRunner.java
 ├── docs/
+│   ├── API_V1.md
+│   ├── DESKTOP_INTEGRATION.md
 │   ├── FORMAT_NOTES.md
 │   ├── TESTING.md
 │   └── LEGACY_README.txt
 ├── compile.bat
 ├── test.bat
+├── build-api-jar.bat
 └── README.md
 ```
 
@@ -44,13 +56,21 @@ From the project root:
 javac -encoding UTF-8 -d out src\*.java
 ```
 
-## Inject
+PowerShell equivalent:
+
+```powershell
+Remove-Item -Recurse -Force out -ErrorAction SilentlyContinue; New-Item -ItemType Directory out | Out-Null; javac -encoding UTF-8 -d out (Get-ChildItem src -Filter *.java).FullName
+```
+
+## Human CLI
+
+### Inject
 
 ```cmd
 java -cp out Main inject input.sav event.wc3 output.sav
 ```
 
-The old three-argument syntax is still accepted for compatibility:
+The old three-argument syntax remains accepted:
 
 ```cmd
 java -cp out Main input.sav event.wc3 output.sav
@@ -70,7 +90,7 @@ Injection:
 
 Always work on a copy of the original save.
 
-## Extract
+### Extract
 
 ```cmd
 java -cp out Main extract input.sav extracted.wc3
@@ -87,52 +107,49 @@ The questionnaire bytes in an extracted WC3 are the bytes currently stored in th
 
 Extraction is intentionally permissive. It reconstructs the bytes present in the save even if `flagId` is zero or the card/RamScript checksums do not match.
 
-The command reports the extracted flag ID, card CRC status, RamScript checksum status, and any warnings, but still writes the `.wc3`. This is useful for custom cards, experiments, and inspection of unusual save data.
-
-## Inspect a save
+### Inspect a save
 
 ```cmd
 java -cp out Main inspect-save firered.sav
 ```
 
-Example:
-
-```text
-Slot 1: INVALID - invalid signature or logical sector IDs
-Slot 2: VALID (counter 2) - ok
-Active slot: 2 (counter 2)
-```
-
-A slot is considered valid only when all 14 sectors have:
-
-- the expected signature;
-- unique logical IDs `0..13`;
-- one shared save counter;
-- the correct checksum for the amount of structure data stored in that logical sector.
-
-## Verify a WC3
+### Verify a WC3
 
 ```cmd
 java -cp out Main verify-wc3 event.wc3
 ```
 
-This reports:
+Content anomalies such as CRC/checksum mismatches are warnings rather than automatic rejection. That behavior is deliberate because the project handles custom and research Wonder Cards.
 
-- flag ID;
-- icon species;
-- stored/calculated card CRC;
-- stored/calculated RamScript checksum.
+## Machine JSON API v1
 
-Injection does **not** reject a WC3 only because `flagId`, card CRC, icon metadata, or RamScript checksum are unusual. These are reported as warnings so custom/research cards can still be injected.
+Build or use the executable `wc3-injector-api-v1.jar`, then call:
 
-## Run tests
+```cmd
+java -jar wc3-injector-api-v1.jar api version
+java -jar wc3-injector-api-v1.jar api inspect-save --input input.sav
+java -jar wc3-injector-api-v1.jar api verify-wc3 --input event.wc3
+java -jar wc3-injector-api-v1.jar api inject --input-save input.sav --wc3 event.wc3 --output output.sav
+java -jar wc3-injector-api-v1.jar api extract --input-save input.sav --output extracted.wc3
+```
 
-The tests generate synthetic save/WC3 data in temporary files. No personal save is bundled with the project.
+The API contract is documented in [`docs/API_V1.md`](docs/API_V1.md). Desktop integration guidance is in [`docs/DESKTOP_INTEGRATION.md`](docs/DESKTOP_INTEGRATION.md).
 
-See [`docs/TESTING.md`](docs/TESTING.md) for the covered cases.
+The important contract rule is: **the desktop application must not parse human CLI output**. It should invoke only `Main api ...` and parse the JSON object returned on stdout.
+
+## Tests
+
+```cmd
+javac -encoding UTF-8 -d out src\*.java tests\TestRunner.java
+java -cp out TestRunner
+```
+
+The current suite covers core injection/extraction behavior and the JSON API contract. See [`docs/TESTING.md`](docs/TESTING.md).
 
 ## Scope
 
 This tool handles the 128 KiB FireRed/LeafGreen Gen III save layout used by the project.
 
-It does not edit Wonder Card text/design and does not build RamScripts. Those responsibilities belong to the separate `wc3-builder`, `ramscript-tools`, and `native-ramscript-tools` projects.
+It does not edit Wonder Card text/design and does not build RamScripts. Those responsibilities belong to the separate `wc3-builder`, `ramscript-tools`, and related projects.
+
+Future transports such as Celio-GB or distribution ROM generation should remain separate transport implementations behind the desktop application's `Wonder Card Transporter` UI. They should not be faked by adding save-file-specific logic to the JavaFX layer.

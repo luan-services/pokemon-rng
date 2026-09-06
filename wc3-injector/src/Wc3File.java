@@ -3,8 +3,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 
-/* this class act as a constructor for the wondercard file (either .wc3 or .bin), it can read, validate the file and store its bytes.
-it includes all the wc3 file data, but for card details related data, we use the wondercard class */
+/* this class represents the complete 0x58C-byte WC3 file used by this project.
+it can read and validate the file and exposes the embedded WonderCard metadata. */
 
 public final class Wc3File {
     public static final int FILE_SIZE = 0x58C; /* a wonder card file must always be 1420 bytes (0x58C) */

@@ -1,9 +1,18 @@
 import java.nio.file.Path;
+import java.util.Arrays;
 
 public final class Main {
     private Main() {}
 
     public static void main(String[] args) {
+        if (args.length > 0 && args[0].equalsIgnoreCase("api")) {
+            int exitCode = ApiV1.run(Arrays.copyOfRange(args, 1, args.length), System.out);
+            if (exitCode != 0) {
+                System.exit(exitCode);
+            }
+            return;
+        }
+
         try {
             if (args.length == 0) {
                 printUsage();
@@ -118,7 +127,6 @@ public final class Main {
 
     private static void printWc3Warnings(Wc3File wc3) {
         String[] warnings = wc3.validationWarnings();
-
         if (warnings.length == 0) {
             return;
         }
@@ -130,25 +138,16 @@ public final class Main {
     }
 
     private static void printSlot(FireRedLeafGreenSave.SlotInfo slot) {
-        System.out.printf(
-                "Slot %d: %s",
-                slot.slotIndex() + 1,
-                slot.valid() ? "VALID" : "INVALID"
-        );
-
+        System.out.printf("Slot %d: %s", slot.slotIndex() + 1, slot.valid() ? "VALID" : "INVALID");
         if (slot.valid()) {
-            System.out.printf(
-                    " (counter %s)",
-                    Integer.toUnsignedString(slot.counter())
-            );
+            System.out.printf(" (counter %s)", Integer.toUnsignedString(slot.counter()));
         }
-
         System.out.println(" - " + slot.status());
     }
 
     private static boolean isKnownCommand(String value) {
         return switch (value.toLowerCase()) {
-            case "inject", "extract", "inspect-save", "verify-wc3", "help", "--help", "-h" -> true;
+            case "api", "inject", "extract", "inspect-save", "verify-wc3", "help", "--help", "-h" -> true;
             default -> false;
         };
     }
@@ -162,11 +161,18 @@ public final class Main {
     private static void printUsage() {
         System.out.println("wc3-injector");
         System.out.println();
-        System.out.println("Commands:");
+        System.out.println("Human CLI:");
         System.out.println("  java -cp out Main inject <input.sav> <event.wc3> <output.sav>");
         System.out.println("  java -cp out Main extract <input.sav> <output.wc3>");
         System.out.println("  java -cp out Main inspect-save <input.sav>");
         System.out.println("  java -cp out Main verify-wc3 <event.wc3>");
+        System.out.println();
+        System.out.println("Machine JSON API:");
+        System.out.println("  java -jar wc3-injector-api-v1.jar api version");
+        System.out.println("  java -jar wc3-injector-api-v1.jar api inspect-save --input <input.sav>");
+        System.out.println("  java -jar wc3-injector-api-v1.jar api verify-wc3 --input <event.wc3>");
+        System.out.println("  java -jar wc3-injector-api-v1.jar api inject --input-save <input.sav> --wc3 <event.wc3> --output <output.sav>");
+        System.out.println("  java -jar wc3-injector-api-v1.jar api extract --input-save <input.sav> --output <output.wc3>");
         System.out.println();
         System.out.println("Legacy inject syntax is still accepted:");
         System.out.println("  java -cp out Main <input.sav> <event.wc3> <output.sav>");
