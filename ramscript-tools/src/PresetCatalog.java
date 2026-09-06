@@ -441,6 +441,13 @@ final class PresetCatalog {
                                             1);
                                 },
                                 "Validated with R+START in the dual-native shared-loader baseline."
+                        ),
+                        new PresetDeploymentDefinition(
+                                PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT,
+                                PresetDeploymentDefinition.infra(PresetInfrastructure.SHARED_HOTKEY_RUNTIME),
+                                FR10_VALIDATED,
+                                rom -> new PresetDeploymentCost(ShowSecretIdPreset.sharedLocalPayloadSize(rom), 0, 0, 0, 1),
+                                "Relocation-safe Shared-local fallback. GAME-VALIDATED on FR1.0 in Mute + Show SID + Party EV + Repel after moving the temporary SID helper staging out of the resident Shared wrapper at 03005310..0300532F."
                         )
                 ),
                 validationMatrix(
@@ -465,6 +472,9 @@ final class PresetCatalog {
                     note = mode == PresetUsageMode.SINGLE_HOTKEY
                             ? "R+DOWN standalone toggle GAME-VALIDATED on real LG1.0 cartridge: immediate mute and immediate map-music restore without freeze."
                             : "R+DOWN Shared/N-hotkey path GAME-VALIDATED on real LG1.0 cartridge in Seed Modifier + Show Secret ID + Party IV Viewer + Mute Music after enforcing 4-byte SB2 Field Script alignment.";
+                } else if (rom == RomProfile.FIRE_RED_EN_10 && mode == PresetUsageMode.SHARED_N_HOTKEY) {
+                    status = PresetValidationStatus.VALIDATED_IN_GAME;
+                    note = "R+DOWN Shared/N-hotkey path GAME-VALIDATED on real FR1.0 in Mute + Show SID (Shared-local) + Party EV + Repel; repeated mixed-order activations completed without freeze after the SID Shared-local scratch collision was fixed.";
                 } else {
                     status = PresetValidationStatus.SUPPORTED_NOT_TESTED;
                     note = mode == PresetUsageMode.SINGLE_HOTKEY
@@ -496,7 +506,7 @@ final class PresetCatalog {
                                 PresetDeploymentDefinition.infra(
                                         PresetInfrastructure.SHARED_HOTKEY_RUNTIME,
                                         PresetInfrastructure.SB1_GATEWAY),
-                                LG10_ONLY,
+                                FR10_LG10_VALIDATED,
                                 rom -> new PresetDeploymentCost(
                                         0, PayloadPlacementPlanner.GATEWAY_SIZE,
                                         MuteMusicPreset.buildPayload(rom).length, 0, 4),
@@ -504,7 +514,7 @@ final class PresetCatalog {
                         )
                 ),
                 List.copyOf(validation),
-                "ON sets gDisableMusic and zeroes only BGM track volume. OFF clears the flag, restores volume, then uses playbgm MUS_DUMMY + Overworld_PlaySpecialMapMusic so the engine immediately re-resolves the correct map/surf/saved BGM. Supported on FR1.0/FR1.1/LG1.0/LG1.1; standalone and Shared/N-hotkey LG1.0 paths are game-validated."
+                "ON sets gDisableMusic and zeroes only BGM track volume. OFF clears the flag, restores volume, then uses playbgm MUS_DUMMY + Overworld_PlaySpecialMapMusic so the engine immediately re-resolves the correct map/surf/saved BGM. Supported on FR1.0/FR1.1/LG1.0/LG1.1; standalone + Shared LG1.0 and Shared FR1.0 are game-validated."
         );
     }
 

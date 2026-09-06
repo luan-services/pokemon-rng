@@ -1,19 +1,37 @@
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 /* Exact RamScript support packing used by SharedHotkeyRuntime composition.
 
-   Normal Shared builds remain unchanged. When Run Anywhere is selected its
-   local toggle Field Script is packed immediately after the dispatcher; the
-   native staging service, when required, follows at a 4-byte aligned offset.
+   Local Shared payloads are explicitly opt-in per preset. They are packed
+   after the dispatcher, followed by the shared native staging service when
+   one is still required. This is deliberately not a generic "copy anything
+   anywhere" allocator: each local payload must have a relocation-safe
+   materializer here before the planner may select it.
 */
 record SharedRuntimeSupportLayout(
         byte[] support,
         int alignment,
-        int runAnywhereOffset,
+        Map<String, Integer> localPayloadOffsets,
         int serviceOffset
 ) {
     SharedRuntimeSupportLayout {
         support = support.clone();
+        localPayloadOffsets = Map.copyOf(localPayloadOffsets);
     }
     @Override public byte[] support() { return support.clone(); }
+    @Override public Map<String, Integer> localPayloadOffsets() { return localPayloadOffsets; }
+
+    int localPayloadOffset(String presetId) {
+        return localPayloadOffsets.getOrDefault(presetId, -1);
+    }
+
+    /* Compatibility accessor for the existing mobility probes/tests. */
+    int runAnywhereOffset() {
+        int offset = localPayloadOffset("run-anywhere");
+        return offset >= 0 ? offset : localPayloadOffset("run-bike-anywhere");
+    }
 
     static SharedRuntimeSupportLayout build(
             RomProfile rom,
@@ -22,7 +40,8 @@ record SharedRuntimeSupportLayout(
             boolean nativeService,
             int nativeStagingCapacity
     ) {
-        return build(rom, bindingCount, runAnywhere, false, nativeService, nativeStagingCapacity);
+        return build(rom, bindingCount, runAnywhere, false,
+                runAnywhere ? List.of("run-anywhere") : List.of(), nativeService, nativeStagingCapacity);
     }
 
     static SharedRuntimeSupportLayout build(
@@ -33,8 +52,9 @@ record SharedRuntimeSupportLayout(
             boolean nativeService,
             int nativeStagingCapacity
     ) {
-        return build(rom, bindingCount, runAnywhere, runBikeAnywhere,
-                runAnywhere || runBikeAnywhere, nativeService, nativeStagingCapacity);
+        List<String> locals = runBikeAnywhere ? List.of("run-bike-anywhere")
+                : (runAnywhere ? List.of("run-anywhere") : List.of());
+        return build(rom, bindingCount, runAnywhere, runBikeAnywhere, locals, nativeService, nativeStagingCapacity);
     }
 
     static SharedRuntimeSupportLayout build(
@@ -46,26 +66,49 @@ record SharedRuntimeSupportLayout(
             boolean nativeService,
             int nativeStagingCapacity
     ) {
+        List<String> locals = mobilityLocalPayload
+                ? (runBikeAnywhere ? List.of("run-bike-anywhere") : (runAnywhere ? List.of("run-anywhere") : List.of()))
+                : List.of();
+        return build(rom, bindingCount, runAnywhere, runBikeAnywhere, locals, nativeService, nativeStagingCapacity);
+    }
+
+    static SharedRuntimeSupportLayout build(
+            RomProfile rom,
+            int bindingCount,
+            boolean runAnywhere,
+            boolean runBikeAnywhere,
+            List<String> localPresetIds,
+            boolean nativeService,
+            int nativeStagingCapacity
+    ) {
         if (runAnywhere && runBikeAnywhere) {
             throw new IllegalArgumentException("run-anywhere and run-bike-anywhere share the same fixed EWRAM sidecar and cannot be combined");
         }
         if (bindingCount < 1 || bindingCount > 8) throw new IllegalArgumentException("binding count must be 1..8");
-        int dispatcherEnd = SharedHotkeyRuntime.PAYLOAD_OFFSET + SharedHotkeyRuntime.dispatcherSize(bindingCount);
+        if (localPresetIds == null) throw new IllegalArgumentException("localPresetIds must not be null");
 
-        if (!mobilityLocalPayload) {
-            if (!nativeService) return new SharedRuntimeSupportLayout(new byte[0], 1, -1, -1);
+        int dispatcherEnd = SharedHotkeyRuntime.PAYLOAD_OFFSET + SharedHotkeyRuntime.dispatcherSize(bindingCount);
+        if (localPresetIds.isEmpty()) {
+            if (!nativeService) return new SharedRuntimeSupportLayout(new byte[0], 1, Map.of(), -1);
             int serviceOffset = SharedPersistentNativeStagingService.offsetForBindings(bindingCount, 4);
             SharedPersistentNativeStagingService.Build service = SharedPersistentNativeStagingService.build(
                     rom, serviceOffset, rom.stringVar4 + 0x140L, nativeStagingCapacity);
-            return new SharedRuntimeSupportLayout(service.fieldScript(), service.requiredBaseAlignment(), -1, serviceOffset);
+            return new SharedRuntimeSupportLayout(service.fieldScript(), service.requiredBaseAlignment(), Map.of(), serviceOffset);
         }
 
         int supportStart = align(dispatcherEnd, 4);
-        int runOffset = supportStart;
-        byte[] local = runBikeAnywhere
-                ? RunBikeAnywhereSharedPreset.buildLocalTogglePayload(rom, runOffset)
-                : RunAnywhereSharedPreset.buildLocalTogglePayload(rom, runOffset);
-        int cursor = runOffset + local.length;
+        int cursor = supportStart;
+        Map<String, Integer> offsets = new LinkedHashMap<>();
+        Map<String, byte[]> payloads = new LinkedHashMap<>();
+        for (String presetId : localPresetIds) {
+            cursor = align(cursor, 4);
+            int offset = cursor;
+            byte[] payload = buildLocalPayload(presetId, rom, offset);
+            offsets.put(presetId, offset);
+            payloads.put(presetId, payload);
+            cursor += payload.length;
+        }
+
         int serviceOffset = -1;
         byte[] serviceBytes = new byte[0];
         if (nativeService) {
@@ -77,11 +120,24 @@ record SharedRuntimeSupportLayout(
         }
 
         byte[] support = new byte[cursor - supportStart];
-        System.arraycopy(local, 0, support, runOffset - supportStart, local.length);
+        for (String presetId : localPresetIds) {
+            int offset = offsets.get(presetId);
+            byte[] payload = payloads.get(presetId);
+            System.arraycopy(payload, 0, support, offset - supportStart, payload.length);
+        }
         if (nativeService) {
             System.arraycopy(serviceBytes, 0, support, serviceOffset - supportStart, serviceBytes.length);
         }
-        return new SharedRuntimeSupportLayout(support, 4, runOffset, serviceOffset);
+        return new SharedRuntimeSupportLayout(support, 4, offsets, serviceOffset);
+    }
+
+    private static byte[] buildLocalPayload(String presetId, RomProfile rom, int offset) {
+        return switch (presetId) {
+            case "run-anywhere" -> RunAnywhereSharedPreset.buildLocalTogglePayload(rom, offset);
+            case "run-bike-anywhere" -> RunBikeAnywhereSharedPreset.buildLocalTogglePayload(rom, offset);
+            case "show-secret-id" -> ShowSecretIdPreset.buildScriptAtOffset(rom, offset);
+            default -> throw new IllegalArgumentException("no relocation-safe Shared-local materializer for " + presetId);
+        };
     }
 
     private static int align(int value, int alignment) {

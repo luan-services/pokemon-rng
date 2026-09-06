@@ -9,10 +9,11 @@ import java.util.Set;
 /*
    Dry-run preset composition planner.
 
-   It intentionally consumes PresetCatalog metadata rather than knowing preset
-   classes by name. Multi-preset local packing is NOT claimed yet: for more
-   than one selected preset, the planner only considers the already-validated
-   shared persistent deployment families.
+   It consumes PresetCatalog metadata and preserves the historical preferred
+   deployment when it fits. For multi-hotkey compositions, an explicit
+   Shared-local deployment may be selected as a fallback when the preferred
+   persistent layout exceeds a modeled storage capacity. Only presets that
+   advertise a relocation-safe SHARED_LOCAL_FIELD_SCRIPT are eligible.
 */
 final class PresetCompositionPlanner {
     private static final int SHARED_NATIVE_STAGING_CAPACITY = 0x140; // Build-26..28 validated service profile.
@@ -87,7 +88,93 @@ final class PresetCompositionPlanner {
             deployments.add(preset.deployment(kind));
         }
 
+        if (hotkeyCount > 1) {
+            return evaluateSharedWithFallback(rom, presets, deployments);
+        }
         return evaluate(rom, presets, deployments);
+    }
+
+    private static PresetCompositionPlan evaluateSharedWithFallback(
+            RomProfile rom,
+            List<PresetDefinition> presets,
+            List<PresetDeploymentDefinition> preferred
+    ) {
+        try {
+            return evaluate(rom, presets, preferred);
+        } catch (IllegalArgumentException baselineFailure) {
+            if (!isCapacityFailure(baselineFailure)) throw baselineFailure;
+
+            List<PresetCompositionPlan> candidates = new ArrayList<>();
+            enumerateSharedAlternatives(rom, presets, preferred, 0, new ArrayList<>(), candidates);
+            if (candidates.isEmpty()) throw baselineFailure;
+
+            candidates.sort((a, b) -> {
+                int c = Integer.compare(deploymentChanges(a, preferred), deploymentChanges(b, preferred));
+                if (c != 0) return c;
+                c = Integer.compare(a.sb2Bytes(), b.sb2Bytes());
+                if (c != 0) return c;
+                c = Integer.compare(a.ramScriptBytes(), b.ramScriptBytes());
+                if (c != 0) return c;
+                return Integer.compare(a.sb1Bytes(), b.sb1Bytes());
+            });
+            return candidates.get(0);
+        }
+    }
+
+    private static void enumerateSharedAlternatives(
+            RomProfile rom,
+            List<PresetDefinition> presets,
+            List<PresetDeploymentDefinition> preferred,
+            int index,
+            List<PresetDeploymentDefinition> current,
+            List<PresetCompositionPlan> out
+    ) {
+        if (index == presets.size()) {
+            boolean changed = false;
+            for (int i = 0; i < current.size(); i++) {
+                changed |= current.get(i).kind() != preferred.get(i).kind();
+            }
+            if (!changed) return;
+            try {
+                out.add(evaluate(rom, presets, List.copyOf(current)));
+            } catch (IllegalArgumentException ignored) {
+                // Candidate is simply not feasible; the preferred failure is
+                // retained if no advertised alternative produces a valid plan.
+            }
+            return;
+        }
+
+        PresetDefinition preset = presets.get(index);
+        PresetDeploymentDefinition base = preferred.get(index);
+        List<PresetDeploymentKind> kinds = new ArrayList<>();
+        kinds.add(base.kind());
+        for (PresetDeploymentKind kind : List.of(
+                PresetDeploymentKind.SHARED_PERSISTENT_NATIVE,
+                PresetDeploymentKind.SHARED_PERSISTENT_FIELD_SCRIPT,
+                PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT)) {
+            if (kind != base.kind() && preset.supportsDeployment(kind)) kinds.add(kind);
+        }
+        for (PresetDeploymentKind kind : kinds) {
+            current.add(preset.deployment(kind));
+            enumerateSharedAlternatives(rom, presets, preferred, index + 1, current, out);
+            current.remove(current.size() - 1);
+        }
+    }
+
+    private static int deploymentChanges(PresetCompositionPlan plan, List<PresetDeploymentDefinition> preferred) {
+        int changes = 0;
+        for (int i = 0; i < plan.selections().size(); i++) {
+            if (plan.selections().get(i).deployment().kind() != preferred.get(i).kind()) changes++;
+        }
+        return changes;
+    }
+
+    private static boolean isCapacityFailure(IllegalArgumentException ex) {
+        String message = ex.getMessage();
+        if (message == null) return false;
+        return message.contains("capacity exceeded")
+                || message.contains("maximum is " + RamScript.SCRIPT_SIZE)
+                || message.contains("requires") && message.contains("bytes; maximum is");
     }
 
     private static PresetDeploymentKind sharedDeploymentKind(
@@ -179,14 +266,17 @@ final class PresetCompositionPlanner {
             boolean runBikeAnywhere = infrastructure.contains(PresetInfrastructure.RUN_BIKE_ANYWHERE_EWRAM_SIDECAR);
             boolean residentMobilitySidecar = runAnywhere || runBikeAnywhere;
             boolean nativeService = infrastructure.contains(PresetInfrastructure.SHARED_NATIVE_STAGING_SERVICE);
-            boolean mobilityLocalPayload = chosen.stream().anyMatch(item ->
-                    item.deployment().kind() == PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT
-                            && (item.preset().id().equals("run-anywhere") || item.preset().id().equals("run-bike-anywhere")));
+            List<String> localPresetIds = chosen.stream()
+                    .filter(item -> item.deployment().kind() == PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT)
+                    .map(item -> item.preset().id())
+                    .toList();
             SharedRuntimeSupportLayout supportLayout = SharedRuntimeSupportLayout.build(
-                    rom, hotkeyBindings, runAnywhere, runBikeAnywhere, mobilityLocalPayload, nativeService, SHARED_NATIVE_STAGING_CAPACITY);
+                    rom, hotkeyBindings, runAnywhere, runBikeAnywhere, localPresetIds, nativeService, SHARED_NATIVE_STAGING_CAPACITY);
             for (int i = 0; i < chosen.size(); i++) {
                 if (chosen.get(i).deployment().kind() == PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT) {
-                    entries.set(i, new SharedHotkeyDispatcher.Entry(DUMMY_BUTTONS.get(i), supportLayout.runAnywhereOffset()));
+                    int target = supportLayout.localPayloadOffset(chosen.get(i).preset().id());
+                    if (target < 0) throw new IllegalArgumentException("missing Shared-local payload offset for " + chosen.get(i).preset().id());
+                    entries.set(i, new SharedHotkeyDispatcher.Entry(DUMMY_BUTTONS.get(i), target));
                 }
             }
             SharedHotkeyRuntime.ResidentSidecar mobilitySidecar = runBikeAnywhere
@@ -215,7 +305,16 @@ final class PresetCompositionPlanner {
         if (!allValidated) diagnostics.add("one or more selected deployment modes are not runtime-validated on this ROM");
         if (chosen.stream().anyMatch(item -> item.deployment().kind() == PresetDeploymentKind.DEDICATED_LOCAL))
             diagnostics.add("selected preset is exclusive/dedicated and currently cannot participate in a multi-preset composition");
-        if (presets.size() > 1) diagnostics.add("multi-preset local packing is intentionally not modeled yet; shared deployments were selected");
+        if (presets.size() > 1) {
+            List<String> localIds = chosen.stream()
+                    .filter(item -> item.deployment().kind() == PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT)
+                    .map(item -> item.preset().id()).toList();
+            if (localIds.isEmpty()) {
+                diagnostics.add("preferred shared persistent deployments fit; no Shared-local fallback was needed");
+            } else {
+                diagnostics.add("resource-aware Shared packing placed local payload(s) in Runtime RamScript: " + String.join(", ", localIds));
+            }
+        }
         if (nativeCount > 0) diagnostics.add("native catalog overhead/padding is included once for " + nativeCount + " module(s)");
 
         ConcreteCompositionLayout concreteLayout = CompositionLayoutPlanner.layout(chosen);

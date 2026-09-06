@@ -22,20 +22,37 @@ final class ShowSecretIdPreset {
     }
 
     static byte[] buildScript(RomProfile rom) {
-        NativeHelper helper = SecretIdNativeHelper.build(rom);
+        return buildScriptInternal(rom, 0, false);
+    }
 
-        RamScriptBuilder builder = new RamScriptBuilder(VIRTUAL_BASE);
+    /* SharedHotkeyRuntime may pack this Field Script at a non-zero RamScript
+       offset. setvaddress must then use the virtual address of the actual
+       opcode location, otherwise every v* pointer would be shifted by the
+       packing offset. */
+    static byte[] buildScriptAtOffset(RomProfile rom, int ramScriptOffset) {
+        return buildScriptInternal(rom, ramScriptOffset, true);
+    }
+
+    private static byte[] buildScriptInternal(RomProfile rom, int ramScriptOffset, boolean strictButtonWait) {
+        if (ramScriptOffset < 0) throw new IllegalArgumentException("ramScriptOffset must be >= 0");
+        NativeHelper helper = strictButtonWait
+                ? SecretIdNativeHelper.buildAt(rom, rom.stringVar4 + 0x100L)
+                : SecretIdNativeHelper.build(rom);
+
+        RamScriptBuilder builder = new RamScriptBuilder((VIRTUAL_BASE + Integer.toUnsignedLong(ramScriptOffset)) & 0xFFFF_FFFFL);
         builder
                 .setVAddress()
                 .lockAll();
 
         helper.installAndCall(builder);
 
-        return builder
+        builder
                 .bufferNumberString(STRING_VAR_1, VAR_RESULT)
                 .vMessage("message")
-                .waitMessage()
-                .waitButtonPress()
+                .waitMessage();
+        if (strictButtonWait) builder.waitButtonPressStrict();
+        else builder.waitButtonPress();
+        return builder
                 .releaseAll()
                 .end()
                 .text("message", "Your Secret ID is {STR_VAR_1}.")
@@ -44,5 +61,9 @@ final class ShowSecretIdPreset {
 
     static int payloadSize(RomProfile rom) {
         return buildScript(rom).length;
+    }
+
+    static int sharedLocalPayloadSize(RomProfile rom) {
+        return buildScriptAtOffset(rom, 0).length;
     }
 }

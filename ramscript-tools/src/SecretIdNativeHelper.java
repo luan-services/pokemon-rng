@@ -27,6 +27,11 @@ final class SecretIdNativeHelper {
     private SecretIdNativeHelper() {}
 
     static NativeHelper build(RomProfile rom) {
+        return buildAt(rom, STAGING_ADDRESS);
+    }
+
+    static NativeHelper buildAt(RomProfile rom, long stagingAddress) {
+        if ((stagingAddress & 1L) != 0) throw new IllegalArgumentException("stagingAddress must be even");
         byte[] code = new byte[] {
                 0x02, 0x48,             // ldr  r0, [pc,#8]  -> literal @ +0x0C
                 0x00, 0x68,             // ldr  r0, [r0]
@@ -40,7 +45,7 @@ final class SecretIdNativeHelper {
 
         putU32(code, 0x0C, rom.saveBlock2Ptr);
         putU32(code, 0x10, rom.specialVarResult);
-        return new NativeHelper(STAGING_ADDRESS, code);
+        return new NativeHelper(stagingAddress, code);
     }
 
     private static void putU32(byte[] data, int offset, long value) {

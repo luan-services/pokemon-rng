@@ -33,11 +33,11 @@ final class CompositionArtifactBuilder {
         boolean runAnywhere = plan.infrastructure().contains(PresetInfrastructure.RUN_ANYWHERE_EWRAM_SIDECAR);
         boolean runBikeAnywhere = plan.infrastructure().contains(PresetInfrastructure.RUN_BIKE_ANYWHERE_EWRAM_SIDECAR);
         boolean nativeService = plan.infrastructure().contains(PresetInfrastructure.SHARED_NATIVE_STAGING_SERVICE);
-        boolean mobilityLocalPayload = plan.selections().stream().anyMatch(item ->
-                item.deployment().kind() == PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT
-                        && (item.preset().id().equals("run-anywhere") || item.preset().id().equals("run-bike-anywhere")));
+        List<String> localPresetIds = plan.selections().stream()
+                .filter(item -> item.deployment().kind() == PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT)
+                .map(item -> item.preset().id()).toList();
         SharedRuntimeSupportLayout supportLayout = SharedRuntimeSupportLayout.build(
-                plan.rom(), plan.hotkeyBindings(), runAnywhere, runBikeAnywhere, mobilityLocalPayload, nativeService, NATIVE_STAGING_CAPACITY);
+                plan.rom(), plan.hotkeyBindings(), runAnywhere, runBikeAnywhere, localPresetIds, nativeService, NATIVE_STAGING_CAPACITY);
         int serviceOffset = supportLayout.serviceOffset();
 
         for (ConcretePresetAllocation allocation : layout.allocations()) {
@@ -67,9 +67,15 @@ final class CompositionArtifactBuilder {
         if (!plan.infrastructure().contains(PresetInfrastructure.SHARED_HOTKEY_RUNTIME)) {
             throw new IllegalArgumentException("composition does not use SharedHotkeyRuntime");
         }
-        int serviceOffset = plan.infrastructure().contains(PresetInfrastructure.SHARED_NATIVE_STAGING_SERVICE)
-                ? SharedPersistentNativeStagingService.offsetForBindings(plan.hotkeyBindings(), 4)
-                : -1;
+        boolean runAnywhere = plan.infrastructure().contains(PresetInfrastructure.RUN_ANYWHERE_EWRAM_SIDECAR);
+        boolean runBikeAnywhere = plan.infrastructure().contains(PresetInfrastructure.RUN_BIKE_ANYWHERE_EWRAM_SIDECAR);
+        boolean nativeService = plan.infrastructure().contains(PresetInfrastructure.SHARED_NATIVE_STAGING_SERVICE);
+        List<String> localPresetIds = plan.selections().stream()
+                .filter(item -> item.deployment().kind() == PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT)
+                .map(item -> item.preset().id()).toList();
+        int serviceOffset = SharedRuntimeSupportLayout.build(
+                plan.rom(), plan.hotkeyBindings(), runAnywhere, runBikeAnywhere, localPresetIds, nativeService, NATIVE_STAGING_CAPACITY
+        ).serviceOffset();
         return buildSharedRuntime(plan, serviceOffset, target);
     }
 
@@ -221,11 +227,11 @@ final class CompositionArtifactBuilder {
         boolean runBikeAnywhere = plan.infrastructure().contains(PresetInfrastructure.RUN_BIKE_ANYWHERE_EWRAM_SIDECAR);
         boolean residentMobilitySidecar = runAnywhere || runBikeAnywhere;
         boolean nativeService = plan.infrastructure().contains(PresetInfrastructure.SHARED_NATIVE_STAGING_SERVICE);
-        boolean mobilityLocalPayload = plan.selections().stream().anyMatch(item ->
-                item.deployment().kind() == PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT
-                        && (item.preset().id().equals("run-anywhere") || item.preset().id().equals("run-bike-anywhere")));
+        List<String> localPresetIds = plan.selections().stream()
+                .filter(item -> item.deployment().kind() == PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT)
+                .map(item -> item.preset().id()).toList();
         SharedRuntimeSupportLayout supportLayout = SharedRuntimeSupportLayout.build(
-                plan.rom(), plan.hotkeyBindings(), runAnywhere, runBikeAnywhere, mobilityLocalPayload, nativeService, NATIVE_STAGING_CAPACITY);
+                plan.rom(), plan.hotkeyBindings(), runAnywhere, runBikeAnywhere, localPresetIds, nativeService, NATIVE_STAGING_CAPACITY);
 
         for (HotkeyBinding binding : plan.concreteLayout().bindingPlan().bindings()) {
             ConcretePresetAllocation allocation = byId.get(binding.presetId());
@@ -233,11 +239,8 @@ final class CompositionArtifactBuilder {
             if (modifier == null) modifier = binding.hotkey().heldButton();
             int target;
             if (allocation.deploymentKind() == PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT) {
-                if ((!binding.presetId().equals("run-anywhere") && !binding.presetId().equals("run-bike-anywhere"))
-                        || supportLayout.runAnywhereOffset() < 0) {
-                    throw new IllegalArgumentException("unsupported shared-local binding: " + binding.presetId());
-                }
-                target = supportLayout.runAnywhereOffset();
+                target = supportLayout.localPayloadOffset(binding.presetId());
+                if (target < 0) throw new IllegalArgumentException("unsupported shared-local binding: " + binding.presetId());
             } else {
                 if (!allocation.hasGateway()) throw new IllegalArgumentException("shared binding has no gateway: " + binding.presetId());
                 target = gatewayDelta(allocation.sb1GatewayOffset());
