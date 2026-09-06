@@ -26,6 +26,11 @@ final class SeedModifierPreset {
     }
 
     static byte[] buildPayload(RomProfile rom, int desiredSeed) {
+        return buildPayloadAtOffset(rom, desiredSeed, 0);
+    }
+
+    static byte[] buildPayloadAtOffset(RomProfile rom, int desiredSeed, int ramScriptOffset) {
+        if (ramScriptOffset < 0) throw new IllegalArgumentException("ramScriptOffset must be >= 0");
         long predecessor = RngMath.previousState(Integer.toUnsignedLong(desiredSeed));
         byte[] predecessorBytes = new byte[] {
                 (byte) predecessor,
@@ -34,7 +39,8 @@ final class SeedModifierPreset {
                 (byte) (predecessor >>> 24)
         };
 
-        RamScriptBuilder builder = new RamScriptBuilder(VIRTUAL_BASE);
+        long virtualBase = (VIRTUAL_BASE + Integer.toUnsignedLong(ramScriptOffset)) & 0xFFFF_FFFFL;
+        RamScriptBuilder builder = new RamScriptBuilder(virtualBase);
         return builder
                 .setVAddress()
                 .lockAll()
@@ -52,6 +58,10 @@ final class SeedModifierPreset {
 
     static int payloadSize(RomProfile rom, int desiredSeed) {
         return buildPayload(rom, desiredSeed).length;
+    }
+
+    static int sharedLocalPayloadSize(RomProfile rom) {
+        return buildPayloadAtOffset(rom, 0x1234, 0).length;
     }
 
     static long predecessor(int desiredSeed) {

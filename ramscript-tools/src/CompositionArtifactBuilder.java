@@ -37,7 +37,7 @@ final class CompositionArtifactBuilder {
                 .filter(item -> item.deployment().kind() == PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT)
                 .map(item -> item.preset().id()).toList();
         SharedRuntimeSupportLayout supportLayout = SharedRuntimeSupportLayout.build(
-                plan.rom(), plan.hotkeyBindings(), runAnywhere, runBikeAnywhere, localPresetIds, nativeService, NATIVE_STAGING_CAPACITY);
+                plan.rom(), plan.hotkeyBindings(), runAnywhere, runBikeAnywhere, localPresetIds, nativeService, NATIVE_STAGING_CAPACITY, seed);
         int serviceOffset = supportLayout.serviceOffset();
 
         for (ConcretePresetAllocation allocation : layout.allocations()) {
@@ -53,7 +53,7 @@ final class CompositionArtifactBuilder {
 
         TriggerBuildResult runtime = null;
         if (plan.infrastructure().contains(PresetInfrastructure.SHARED_HOTKEY_RUNTIME)) {
-            runtime = buildSharedRuntime(plan, serviceOffset);
+            runtime = buildSharedRuntime(plan, serviceOffset, seed);
         }
 
         return new Build(Map.copyOf(components), runtime);
@@ -62,6 +62,14 @@ final class CompositionArtifactBuilder {
     static TriggerBuildResult buildObjectBoundSharedRuntime(
             PresetCompositionPlan plan,
             ObjectEventTarget target
+    ) {
+        return buildObjectBoundSharedRuntime(plan, target, 0x1234);
+    }
+
+    static TriggerBuildResult buildObjectBoundSharedRuntime(
+            PresetCompositionPlan plan,
+            ObjectEventTarget target,
+            int seed
     ) {
         if (plan == null || target == null) throw new IllegalArgumentException("plan/target must not be null");
         if (!plan.infrastructure().contains(PresetInfrastructure.SHARED_HOTKEY_RUNTIME)) {
@@ -74,9 +82,9 @@ final class CompositionArtifactBuilder {
                 .filter(item -> item.deployment().kind() == PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT)
                 .map(item -> item.preset().id()).toList();
         int serviceOffset = SharedRuntimeSupportLayout.build(
-                plan.rom(), plan.hotkeyBindings(), runAnywhere, runBikeAnywhere, localPresetIds, nativeService, NATIVE_STAGING_CAPACITY
+                plan.rom(), plan.hotkeyBindings(), runAnywhere, runBikeAnywhere, localPresetIds, nativeService, NATIVE_STAGING_CAPACITY, seed
         ).serviceOffset();
-        return buildSharedRuntime(plan, serviceOffset, target);
+        return buildSharedRuntime(plan, serviceOffset, target, seed);
     }
 
     static RamScript buildLocal(PresetCompositionPlan plan, int seed) {
@@ -209,14 +217,15 @@ final class CompositionArtifactBuilder {
         };
     }
 
-    private static TriggerBuildResult buildSharedRuntime(PresetCompositionPlan plan, int serviceOffset) {
-        return buildSharedRuntime(plan, serviceOffset, null);
+    private static TriggerBuildResult buildSharedRuntime(PresetCompositionPlan plan, int serviceOffset, int seed) {
+        return buildSharedRuntime(plan, serviceOffset, null, seed);
     }
 
     private static TriggerBuildResult buildSharedRuntime(
             PresetCompositionPlan plan,
             int serviceOffset,
-            ObjectEventTarget objectTarget
+            ObjectEventTarget objectTarget,
+            int seed
     ) {
         List<SharedHotkeyDispatcher.Entry> entries = new ArrayList<>();
         HotkeyButton modifier = null;
@@ -231,7 +240,7 @@ final class CompositionArtifactBuilder {
                 .filter(item -> item.deployment().kind() == PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT)
                 .map(item -> item.preset().id()).toList();
         SharedRuntimeSupportLayout supportLayout = SharedRuntimeSupportLayout.build(
-                plan.rom(), plan.hotkeyBindings(), runAnywhere, runBikeAnywhere, localPresetIds, nativeService, NATIVE_STAGING_CAPACITY);
+                plan.rom(), plan.hotkeyBindings(), runAnywhere, runBikeAnywhere, localPresetIds, nativeService, NATIVE_STAGING_CAPACITY, seed);
 
         for (HotkeyBinding binding : plan.concreteLayout().bindingPlan().bindings()) {
             ConcretePresetAllocation allocation = byId.get(binding.presetId());

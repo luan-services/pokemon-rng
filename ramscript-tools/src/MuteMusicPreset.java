@@ -26,14 +26,20 @@ final class MuteMusicPreset {
     }
 
     static byte[] buildPayload(RomProfile rom) {
+        return buildPayloadAtOffset(rom, 0);
+    }
+
+    static byte[] buildPayloadAtOffset(RomProfile rom, int ramScriptOffset) {
+        if (ramScriptOffset < 0) throw new IllegalArgumentException("ramScriptOffset must be >= 0");
+        long virtualBase = (VIRTUAL_BASE + Integer.toUnsignedLong(ramScriptOffset)) & 0xFFFF_FFFFL;
         long copierAddress = rom.stringVar4 + 0x100L;
         long helperAddress = CpuSetNativeHelperInstaller.helperDestination(copierAddress);
         NativeHelper helper = buildHelper(rom, helperAddress);
 
-        RamScriptBuilder b = new RamScriptBuilder(VIRTUAL_BASE);
+        RamScriptBuilder b = new RamScriptBuilder(virtualBase);
         b.setVAddress();
         NativeHelperInstaller.Plan install = NativeHelperInstaller.prepare(
-                b, VIRTUAL_BASE, helper, copierAddress, "mute_music_volume_control",
+                b, virtualBase, helper, copierAddress, "mute_music_volume_control",
                 NativeHelperInstaller.Mode.AUTO);
         install.install(b);
         return b.callNative(helper.thumbEntryAddress())
@@ -41,6 +47,10 @@ final class MuteMusicPreset {
                 .special(153) // SPECIAL_Overworld_PlaySpecialMapMusic
                 .end()
                 .buildScript();
+    }
+
+    static int sharedLocalPayloadSize(RomProfile rom) {
+        return buildPayloadAtOffset(rom, 0).length;
     }
 
     static NativeHelper buildHelper(RomProfile rom, long stagingAddress) {

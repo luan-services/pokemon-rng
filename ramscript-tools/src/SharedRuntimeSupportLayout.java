@@ -81,6 +81,20 @@ record SharedRuntimeSupportLayout(
             boolean nativeService,
             int nativeStagingCapacity
     ) {
+        return build(rom, bindingCount, runAnywhere, runBikeAnywhere, localPresetIds,
+                nativeService, nativeStagingCapacity, 0x1234);
+    }
+
+    static SharedRuntimeSupportLayout build(
+            RomProfile rom,
+            int bindingCount,
+            boolean runAnywhere,
+            boolean runBikeAnywhere,
+            List<String> localPresetIds,
+            boolean nativeService,
+            int nativeStagingCapacity,
+            int seed
+    ) {
         if (runAnywhere && runBikeAnywhere) {
             throw new IllegalArgumentException("run-anywhere and run-bike-anywhere share the same fixed EWRAM sidecar and cannot be combined");
         }
@@ -103,7 +117,7 @@ record SharedRuntimeSupportLayout(
         for (String presetId : localPresetIds) {
             cursor = align(cursor, 4);
             int offset = cursor;
-            byte[] payload = buildLocalPayload(presetId, rom, offset);
+            byte[] payload = buildLocalPayload(presetId, rom, offset, seed);
             offsets.put(presetId, offset);
             payloads.put(presetId, payload);
             cursor += payload.length;
@@ -131,11 +145,14 @@ record SharedRuntimeSupportLayout(
         return new SharedRuntimeSupportLayout(support, 4, offsets, serviceOffset);
     }
 
-    private static byte[] buildLocalPayload(String presetId, RomProfile rom, int offset) {
+    private static byte[] buildLocalPayload(String presetId, RomProfile rom, int offset, int seed) {
         return switch (presetId) {
             case "run-anywhere" -> RunAnywhereSharedPreset.buildLocalTogglePayload(rom, offset);
             case "run-bike-anywhere" -> RunBikeAnywhereSharedPreset.buildLocalTogglePayload(rom, offset);
             case "show-secret-id" -> ShowSecretIdPreset.buildScriptAtOffset(rom, offset);
+            case "seed-modifier" -> SeedModifierPreset.buildPayloadAtOffset(rom, seed, offset);
+            case "repel" -> RepelHotkeyPreset.buildPayloadAtOffset(offset);
+            case "mute-music" -> MuteMusicPreset.buildPayloadAtOffset(rom, offset);
             default -> throw new IllegalArgumentException("no relocation-safe Shared-local materializer for " + presetId);
         };
     }

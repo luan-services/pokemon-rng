@@ -283,7 +283,7 @@ final class LegacyMain {
             System.out.println("Generated object-bound stage: " + output);
         }
         if (emitted.runtime() != null) {
-            TriggerBuildResult earlyRuntime = CompositionArtifactBuilder.buildObjectBoundSharedRuntime(composition, target);
+            TriggerBuildResult earlyRuntime = CompositionArtifactBuilder.buildObjectBoundSharedRuntime(composition, target, seed == null ? 0 : seed);
             Path output = Path.of(prefix + "-runtime.wc3");
             buildIntoWc3(earlyRuntime.ramScript(), input, output);
             System.out.println("Generated self-detaching object-bound shared runtime: " + output);

@@ -99,6 +99,14 @@ final class PresetCatalog {
                                         0, PayloadPlacementPlanner.GATEWAY_SIZE,
                                         SeedModifierPreset.buildPayload(rom, 0x1234).length, 0, 1),
                                 "Validated as pure Field Script in SB2 through a 10-byte SB1 gateway."
+                        ),
+                        new PresetDeploymentDefinition(
+                                PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT,
+                                PresetDeploymentDefinition.infra(PresetInfrastructure.SHARED_HOTKEY_RUNTIME),
+                                FR10_VALIDATED,
+                                rom -> new PresetDeploymentCost(
+                                        SeedModifierPreset.sharedLocalPayloadSize(rom), 0, 0, 0, 1),
+                                "Relocation-safe Shared-local fallback. GAME-VALIDATED on FR1.0 in Seed + Lead IV + Party EV + Run + Bike using seed B5B1E7AD; repeated use and coexistence passed on cart. The seed-specific Field Script is rebuilt at its actual Runtime RamScript offset; persistent SB2 remains preferred while it fits."
                         )
                 ),
                 validationMatrix(
@@ -207,6 +215,14 @@ final class PresetCatalog {
                                         0, PayloadPlacementPlanner.GATEWAY_SIZE,
                                         RepelHotkeyPreset.buildPayload().length, 0, 1),
                                 "Validated as pure Field Script in SB2."
+                        ),
+                        new PresetDeploymentDefinition(
+                                PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT,
+                                PresetDeploymentDefinition.infra(PresetInfrastructure.SHARED_HOTKEY_RUNTIME),
+                                FR10_VALIDATED,
+                                rom -> new PresetDeploymentCost(
+                                        RepelHotkeyPreset.sharedLocalPayloadSize(), 0, 0, 0, 1),
+                                "Relocation-safe Shared-local fallback. GAME-VALIDATED on FR1.0 in Repel + Party IV + Party EV; repeated use and coexistence passed on cart. Virtual labels/pointers are rebuilt for the actual Runtime RamScript offset; SB2 stays preferred while capacity allows."
                         )
                 ),
                 validationMatrix(
@@ -511,6 +527,14 @@ final class PresetCatalog {
                                         0, PayloadPlacementPlanner.GATEWAY_SIZE,
                                         MuteMusicPreset.buildPayload(rom).length, 0, 4),
                                 "Self-contained hybrid Field Script stored in SB2. The current AUTO installer selects CPU_SET_BLOCK, so the SB2 Field Script base must remain 4-byte aligned. Native helper is installed temporarily to EWRAM on activation; Shared resident IWRAM is unchanged."
+                        ),
+                        new PresetDeploymentDefinition(
+                                PresetDeploymentKind.SHARED_LOCAL_FIELD_SCRIPT,
+                                PresetDeploymentDefinition.infra(PresetInfrastructure.SHARED_HOTKEY_RUNTIME),
+                                Set.of(),
+                                rom -> new PresetDeploymentCost(
+                                        MuteMusicPreset.sharedLocalPayloadSize(rom), 0, 0, 0, 4),
+                                "Relocation-safe Shared-local fallback. CPU_SET_BLOCK source pointers are rebuilt from the actual Runtime virtual base and the temporary helper remains in EWRAM scratch; persistent SB2 remains preferred while it fits."
                         )
                 ),
                 List.copyOf(validation),

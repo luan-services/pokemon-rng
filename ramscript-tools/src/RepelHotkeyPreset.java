@@ -35,7 +35,13 @@ final class RepelHotkeyPreset {
     }
 
     static byte[] buildPayload() {
-        RamScriptBuilder builder = new RamScriptBuilder(VIRTUAL_BASE);
+        return buildPayloadAtOffset(0);
+    }
+
+    static byte[] buildPayloadAtOffset(int ramScriptOffset) {
+        if (ramScriptOffset < 0) throw new IllegalArgumentException("ramScriptOffset must be >= 0");
+        long virtualBase = (VIRTUAL_BASE + Integer.toUnsignedLong(ramScriptOffset)) & 0xFFFF_FFFFL;
+        RamScriptBuilder builder = new RamScriptBuilder(virtualBase);
 
         return builder
                 .setVAddress()
@@ -101,5 +107,9 @@ final class RepelHotkeyPreset {
                 .text("no_repel", "No Repels.")
                 .text("used_repel", "{PLAYER} used the\\n{STR_VAR_2}.")
                 .buildScript();
+    }
+
+    static int sharedLocalPayloadSize() {
+        return buildPayloadAtOffset(0).length;
     }
 }

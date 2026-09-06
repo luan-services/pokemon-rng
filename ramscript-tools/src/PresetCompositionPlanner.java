@@ -60,6 +60,8 @@ final class PresetCompositionPlanner {
             throw new IllegalArgumentException("Deliveryman activation currently supports one preset per Wonder Card");
         }
 
+        validatePresetConflicts(presets);
+
         boolean sharedCompositionNeedsNativeService = hotkeyCount > 1 && presets.stream()
                 .filter(p -> !p.id().equals("run-bike-anywhere") && !p.id().equals("run-anywhere"))
                 .anyMatch(p -> p.supportsDeployment(PresetDeploymentKind.SHARED_PERSISTENT_NATIVE));
@@ -92,6 +94,24 @@ final class PresetCompositionPlanner {
             return evaluateSharedWithFallback(rom, presets, deployments);
         }
         return evaluate(rom, presets, deployments);
+    }
+
+
+    private static void validatePresetConflicts(List<PresetDefinition> presets) {
+        Set<String> ids = new HashSet<>();
+        for (PresetDefinition preset : presets) ids.add(preset.id());
+        rejectRedundantViewerPair(ids, "party-iv-viewer", "lead-iv-viewer", "iv-viewer-scope");
+        rejectRedundantViewerPair(ids, "party-ev-viewer", "lead-ev-viewer", "ev-viewer-scope");
+    }
+
+    private static void rejectRedundantViewerPair(Set<String> ids, String partyId, String leadId, String field) {
+        if (!ids.contains(partyId) || !ids.contains(leadId)) return;
+        throw new CompositionPlanningException(
+                "PRESET_CONFLICT",
+                "redundant viewer presets cannot be selected together: " + partyId + ", " + leadId,
+                List.of(partyId, leadId),
+                field
+        );
     }
 
     private static PresetCompositionPlan evaluateSharedWithFallback(
