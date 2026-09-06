@@ -18,17 +18,19 @@ record PresetDefinition(
         Set<RomProfile> supportedRoms,
         List<PresetDeploymentDefinition> deployments,
         List<PresetValidationEntry> validationMatrix,
-        String notes
+        String notes,
+        List<PresetParameterDefinition> parameters
 ) {
     PresetDefinition {
         if (id == null || id.isBlank()) throw new IllegalArgumentException("preset id must not be blank");
         if (displayName == null || displayName.isBlank()) throw new IllegalArgumentException("preset name must not be blank");
-        if (payloadType == null || supportedRoms == null || deployments == null || validationMatrix == null) {
+        if (payloadType == null || supportedRoms == null || deployments == null || validationMatrix == null || parameters == null) {
             throw new IllegalArgumentException("preset definition fields must not be null");
         }
         supportedRoms = Set.copyOf(supportedRoms);
         deployments = List.copyOf(deployments);
         validationMatrix = List.copyOf(validationMatrix);
+        parameters = List.copyOf(parameters);
         if (supportedRoms.isEmpty()) throw new IllegalArgumentException("preset must support at least one ROM profile");
         if (deployments.isEmpty()) throw new IllegalArgumentException("preset must expose at least one deployment mode");
         if (hotkeyCapable && defaultHotkey == null) throw new IllegalArgumentException("hotkey-capable preset needs a default hotkey");
@@ -36,6 +38,21 @@ record PresetDefinition(
         notes = notes == null ? "" : notes;
     }
 
+    PresetDefinition(
+            String id,
+            String displayName,
+            PresetPayloadType payloadType,
+            boolean hotkeyCapable,
+            boolean persistentPreferred,
+            Hotkey defaultHotkey,
+            Set<RomProfile> supportedRoms,
+            List<PresetDeploymentDefinition> deployments,
+            List<PresetValidationEntry> validationMatrix,
+            String notes
+    ) {
+        this(id, displayName, payloadType, hotkeyCapable, persistentPreferred, defaultHotkey,
+                supportedRoms, deployments, validationMatrix, notes, List.of());
+    }
 
     PresetValidationStatus validationStatus(PresetUsageMode usageMode, RomProfile rom) {
         for (PresetValidationEntry entry : validationMatrix) {

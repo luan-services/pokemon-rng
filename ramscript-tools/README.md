@@ -84,3 +84,14 @@ java -cp out Main presets
 ```
 
 Canonical preset builds use `build-preset-wc3`; object-hosted builds use `build-preset-object-wc3`; cleanup uses `build-toolkit-cleaner-wc3`. Historical and research entrypoints are intentionally hidden from normal discovery but remain reproducible with `java -cp out Main legacy <old-command> ...`.
+
+
+### Desktop/API composition metadata
+
+The machine-facing JSON boundary (`Main api ...`) now gets build parameters from
+`PresetDefinition` metadata and exposes fixed/session resource allocations from
+the real planner. `run-anywhere` and `run-bike-anywhere` both claim the same
+EXCLUSIVE `mobility-ewram-sidecar`, so the conflict is generic and reported as
+`RESOURCE_CONFLICT`. Seed Modifier advertises a required `HEX_U32` `seed`; the
+BOX14 variant advertises no build parameter. See `docs/INTEGRATION_API.md` and
+`docs/reference/internals/FIXED_RUNTIME_RESOURCES.md`.

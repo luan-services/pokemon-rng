@@ -6,6 +6,7 @@ record PresetCompositionPlan(
         RomProfile rom,
         List<SelectedPresetDeployment> selections,
         Set<PresetInfrastructure> infrastructure,
+        List<PresetResourceAllocation> resources,
         int ramScriptBytes,
         int sb1Bytes,
         int sb2Bytes,
@@ -20,6 +21,7 @@ record PresetCompositionPlan(
     PresetCompositionPlan {
         selections = List.copyOf(selections);
         infrastructure = Set.copyOf(infrastructure);
+        resources = List.copyOf(resources);
         if (concreteLayout == null) throw new IllegalArgumentException("concrete layout must not be null");
         diagnostics = List.copyOf(diagnostics);
     }
@@ -49,6 +51,16 @@ record PresetCompositionPlan(
         out.append("\nInfrastructure\n");
         if (infrastructure.isEmpty()) out.append("  none\n");
         else for (PresetInfrastructure item : infrastructure) out.append("  ").append(item).append("\n");
+        if (!resources.isEmpty()) {
+            out.append("\nOwned resources\n");
+            for (PresetResourceAllocation allocation : resources) {
+                PresetOwnedResource resource = allocation.resource();
+                out.append("  ").append(resource.id()).append(" [").append(resource.sharing()).append("] ")
+                        .append(resource.memoryRegion()).append(String.format(" 0x%08X", resource.address()))
+                        .append(" + ").append(resource.sizeBytes()).append(" B -> ")
+                        .append(String.join(", ", allocation.ownerPresetIds())).append("\n");
+            }
+        }
         out.append("\nMemory\n")
                 .append("  RamScript ").append(ramScriptBytes).append(" / ").append(RamScript.SCRIPT_SIZE)
                 .append(" B (free ").append(ramScriptFree).append(")\n")

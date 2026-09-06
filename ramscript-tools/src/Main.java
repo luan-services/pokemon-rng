@@ -20,6 +20,7 @@ public final class Main {
             case "help", "--help", "-h" -> printUsage();
             case "commands" -> printCommands();
             case "presets" -> printPresets();
+            case "api" -> { int code = ToolkitIntegrationApi.run(args); if (code != 0) System.exit(code); }
             case "legacy" -> runLegacy(args);
 
             // Inspection / import-export.
@@ -58,6 +59,7 @@ public final class Main {
         System.out.println("Canonical commands:");
         System.out.println("  commands                         Show this production command list");
         System.out.println("  presets                          List production PresetCatalog entries");
+        System.out.println("  api <command> ...                Versioned JSON integration protocol for desktop clients");
         System.out.println("  preset-metadata <rom>            Show preset deployment/cost metadata");
         System.out.println("  preset-validation <rom>          Show validation matrix");
         System.out.println("  plan-preset <rom> <deliveryman|hotkey> <preset-id> [preset-id ...]");

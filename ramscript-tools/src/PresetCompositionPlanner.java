@@ -1,7 +1,9 @@
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /*
@@ -141,13 +143,12 @@ final class PresetCompositionPlanner {
             }
         }
 
+        List<PresetResourceAllocation> resources = validateOwnedResources(chosen);
+        validateHotkeyConflicts(chosen);
+
         if (infrastructure.contains(PresetInfrastructure.HOTKEY_RUNTIME)
                 && infrastructure.contains(PresetInfrastructure.SHARED_HOTKEY_RUNTIME)) {
             throw new IllegalArgumentException("cannot combine local and shared hotkey runtimes");
-        }
-        if (infrastructure.contains(PresetInfrastructure.RUN_ANYWHERE_EWRAM_SIDECAR)
-                && infrastructure.contains(PresetInfrastructure.RUN_BIKE_ANYWHERE_EWRAM_SIDECAR)) {
-            throw new IllegalArgumentException("run-anywhere and run-bike-anywhere share the same fixed EWRAM sidecar and cannot be combined");
         }
         if (hotkeyBindings > 8) throw new IllegalArgumentException("shared runtime supports at most eight bindings");
         if (sb1 > PayloadStorageArea.SAVE_BLOCK1.capacity()) throw new IllegalArgumentException("SB1 capacity exceeded");
@@ -220,7 +221,7 @@ final class PresetCompositionPlanner {
         ConcreteCompositionLayout concreteLayout = CompositionLayoutPlanner.layout(chosen);
 
         return new PresetCompositionPlan(
-                rom, chosen, infrastructure,
+                rom, chosen, infrastructure, resources,
                 ramScript, sb1, sb2,
                 RamScript.SCRIPT_SIZE - ramScript,
                 PayloadStorageArea.SAVE_BLOCK1.capacity() - sb1,
@@ -230,6 +231,59 @@ final class PresetCompositionPlanner {
                 concreteLayout,
                 diagnostics
         );
+    }
+
+    private static List<PresetResourceAllocation> validateOwnedResources(
+            List<PresetCompositionPlan.SelectedPresetDeployment> chosen
+    ) {
+        Map<PresetOwnedResource, List<String>> owners = new LinkedHashMap<>();
+        for (var item : chosen) {
+            for (PresetInfrastructure infrastructure : item.deployment().infrastructure()) {
+                for (PresetOwnedResource resource : infrastructure.ownedResources()) {
+                    owners.computeIfAbsent(resource, ignored -> new ArrayList<>()).add(item.preset().id());
+                }
+            }
+        }
+
+        List<PresetResourceAllocation> allocations = new ArrayList<>();
+        for (var entry : owners.entrySet()) {
+            PresetOwnedResource resource = entry.getKey();
+            List<String> presetIds = List.copyOf(entry.getValue());
+            if (resource.sharing() == PresetResourceSharing.EXCLUSIVE && presetIds.size() > 1) {
+                throw new CompositionPlanningException(
+                        "RESOURCE_CONFLICT",
+                        "exclusive resource " + resource.id() + " cannot have multiple owners: " + String.join(", ", presetIds),
+                        presetIds,
+                        resource.id()
+                );
+            }
+            allocations.add(new PresetResourceAllocation(resource, presetIds));
+        }
+        return List.copyOf(allocations);
+    }
+
+    private static void validateHotkeyConflicts(List<PresetCompositionPlan.SelectedPresetDeployment> chosen) {
+        Map<Hotkey, List<String>> owners = new LinkedHashMap<>();
+        for (var item : chosen) {
+            if (!isHotkeyDeployment(item.deployment().kind())) continue;
+            Hotkey hotkey = item.preset().defaultHotkey();
+            if (hotkey == null) continue;
+            owners.computeIfAbsent(hotkey, ignored -> new ArrayList<>()).add(item.preset().id());
+        }
+        for (var entry : owners.entrySet()) {
+            if (entry.getValue().size() > 1) {
+                throw new CompositionPlanningException(
+                        "HOTKEY_CONFLICT",
+                        "duplicate hotkey binding " + entry.getKey().displayName() + ": " + String.join(", ", entry.getValue()),
+                        entry.getValue(),
+                        entry.getKey().id()
+                );
+            }
+        }
+    }
+
+    private static boolean isHotkeyDeployment(PresetDeploymentKind kind) {
+        return kind == PresetDeploymentKind.HOTKEY_LOCAL || isSharedHotkeyDeployment(kind);
     }
 
     private static int calculateSb2(

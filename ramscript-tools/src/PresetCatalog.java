@@ -105,7 +105,12 @@ final class PresetCatalog {
                         Set.of(PresetUsageMode.DELIVERYMAN, PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY),
                         Set.of(PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.LEGACY_MULTI_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY),
                         Set.of(PresetUsageMode.SINGLE_HOTKEY, PresetUsageMode.SHARED_N_HOTKEY)),
-                "Seed value is a build parameter; the prompt is fixed-width 8-hex-digit text, so payload size is invariant across the full u32 range."
+                "Seed value is a build parameter; the prompt is fixed-width 8-hex-digit text, so payload size is invariant across the full u32 range.",
+                List.of(new PresetParameterDefinition(
+                        "seed", PresetParameterType.HEX_U32, true, "Initial seed",
+                        "Unsigned 32-bit PRNG seed in hexadecimal. The generated in-game text is normalized to eight hex digits.",
+                        "B5B1E7AD"
+                ))
         );
     }
 

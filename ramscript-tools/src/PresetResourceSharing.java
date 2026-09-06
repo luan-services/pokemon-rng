@@ -1,0 +1,4 @@
+enum PresetResourceSharing {
+    EXCLUSIVE,
+    SHAREABLE
+}
