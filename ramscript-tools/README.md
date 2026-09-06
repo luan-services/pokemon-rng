@@ -36,12 +36,16 @@ ROM modification is outside the project boundary.
 
 The mobility presets are production catalog features, not active probes.
 
-- `run-anywhere` — default `R+RIGHT`; standalone V1 and Shared are GAME-VALIDATED on LG1.0.
-- `run-bike-anywhere` — default `R+RIGHT`; Shared is GAME-VALIDATED on LG1.0; standalone V1 remains build-tested until that exact cart path is recorded.
+- `run-anywhere` — default `R+RIGHT`; supported/build-tested on FR1.0/FR1.1/LG1.0/LG1.1; standalone V1 and Shared are GAME-VALIDATED only on LG1.0.
+- `run-bike-anywhere` — default `R+RIGHT`; supported/build-tested on FR1.0/FR1.1/LG1.0/LG1.1; Shared is GAME-VALIDATED only on LG1.0; standalone V1 remains build-tested until that exact cart path is recorded.
 - both use the GAME-VALIDATED fixed-EWRAM session reservation `0x02022B08..0x02022B4B` and are mutually exclusive.
 - the planner chooses local vs persistent-native Run+Bike placement from the whole composition.
 
 The planner-generated `seed-modifier-box14 + repel + party-iv-viewer + run-bike-anywhere` composition is GAME-VALIDATED on real LG1.0 hardware. See `docs/reference/features/RUN_AND_BIKE_ANYWHERE.md` for the architecture, Brock audit, validation evidence and the rejected predecessor.
+
+### Cross-version preset ports
+
+`seed-modifier-box14`, `run-anywhere`, and `run-bike-anywhere` are now exposed by the production catalog for all four English FR/LG revisions (`fr10`, `lg10`, `fr11`, `lg11`). The ports are symbol/layout verified and production-build tested; only the previously recorded LG1.0 paths are marked GAME-VALIDATED. Desktop clients discover these ports automatically through API v1 after replacing the toolkit JAR.
 
 ## Build and production test
 

@@ -120,15 +120,16 @@ final class PresetCatalog {
             for (PresetUsageMode mode : PresetUsageMode.values()) {
                 PresetValidationStatus status;
                 String note = "";
-                if (rom != RomProfile.LEAF_GREEN_EN_10
-                        || (mode != PresetUsageMode.SINGLE_HOTKEY && mode != PresetUsageMode.SHARED_N_HOTKEY)) {
+                if (mode != PresetUsageMode.SINGLE_HOTKEY && mode != PresetUsageMode.SHARED_N_HOTKEY) {
                     status = PresetValidationStatus.UNSUPPORTED;
-                } else if (mode == PresetUsageMode.SINGLE_HOTKEY) {
+                } else if (rom == RomProfile.LEAF_GREEN_EN_10) {
                     status = PresetValidationStatus.VALIDATED_IN_GAME;
-                    note = "Standalone R+SELECT path GAME-VALIDATED on LG1.0 with BOX 14 uppercase hex seed and RFU normalization.";
+                    note = mode == PresetUsageMode.SINGLE_HOTKEY
+                            ? "Standalone R+SELECT path GAME-VALIDATED on LG1.0 with BOX 14 uppercase hex seed and RFU normalization."
+                            : "Shared BOX 14 + Party IV composition GAME-VALIDATED on LG1.0; same 72-byte helper and existing shared native staging service.";
                 } else {
-                    status = PresetValidationStatus.VALIDATED_IN_GAME;
-                    note = "Shared BOX 14 + Party IV composition GAME-VALIDATED on LG1.0; same 72-byte helper and existing shared native staging service.";
+                    status = PresetValidationStatus.SUPPORTED_NOT_TESTED;
+                    note = "Port is symbol/layout verified and build-tested for this English FR/LG revision; exact in-game validation is still pending.";
                 }
                 validation.add(new PresetValidationEntry(mode, rom, status, note));
             }
@@ -141,7 +142,7 @@ final class PresetCatalog {
                 true,
                 true,
                 new Hotkey(HotkeyButton.R, HotkeyButton.SELECT),
-                LG10_ONLY,
+                ALL_PROFILES,
                 List.of(
                         new PresetDeploymentDefinition(
                                 PresetDeploymentKind.HOTKEY_LOCAL,
@@ -168,7 +169,7 @@ final class PresetCatalog {
                         )
                 ),
                 List.copyOf(validation),
-                "Reads exactly eight uppercase hexadecimal characters (0-9/A-F) from BOX 14. Invalid input returns without changing gRngValue. Current RFU address/profile is LG1.0 only."
+                "Reads exactly eight uppercase hexadecimal characters (0-9/A-F) from BOX 14. Invalid input returns without changing gRngValue. FR/LG English 1.0/1.1 share the verified RFU/storage globals used by this implementation; LG1.0 remains the only game-validated port."
         );
     }
 
@@ -511,14 +512,18 @@ final class PresetCatalog {
         java.util.ArrayList<PresetValidationEntry> validation = new java.util.ArrayList<>();
         for (RomProfile rom : RomProfile.values()) {
             for (PresetUsageMode mode : PresetUsageMode.values()) {
-                PresetValidationStatus status = PresetValidationStatus.UNSUPPORTED;
+                PresetValidationStatus status;
                 String note = "";
-                if (rom == RomProfile.LEAF_GREEN_EN_10
-                        && (mode == PresetUsageMode.SINGLE_HOTKEY || mode == PresetUsageMode.SHARED_N_HOTKEY)) {
+                if (mode != PresetUsageMode.SINGLE_HOTKEY && mode != PresetUsageMode.SHARED_N_HOTKEY) {
+                    status = PresetValidationStatus.UNSUPPORTED;
+                } else if (rom == RomProfile.LEAF_GREEN_EN_10) {
                     status = PresetValidationStatus.VALIDATED_IN_GAME;
                     note = mode == PresetUsageMode.SINGLE_HOTKEY
                             ? "HotkeyRuntimeV1 + fixed EWRAM sidecar toggle GAME-VALIDATED on LG1.0 across map transitions and after Brock."
                             : "SharedHotkeyRuntime + fixed EWRAM sidecar GAME-VALIDATED on LG1.0 together with Seed Modifier and Mute Music.";
+                } else {
+                    status = PresetValidationStatus.SUPPORTED_NOT_TESTED;
+                    note = "The sFlickerArray tail, gMapHeader and gMain layout used by this port are symbol-verified for this English FR/LG revision; generated artifacts are build-tested, but no in-game validation is recorded.";
                 }
                 validation.add(new PresetValidationEntry(mode, rom, status, note));
             }
@@ -531,7 +536,7 @@ final class PresetCatalog {
                 true,
                 false,
                 RunAnywhereSharedPreset.HOTKEY,
-                LG10_ONLY,
+                ALL_PROFILES,
                 List.of(
                         new PresetDeploymentDefinition(
                                 PresetDeploymentKind.HOTKEY_LOCAL,
@@ -563,10 +568,11 @@ final class PresetCatalog {
         java.util.ArrayList<PresetValidationEntry> validation = new java.util.ArrayList<>();
         for (RomProfile rom : RomProfile.values()) {
             for (PresetUsageMode mode : PresetUsageMode.values()) {
-                PresetValidationStatus status = PresetValidationStatus.UNSUPPORTED;
+                PresetValidationStatus status;
                 String note = "";
-                if (rom == RomProfile.LEAF_GREEN_EN_10
-                        && (mode == PresetUsageMode.SINGLE_HOTKEY || mode == PresetUsageMode.SHARED_N_HOTKEY)) {
+                if (mode != PresetUsageMode.SINGLE_HOTKEY && mode != PresetUsageMode.SHARED_N_HOTKEY) {
+                    status = PresetValidationStatus.UNSUPPORTED;
+                } else if (rom == RomProfile.LEAF_GREEN_EN_10) {
                     if (mode == PresetUsageMode.SHARED_N_HOTKEY) {
                         status = PresetValidationStatus.VALIDATED_IN_GAME;
                         note = "GAME-VALIDATED on LG1.0 in the planner-generated BOX14 Seed + Repel + Party IV + Run + Bike composition; toggle, coexistence and fixed-EWRAM sidecar all worked on real hardware.";
@@ -574,6 +580,9 @@ final class PresetCatalog {
                         status = PresetValidationStatus.SUPPORTED_NOT_TESTED;
                         note = "Build-tested HotkeyRuntimeV1 + 63-byte fixed-EWRAM sidecar; exact standalone real-cart path not yet recorded.";
                     }
+                } else {
+                    status = PresetValidationStatus.SUPPORTED_NOT_TESTED;
+                    note = "The sFlickerArray tail, gMapHeader and gMain layout used by this port are symbol-verified for this English FR/LG revision; generated artifacts are build-tested, but no in-game validation is recorded.";
                 }
                 validation.add(new PresetValidationEntry(mode, rom, status, note));
             }
@@ -586,7 +595,7 @@ final class PresetCatalog {
                 true,
                 false,
                 RunBikeAnywhereSharedPreset.HOTKEY,
-                LG10_ONLY,
+                ALL_PROFILES,
                 List.of(
                         new PresetDeploymentDefinition(
                                 PresetDeploymentKind.HOTKEY_LOCAL,

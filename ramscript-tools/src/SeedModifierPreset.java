@@ -1,11 +1,10 @@
 final class SeedModifierPreset {
     private static final long VIRTUAL_BASE = 0x08010000L;
     private static final int SPECIAL_CLOSE_LINK = 0x001F;
-    // FR/LG English 1.0/1.1 share this IWRAM global address.
     // GAME-VALIDATED LG1.0 RNG normalization: CloseLink shuts RFU down while
     // this is still non-zero, then clear the selector so the main link loop
-    // no longer dispatches RfuMain1.
-    private static final long WIRELESS_COMM_TYPE = 0x03003F3CL;
+    // no longer dispatches RfuMain1. The address comes from RomProfile so
+    // ports do not rely on a feature-local hardcode.
 
     private SeedModifierPreset() {}
 
@@ -40,7 +39,7 @@ final class SeedModifierPreset {
                 .setVAddress()
                 .lockAll()
                 .special(SPECIAL_CLOSE_LINK)
-                .writeBytes(WIRELESS_COMM_TYPE, new byte[] { 0 })
+                .writeBytes(rom.wirelessCommType, new byte[] { 0 })
                 .vMessage("message")
                 .waitMessage()
                 .waitButtonPress()

@@ -14,7 +14,6 @@
 final class Box14SeedModifierPreset {
     private static final long VIRTUAL_BASE = 0x08010000L;
     private static final int SPECIAL_CLOSE_LINK = 0x001F;
-    private static final long WIRELESS_COMM_TYPE = 0x03003F3CL;
 
     private Box14SeedModifierPreset() {}
 
@@ -35,7 +34,7 @@ final class Box14SeedModifierPreset {
 
         b.lockAll()
                 .special(SPECIAL_CLOSE_LINK)
-                .writeBytes(WIRELESS_COMM_TYPE, new byte[] { 0 });
+                .writeBytes(rom.wirelessCommType, new byte[] { 0 });
 
         // Stage the helper before showing the prompt. The only work after the
         // confirmation is the single native call itself.

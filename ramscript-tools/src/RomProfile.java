@@ -228,6 +228,10 @@ enum RomProfile {
     final long gMPlayInfoBgm;
     final long m4aMPlayVolumeControlThumb;
 
+    // RFU selector used by Seed Modifier normalization. Verified from the
+    // four English FR/LG 1.0/1.1 symbol maps at the same IWRAM address.
+    final long wirelessCommType = 0x03003F3CL;
+
     RomProfile(
             String id,
             String displayName,
