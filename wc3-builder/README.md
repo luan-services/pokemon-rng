@@ -17,6 +17,25 @@ native-ramscript-tools
 
 The only exception is the built-in placeholder RamScript attached by `create`, so a card created from zero is immediately usable. It is not exposed as a general RamScript editor.
 
+
+## Machine-facing JSON API v1
+
+The JavaFX desktop application should use the JSON API instead of parsing human CLI output:
+
+```powershell
+java -jar wc3-builder-api-v1.jar api version
+java -jar wc3-builder-api-v1.jar api catalog
+java -jar wc3-builder-api-v1.jar api inspect --input event.wc3
+java -jar wc3-builder-api-v1.jar api create --output custom.wc3 --title "MY EVENT" --flag 1003
+java -jar wc3-builder-api-v1.jar api edit --input event.wc3 --output custom.wc3 --bg 5
+```
+
+Protocol: `wc3-builder-json`, API version `1`. See `docs/API_V1.md`.
+
+### Wonder Card receive slots
+
+`--flag` is modeled as the FR/LG Wonder Card **receive ID**, not as an arbitrary event flag. The supported UI/API range is `1000..1019`: Aurora Ticket, Mystic Ticket, the Old Sea Map reserved slot, and 17 dedicated unused Wonder Card slots. General unused event flags remain the responsibility of the event/RamScript layer. See `docs/WONDER_CARD_FLAG_SEMANTICS.md`.
+
 ## Compile
 
 ```cmd
@@ -142,3 +161,7 @@ Editing card details recalculates the **card CRC only**. The existing RamScript 
 This project does not compile arbitrary event scripts.
 
 That remains deliberately separate so card design and event behavior stay distinct concepts.
+
+## Mystery Gift default icon
+
+`iconSpecies = 0xFFFF` is the stock/default Mystery Gift question-mark icon used by preserved FR/LG ticket Wonder Cards. In `api catalog` this is exposed semantically as `MYSTERY_GIFT_DEFAULT` / `Mystery Gift (?)` with `kind = SPECIAL`. It is not `NONE` and it is not Unown ?. `Wc3File.setIconSpecies(...)` mirrors the selected value into both `WonderCard.iconSpecies` and `WonderCardMetadata.iconSpecies`. The JavaFX UI must present the semantic catalog item and send its raw `value` back to the backend.

@@ -1,0 +1,779 @@
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/* FR/LG internal species IDs used by WonderCard.iconSpecies.
+   Important: internal IDs 252..276 are the obsolete OLD_UNOWN_* placeholders,
+   so Hoenn species start at internal ID 277 rather than National Dex 252. */
+final class PokemonSpeciesCatalog {
+    static final int MYSTERY_GIFT_DEFAULT_VALUE = 0xFFFF;
+
+    record Species(int value, String id, String label, Integer nationalDex) {}
+
+    private static final Map<Integer, Integer> HOENN_NATIONAL_DEX = buildHoennDexMap();
+    private static final List<Species> ALL = build();
+    private static final Map<Integer, Species> BY_VALUE = indexByValue(ALL);
+
+    private PokemonSpeciesCatalog() {}
+
+    static List<Species> all() {
+        return ALL;
+    }
+
+    static Species byValue(int value) {
+        return BY_VALUE.get(value);
+    }
+
+    private static List<Species> build() {
+        List<Species> result = new ArrayList<>();
+        result.add(new Species(MYSTERY_GIFT_DEFAULT_VALUE, "MYSTERY_GIFT_DEFAULT", "Mystery Gift (?)", null));
+
+        String[] kantoJohto = ("""
+BULBASAUR
+IVYSAUR
+VENUSAUR
+CHARMANDER
+CHARMELEON
+CHARIZARD
+SQUIRTLE
+WARTORTLE
+BLASTOISE
+CATERPIE
+METAPOD
+BUTTERFREE
+WEEDLE
+KAKUNA
+BEEDRILL
+PIDGEY
+PIDGEOTTO
+PIDGEOT
+RATTATA
+RATICATE
+SPEAROW
+FEAROW
+EKANS
+ARBOK
+PIKACHU
+RAICHU
+SANDSHREW
+SANDSLASH
+NIDORAN_F
+NIDORINA
+NIDOQUEEN
+NIDORAN_M
+NIDORINO
+NIDOKING
+CLEFAIRY
+CLEFABLE
+VULPIX
+NINETALES
+JIGGLYPUFF
+WIGGLYTUFF
+ZUBAT
+GOLBAT
+ODDISH
+GLOOM
+VILEPLUME
+PARAS
+PARASECT
+VENONAT
+VENOMOTH
+DIGLETT
+DUGTRIO
+MEOWTH
+PERSIAN
+PSYDUCK
+GOLDUCK
+MANKEY
+PRIMEAPE
+GROWLITHE
+ARCANINE
+POLIWAG
+POLIWHIRL
+POLIWRATH
+ABRA
+KADABRA
+ALAKAZAM
+MACHOP
+MACHOKE
+MACHAMP
+BELLSPROUT
+WEEPINBELL
+VICTREEBEL
+TENTACOOL
+TENTACRUEL
+GEODUDE
+GRAVELER
+GOLEM
+PONYTA
+RAPIDASH
+SLOWPOKE
+SLOWBRO
+MAGNEMITE
+MAGNETON
+FARFETCHD
+DODUO
+DODRIO
+SEEL
+DEWGONG
+GRIMER
+MUK
+SHELLDER
+CLOYSTER
+GASTLY
+HAUNTER
+GENGAR
+ONIX
+DROWZEE
+HYPNO
+KRABBY
+KINGLER
+VOLTORB
+ELECTRODE
+EXEGGCUTE
+EXEGGUTOR
+CUBONE
+MAROWAK
+HITMONLEE
+HITMONCHAN
+LICKITUNG
+KOFFING
+WEEZING
+RHYHORN
+RHYDON
+CHANSEY
+TANGELA
+KANGASKHAN
+HORSEA
+SEADRA
+GOLDEEN
+SEAKING
+STARYU
+STARMIE
+MR_MIME
+SCYTHER
+JYNX
+ELECTABUZZ
+MAGMAR
+PINSIR
+TAUROS
+MAGIKARP
+GYARADOS
+LAPRAS
+DITTO
+EEVEE
+VAPOREON
+JOLTEON
+FLAREON
+PORYGON
+OMANYTE
+OMASTAR
+KABUTO
+KABUTOPS
+AERODACTYL
+SNORLAX
+ARTICUNO
+ZAPDOS
+MOLTRES
+DRATINI
+DRAGONAIR
+DRAGONITE
+MEWTWO
+MEW
+CHIKORITA
+BAYLEEF
+MEGANIUM
+CYNDAQUIL
+QUILAVA
+TYPHLOSION
+TOTODILE
+CROCONAW
+FERALIGATR
+SENTRET
+FURRET
+HOOTHOOT
+NOCTOWL
+LEDYBA
+LEDIAN
+SPINARAK
+ARIADOS
+CROBAT
+CHINCHOU
+LANTURN
+PICHU
+CLEFFA
+IGGLYBUFF
+TOGEPI
+TOGETIC
+NATU
+XATU
+MAREEP
+FLAAFFY
+AMPHAROS
+BELLOSSOM
+MARILL
+AZUMARILL
+SUDOWOODO
+POLITOED
+HOPPIP
+SKIPLOOM
+JUMPLUFF
+AIPOM
+SUNKERN
+SUNFLORA
+YANMA
+WOOPER
+QUAGSIRE
+ESPEON
+UMBREON
+MURKROW
+SLOWKING
+MISDREAVUS
+UNOWN
+WOBBUFFET
+GIRAFARIG
+PINECO
+FORRETRESS
+DUNSPARCE
+GLIGAR
+STEELIX
+SNUBBULL
+GRANBULL
+QWILFISH
+SCIZOR
+SHUCKLE
+HERACROSS
+SNEASEL
+TEDDIURSA
+URSARING
+SLUGMA
+MAGCARGO
+SWINUB
+PILOSWINE
+CORSOLA
+REMORAID
+OCTILLERY
+DELIBIRD
+MANTINE
+SKARMORY
+HOUNDOUR
+HOUNDOOM
+KINGDRA
+PHANPY
+DONPHAN
+PORYGON2
+STANTLER
+SMEARGLE
+TYROGUE
+HITMONTOP
+SMOOCHUM
+ELEKID
+MAGBY
+MILTANK
+BLISSEY
+RAIKOU
+ENTEI
+SUICUNE
+LARVITAR
+PUPITAR
+TYRANITAR
+LUGIA
+HO_OH
+CELEBI
+""").strip().split("\\R");
+
+        if (kantoJohto.length != 251) {
+            throw new IllegalStateException("Expected 251 Kanto/Johto species, got " + kantoJohto.length);
+        }
+        for (int i = 0; i < kantoJohto.length; i++) {
+            int value = i + 1;
+            result.add(new Species(value, kantoJohto[i], labelFor(kantoJohto[i]), value));
+        }
+
+        String[] hoennInternal = ("""
+TREECKO
+GROVYLE
+SCEPTILE
+TORCHIC
+COMBUSKEN
+BLAZIKEN
+MUDKIP
+MARSHTOMP
+SWAMPERT
+POOCHYENA
+MIGHTYENA
+ZIGZAGOON
+LINOONE
+WURMPLE
+SILCOON
+BEAUTIFLY
+CASCOON
+DUSTOX
+LOTAD
+LOMBRE
+LUDICOLO
+SEEDOT
+NUZLEAF
+SHIFTRY
+NINCADA
+NINJASK
+SHEDINJA
+TAILLOW
+SWELLOW
+SHROOMISH
+BRELOOM
+SPINDA
+WINGULL
+PELIPPER
+SURSKIT
+MASQUERAIN
+WAILMER
+WAILORD
+SKITTY
+DELCATTY
+KECLEON
+BALTOY
+CLAYDOL
+NOSEPASS
+TORKOAL
+SABLEYE
+BARBOACH
+WHISCASH
+LUVDISC
+CORPHISH
+CRAWDAUNT
+FEEBAS
+MILOTIC
+CARVANHA
+SHARPEDO
+TRAPINCH
+VIBRAVA
+FLYGON
+MAKUHITA
+HARIYAMA
+ELECTRIKE
+MANECTRIC
+NUMEL
+CAMERUPT
+SPHEAL
+SEALEO
+WALREIN
+CACNEA
+CACTURNE
+SNORUNT
+GLALIE
+LUNATONE
+SOLROCK
+AZURILL
+SPOINK
+GRUMPIG
+PLUSLE
+MINUN
+MAWILE
+MEDITITE
+MEDICHAM
+SWABLU
+ALTARIA
+WYNAUT
+DUSKULL
+DUSCLOPS
+ROSELIA
+SLAKOTH
+VIGOROTH
+SLAKING
+GULPIN
+SWALOT
+TROPIUS
+WHISMUR
+LOUDRED
+EXPLOUD
+CLAMPERL
+HUNTAIL
+GOREBYSS
+ABSOL
+SHUPPET
+BANETTE
+SEVIPER
+ZANGOOSE
+RELICANTH
+ARON
+LAIRON
+AGGRON
+CASTFORM
+VOLBEAT
+ILLUMISE
+LILEEP
+CRADILY
+ANORITH
+ARMALDO
+RALTS
+KIRLIA
+GARDEVOIR
+BAGON
+SHELGON
+SALAMENCE
+BELDUM
+METANG
+METAGROSS
+REGIROCK
+REGICE
+REGISTEEL
+KYOGRE
+GROUDON
+RAYQUAZA
+LATIAS
+LATIOS
+JIRACHI
+DEOXYS
+CHIMECHO
+""").strip().split("\\R");
+
+        if (hoennInternal.length != 135) {
+            throw new IllegalStateException("Expected 135 Hoenn species, got " + hoennInternal.length);
+        }
+        for (int i = 0; i < hoennInternal.length; i++) {
+            int value = 277 + i;
+            int nationalDex = 252 + nationalDexOffsetForHoennInternal(i);
+            result.add(new Species(value, hoennInternal[i], labelFor(hoennInternal[i]), nationalDex));
+        }
+
+        return Collections.unmodifiableList(result);
+    }
+
+    /* FR/LG internal Hoenn ordering is not National Dex ordering. Keep the mapping explicit. */
+    private static int nationalDexOffsetForHoennInternal(int internalIndex) {
+        String id = switch (277 + internalIndex) {
+            case 277 -> "TREECKO"; case 278 -> "GROVYLE"; case 279 -> "SCEPTILE";
+            case 280 -> "TORCHIC"; case 281 -> "COMBUSKEN"; case 282 -> "BLAZIKEN";
+            case 283 -> "MUDKIP"; case 284 -> "MARSHTOMP"; case 285 -> "SWAMPERT";
+            default -> null;
+        };
+        // National Dex is UI metadata only. Values below are supplied by a compact lookup map.
+        Integer dex = HOENN_NATIONAL_DEX.get(277 + internalIndex);
+        if (dex == null) throw new IllegalStateException("Missing National Dex mapping for internal species " + (277 + internalIndex) + (id == null ? "" : " " + id));
+        return dex - 252;
+    }
+
+    private static Map<Integer, Integer> buildHoennDexMap() {
+        // Internal FR/LG IDs 277..411 mapped to National Dex 252..386.
+        String[] nationalOrder = ("""
+TREECKO
+GROVYLE
+SCEPTILE
+TORCHIC
+COMBUSKEN
+BLAZIKEN
+MUDKIP
+MARSHTOMP
+SWAMPERT
+POOCHYENA
+MIGHTYENA
+ZIGZAGOON
+LINOONE
+WURMPLE
+SILCOON
+BEAUTIFLY
+CASCOON
+DUSTOX
+LOTAD
+LOMBRE
+LUDICOLO
+SEEDOT
+NUZLEAF
+SHIFTRY
+TAILLOW
+SWELLOW
+WINGULL
+PELIPPER
+RALTS
+KIRLIA
+GARDEVOIR
+SURSKIT
+MASQUERAIN
+SHROOMISH
+BRELOOM
+SLAKOTH
+VIGOROTH
+SLAKING
+NINCADA
+NINJASK
+SHEDINJA
+WHISMUR
+LOUDRED
+EXPLOUD
+MAKUHITA
+HARIYAMA
+AZURILL
+NOSEPASS
+SKITTY
+DELCATTY
+SABLEYE
+MAWILE
+ARON
+LAIRON
+AGGRON
+MEDITITE
+MEDICHAM
+ELECTRIKE
+MANECTRIC
+PLUSLE
+MINUN
+VOLBEAT
+ILLUMISE
+ROSELIA
+GULPIN
+SWALOT
+CARVANHA
+SHARPEDO
+WAILMER
+WAILORD
+NUMEL
+CAMERUPT
+TORKOAL
+SPOINK
+GRUMPIG
+SPINDA
+TRAPINCH
+VIBRAVA
+FLYGON
+CACNEA
+CACTURNE
+SWABLU
+ALTARIA
+ZANGOOSE
+SEVIPER
+LUNATONE
+SOLROCK
+BARBOACH
+WHISCASH
+CORPHISH
+CRAWDAUNT
+BALTOY
+CLAYDOL
+LILEEP
+CRADILY
+ANORITH
+ARMALDO
+FEEBAS
+MILOTIC
+CASTFORM
+KECLEON
+SHUPPET
+BANETTE
+DUSKULL
+DUSCLOPS
+TROPIUS
+CHIMECHO
+ABSOL
+WYNAUT
+SNORUNT
+GLALIE
+SPHEAL
+SEALEO
+WALREIN
+CLAMPERL
+HUNTAIL
+GOREBYSS
+RELICANTH
+LUVDISC
+BAGON
+SHELGON
+SALAMENCE
+BELDUM
+METANG
+METAGROSS
+REGIROCK
+REGICE
+REGISTEEL
+LATIAS
+LATIOS
+KYOGRE
+GROUDON
+RAYQUAZA
+JIRACHI
+DEOXYS
+""").strip().split("\\R");
+
+        Map<String, Integer> dexById = new LinkedHashMap<>();
+        for (int i = 0; i < nationalOrder.length; i++) dexById.put(nationalOrder[i], 252 + i);
+
+        Map<Integer, Integer> result = new LinkedHashMap<>();
+        for (Species species : provisionalHoennSpecies()) {
+            Integer dex = dexById.get(species.id());
+            if (dex == null) throw new IllegalStateException("Missing National Dex ID for " + species.id());
+            result.put(species.value(), dex);
+        }
+        return Collections.unmodifiableMap(result);
+    }
+
+    private static List<Species> provisionalHoennSpecies() {
+        String[] ids = ("""
+TREECKO
+GROVYLE
+SCEPTILE
+TORCHIC
+COMBUSKEN
+BLAZIKEN
+MUDKIP
+MARSHTOMP
+SWAMPERT
+POOCHYENA
+MIGHTYENA
+ZIGZAGOON
+LINOONE
+WURMPLE
+SILCOON
+BEAUTIFLY
+CASCOON
+DUSTOX
+LOTAD
+LOMBRE
+LUDICOLO
+SEEDOT
+NUZLEAF
+SHIFTRY
+NINCADA
+NINJASK
+SHEDINJA
+TAILLOW
+SWELLOW
+SHROOMISH
+BRELOOM
+SPINDA
+WINGULL
+PELIPPER
+SURSKIT
+MASQUERAIN
+WAILMER
+WAILORD
+SKITTY
+DELCATTY
+KECLEON
+BALTOY
+CLAYDOL
+NOSEPASS
+TORKOAL
+SABLEYE
+BARBOACH
+WHISCASH
+LUVDISC
+CORPHISH
+CRAWDAUNT
+FEEBAS
+MILOTIC
+CARVANHA
+SHARPEDO
+TRAPINCH
+VIBRAVA
+FLYGON
+MAKUHITA
+HARIYAMA
+ELECTRIKE
+MANECTRIC
+NUMEL
+CAMERUPT
+SPHEAL
+SEALEO
+WALREIN
+CACNEA
+CACTURNE
+SNORUNT
+GLALIE
+LUNATONE
+SOLROCK
+AZURILL
+SPOINK
+GRUMPIG
+PLUSLE
+MINUN
+MAWILE
+MEDITITE
+MEDICHAM
+SWABLU
+ALTARIA
+WYNAUT
+DUSKULL
+DUSCLOPS
+ROSELIA
+SLAKOTH
+VIGOROTH
+SLAKING
+GULPIN
+SWALOT
+TROPIUS
+WHISMUR
+LOUDRED
+EXPLOUD
+CLAMPERL
+HUNTAIL
+GOREBYSS
+ABSOL
+SHUPPET
+BANETTE
+SEVIPER
+ZANGOOSE
+RELICANTH
+ARON
+LAIRON
+AGGRON
+CASTFORM
+VOLBEAT
+ILLUMISE
+LILEEP
+CRADILY
+ANORITH
+ARMALDO
+RALTS
+KIRLIA
+GARDEVOIR
+BAGON
+SHELGON
+SALAMENCE
+BELDUM
+METANG
+METAGROSS
+REGIROCK
+REGICE
+REGISTEEL
+KYOGRE
+GROUDON
+RAYQUAZA
+LATIAS
+LATIOS
+JIRACHI
+DEOXYS
+CHIMECHO
+""").strip().split("\\R");
+        List<Species> result = new ArrayList<>();
+        for (int i = 0; i < ids.length; i++) result.add(new Species(277 + i, ids[i], labelFor(ids[i]), null));
+        return result;
+    }
+
+    private static Map<Integer, Species> indexByValue(List<Species> species) {
+        Map<Integer, Species> result = new LinkedHashMap<>();
+        for (Species item : species) result.put(item.value(), item);
+        return Collections.unmodifiableMap(result);
+    }
+
+    private static String labelFor(String id) {
+        return switch (id) {
+            case "NIDORAN_F" -> "Nidoran♀";
+            case "NIDORAN_M" -> "Nidoran♂";
+            case "MR_MIME" -> "Mr. Mime";
+            case "FARFETCHD" -> "Farfetch'd";
+            case "HO_OH" -> "Ho-Oh";
+            case "PORYGON2" -> "Porygon2";
+            default -> {
+                String[] words = id.toLowerCase().split("_");
+                StringBuilder label = new StringBuilder();
+                for (String word : words) {
+                    if (!label.isEmpty()) label.append(' ');
+                    label.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+                }
+                yield label.toString();
+            }
+        };
+    }
+}

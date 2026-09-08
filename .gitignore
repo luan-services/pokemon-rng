@@ -7,3 +7,6 @@ ramscript-tools/tests/*
 ramscript-tools/docs/*
 ramscript-tools/PROJECT_HANDOFF.md
 wc3-injector/docs/*
+wc3-builder/docs/*
+wc3-builder/tests/*
+wc3-builder/PROJECT_HANDOFF.md

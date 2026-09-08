@@ -18,6 +18,10 @@ public final class Main {
             }
 
             switch (args[0].toLowerCase()) { /* check's wether it is a read, create or edit instruction to a .wc3 file */
+                case "api" -> {
+                    int exitCode = Wc3BuilderApi.run(args);
+                    if (exitCode != 0) System.exit(exitCode);
+                }
                 case "inspect" -> inspect(args);
                 case "edit" -> edit(args);
                 case "create" -> create(args);
@@ -109,7 +113,11 @@ public final class Main {
                 case "body4" -> card.setBodyLine(3, value);
                 case "footer1" -> card.setFooterLine1(value);
                 case "footer2" -> card.setFooterLine2(value);
-                case "flag" -> card.setFlagId(parseNumber(value));
+                case "flag" -> {
+                    int receiveId = parseNumber(value);
+                    WonderCardReceiveSlots.requireValidReceiveId(receiveId);
+                    card.setFlagId(receiveId);
+                }
 
                 /*use Wc3File, not WonderCard directly. this keeps WonderCard.iconSpecies and WonderCardMetadata.iconSpecies synchronized. */
                 case "icon" -> wc3.setIconSpecies(parseNumber(value));
@@ -236,6 +244,11 @@ public final class Main {
 
     private static void printUsage() {
         System.out.println("WC3 Builder / Inspector");
+        System.out.println();
+        System.out.println("Machine API:");
+        System.out.println("  java -jar wc3-builder-api-v1.jar api version");
+        System.out.println("  java -jar wc3-builder-api-v1.jar api catalog");
+        System.out.println("  java -jar wc3-builder-api-v1.jar api inspect --input event.wc3");
         System.out.println();
         System.out.println("Inspect:");
         System.out.println(

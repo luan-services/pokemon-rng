@@ -29,3 +29,17 @@ Recommended manual integration test:
 5. talk to the deliveryman;
 6. verify the informational placeholder message;
 7. replace its RamScript with a real event using the separate RamScript toolchain.
+
+
+API v1 regression coverage additionally verifies:
+
+- the 20 receive-slot mappings (`1000..1019` -> `0x2A7..0x2BA`);
+- JSON protocol/version contract;
+- catalog contents and semantics;
+- API create/edit/inspect round-trip;
+- RamScript byte preservation through API edit;
+- rejection of out-of-range Wonder Card receive IDs;
+- structured unknown-option errors.
+
+
+Current API/domain suite baseline: `PASS 53`. This includes semantic species catalog coverage, Hoenn internal-ID/National-Dex separation, default-card catalog exposure, and existing create/inspect/edit/CRC/RamScript-preservation tests.
