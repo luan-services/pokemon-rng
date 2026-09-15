@@ -153,3 +153,21 @@ This tool handles the 128 KiB FireRed/LeafGreen Gen III save layout used by the 
 It does not edit Wonder Card text/design and does not build RamScripts. Those responsibilities belong to the separate `wc3-builder`, `ramscript-tools`, and related projects.
 
 Future transports such as Celio-GB or distribution ROM generation should remain separate transport implementations behind the desktop application's `Wonder Card Transporter` UI. They should not be faked by adding save-file-specific logic to the JavaFX layer.
+
+## Generate an FR/LG Wireless Adapter distribution ROM
+
+```cmd
+java -cp out Main build-distribution "JPAJ - Aurora Ticket (USA).gba" event.wc3 output.gba
+```
+
+Machine API:
+
+```cmd
+java -jar wc3-injector-api-v1.jar api build-distribution --base-rom "JPAJ - Aurora Ticket (USA).gba" --wc3 event.wc3 --output output.gba
+```
+
+The generator deliberately requires the user-supplied, untouched US Aurora Ticket distribution ROM (SHA-1 `94a21d133e3f1b1a2129f450a9bc753d12c13b09`). The project does not bundle or redistribute Nintendo's ROM.
+
+Generation keeps Nintendo's original FR/LG Wireless Adapter transport and receiver compatibility logic. It replaces only the 0x14C-byte Wonder Card, relocates the WC3 executable RamScript body into a deterministic 0x400-byte send block at ROM offset `0x0C0000`, updates the original command-table pointer, and replaces the pre-rendered `AURORA TICKET` title tiles with the project's `MYSTERY GIFT` title. The original palette, tilemaps, background, and `Now Sending` graphics remain untouched.
+
+The current target is western FireRed/LeafGreen. The distribution ROM intentionally does not infer WC3 language/revision compatibility; arbitrary WC3 files do not contain reliable metadata for that. RamScripts that use version/language-specific absolute addresses remain the payload author's responsibility. Japanese FR/LG support is a separate future target.

@@ -47,6 +47,10 @@ public final class Main {
                     requireArgCount(args, 2, "verify-wc3 <event.wc3>");
                     verifyWc3(Path.of(args[1]));
                 }
+                case "build-distribution" -> {
+                    requireArgCount(args, 4, "build-distribution <aurora-usa.gba> <event.wc3> <output.gba>");
+                    buildDistribution(Path.of(args[1]), Path.of(args[2]), Path.of(args[3]));
+                }
                 case "help", "--help", "-h" -> printUsage();
                 default -> {
                     System.err.println("Unknown command: " + args[0]);
@@ -125,6 +129,17 @@ public final class Main {
         printWc3Warnings(wc3);
     }
 
+    private static void buildDistribution(Path baseRom, Path wc3Path, Path output) throws Exception {
+        Wc3File wc3 = Wc3File.load(wc3Path);
+        printWc3Warnings(wc3);
+        DistributionRom.BuildResult result = DistributionRom.build(baseRom, wc3, output);
+        System.out.println("FR/LG distribution ROM generated successfully.");
+        System.out.printf("Base SHA-1:   %s%n", result.baseSha1());
+        System.out.printf("Output SHA-1: %s%n", result.outputSha1());
+        System.out.printf("RamScript:    ROM 0x%06X, 0x%X bytes%n", result.scriptRomOffset(), result.scriptSendSize());
+        System.out.printf("Output: %s%n", output.toAbsolutePath());
+    }
+
     private static void printWc3Warnings(Wc3File wc3) {
         String[] warnings = wc3.validationWarnings();
         if (warnings.length == 0) {
@@ -147,7 +162,7 @@ public final class Main {
 
     private static boolean isKnownCommand(String value) {
         return switch (value.toLowerCase()) {
-            case "api", "inject", "extract", "inspect-save", "verify-wc3", "help", "--help", "-h" -> true;
+            case "api", "inject", "extract", "inspect-save", "verify-wc3", "build-distribution", "help", "--help", "-h" -> true;
             default -> false;
         };
     }
@@ -166,6 +181,7 @@ public final class Main {
         System.out.println("  java -cp out Main extract <input.sav> <output.wc3>");
         System.out.println("  java -cp out Main inspect-save <input.sav>");
         System.out.println("  java -cp out Main verify-wc3 <event.wc3>");
+        System.out.println("  java -cp out Main build-distribution <aurora-usa.gba> <event.wc3> <output.gba>");
         System.out.println();
         System.out.println("Machine JSON API:");
         System.out.println("  java -jar wc3-injector-api-v1.jar api version");
@@ -173,6 +189,7 @@ public final class Main {
         System.out.println("  java -jar wc3-injector-api-v1.jar api verify-wc3 --input <event.wc3>");
         System.out.println("  java -jar wc3-injector-api-v1.jar api inject --input-save <input.sav> --wc3 <event.wc3> --output <output.sav>");
         System.out.println("  java -jar wc3-injector-api-v1.jar api extract --input-save <input.sav> --output <output.wc3>");
+        System.out.println("  java -jar wc3-injector-api-v1.jar api build-distribution --base-rom <aurora-usa.gba> --wc3 <event.wc3> --output <output.gba>");
         System.out.println();
         System.out.println("Legacy inject syntax is still accepted:");
         System.out.println("  java -cp out Main <input.sav> <event.wc3> <output.sav>");

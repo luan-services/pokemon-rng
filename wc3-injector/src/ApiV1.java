@@ -37,6 +37,7 @@ final class ApiV1 {
                 case "verify-wc3" -> verifyWc3(args);
                 case "inject" -> inject(args);
                 case "extract" -> extract(args);
+                case "build-distribution" -> buildDistribution(args);
                 default -> throw new ApiException(
                         "UNKNOWN_API_COMMAND",
                         "Unknown API command: " + args[0]
@@ -73,7 +74,8 @@ final class ApiV1 {
                 "inject-save",
                 "extract-wc3",
                 "inspect-save",
-                "verify-wc3"
+                "verify-wc3",
+                "build-distribution-rom"
         ));
         return result;
     }
@@ -152,6 +154,31 @@ final class ApiV1 {
         result.put("saveCounter", Integer.toUnsignedLong(extraction.saveCounter()));
         result.put("physicalSector", extraction.physicalSector());
         result.put("wonderCard", wc3Json(wc3));
+        result.put("warnings", warningJson(wc3.validationWarnings()));
+        return result;
+    }
+
+    private static Map<String, Object> buildDistribution(String[] args) throws Exception {
+        Options options = Options.parse(args, 1, Map.of(
+                "--base-rom", true,
+                "--wc3", true,
+                "--output", true
+        ));
+        Path baseRom = existingFile(options.required("--base-rom"));
+        Path wc3Path = existingFile(options.required("--wc3"));
+        Path output = Path.of(options.required("--output"));
+        Wc3File wc3 = Wc3File.load(wc3Path);
+        DistributionRom.BuildResult build = DistributionRom.build(baseRom, wc3, output);
+
+        LinkedHashMap<String, Object> result = new LinkedHashMap<>();
+        result.put("baseRom", absolute(baseRom));
+        result.put("wonderCard", absolute(wc3Path));
+        result.put("output", artifactJson(output));
+        result.put("baseSha1", build.baseSha1());
+        result.put("outputSha1", build.outputSha1());
+        result.put("target", "FRLG_WESTERN");
+        result.put("scriptRomOffset", build.scriptRomOffset());
+        result.put("scriptSendSize", build.scriptSendSize());
         result.put("warnings", warningJson(wc3.validationWarnings()));
         return result;
     }
@@ -267,6 +294,10 @@ final class ApiV1 {
         if ("inspect-save".equals(command) || "extract".equals(command)
                 || message.contains("save size") || message.contains("save slot")) {
             return "INVALID_SAVE";
+        }
+        if ("build-distribution".equals(command)) {
+            if (message.contains("wc3")) return "INVALID_WC3";
+            if (message.contains("distribution rom") || message.contains("base distribution")) return "INVALID_BASE_ROM";
         }
         if ("inject".equals(command)) {
             if (message.contains("wc3")) {
