@@ -133,7 +133,7 @@ java -jar wc3-injector-api-v1.jar api inject --input-save input.sav --wc3 event.
 java -jar wc3-injector-api-v1.jar api extract --input-save input.sav --output extracted.wc3
 ```
 
-The API contract is documented in [`docs/API_V1.md`](docs/API_V1.md). Desktop integration guidance is in [`docs/DESKTOP_INTEGRATION.md`](docs/DESKTOP_INTEGRATION.md).
+The API contract is documented in [`docs/API_V1.md`](docs/API_V1.md).
 
 The important contract rule is: **the desktop application must not parse human CLI output**. It should invoke only `Main api ...` and parse the JSON object returned on stdout.
 
@@ -152,7 +152,7 @@ This tool handles the 128 KiB FireRed/LeafGreen Gen III save layout used by the 
 
 It does not edit Wonder Card text/design and does not build RamScripts. Those responsibilities belong to the separate `wc3-builder`, `ramscript-tools`, and related projects.
 
-Future transports such as Celio-GB or distribution ROM generation should remain separate transport implementations behind the desktop application's `Wonder Card Transporter` UI. They should not be faked by adding save-file-specific logic to the JavaFX layer.
+Transport implementations remain backend-owned behind the desktop application's `Wonder Card Transporter` UI. Save injection/extraction and FR/LG Wireless Adapter distribution-ROM generation are implemented here; Celio-GB remains a separate future transport. Transport behavior must not be faked by adding backend/domain logic to the JavaFX layer.
 
 ## Generate an FR/LG Wireless Adapter distribution ROM
 

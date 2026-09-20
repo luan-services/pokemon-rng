@@ -249,6 +249,8 @@ public final class Main {
         System.out.println("  java -jar wc3-builder-api-v1.jar api version");
         System.out.println("  java -jar wc3-builder-api-v1.jar api catalog");
         System.out.println("  java -jar wc3-builder-api-v1.jar api inspect --input event.wc3");
+        System.out.println("  java -jar wc3-builder-api-v1.jar api create --output custom.wc3 [options]");
+        System.out.println("  java -jar wc3-builder-api-v1.jar api edit --input event.wc3 --output custom.wc3 [options]");
         System.out.println();
         System.out.println("Inspect:");
         System.out.println(

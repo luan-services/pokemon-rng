@@ -42,4 +42,4 @@ API v1 regression coverage additionally verifies:
 - structured unknown-option errors.
 
 
-Current API/domain suite baseline: `PASS 53`. This includes semantic species catalog coverage, Hoenn internal-ID/National-Dex separation, default-card catalog exposure, and existing create/inspect/edit/CRC/RamScript-preservation tests.
+Current API/domain suite baseline: `PASS 56`. This includes semantic species catalog coverage, Hoenn internal-ID/National-Dex separation, default-card catalog exposure, and existing create/inspect/edit/CRC/RamScript-preservation tests.

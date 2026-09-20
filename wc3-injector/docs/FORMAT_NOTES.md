@@ -66,3 +66,29 @@ Therefore a later extraction returns the questionnaire bytes from the save, whic
 The game mirrors `WonderCard.iconSpecies` into `WonderCardMetadata.iconSpecies`.
 
 The injector reproduces that behavior during injection. This also means an extracted WC3 reflects the normalized metadata stored by the game/save, not necessarily a deliberately inconsistent input file.
+
+
+## FR/LG Wireless Adapter distribution ROM
+
+`DistributionRom` builds from the untouched US Aurora Ticket distribution ROM and deliberately rejects any other base before patching. Required base properties:
+
+```text
+size    0x400000 bytes
+SHA-1   94a21d133e3f1b1a2129f450a9bc753d12c13b09
+```
+
+The current transformation is intentionally narrow:
+
+```text
+Wonder Card destination       ROM 0x014FBC, 0x14C bytes
+WC3 executable source         WC3 0x01A8..0x058B, 0x3E4 bytes
+script send block destination ROM 0x0C0000, 0x400 bytes
+script GBA address            0x080C0000
+command-table pointer         ROM 0x0167E0
+```
+
+The 0x3E4-byte executable body is copied into a zero-filled 0x400-byte send block, making the final 0x1C bytes deterministic padding. The command-table pointer is updated to the relocated block.
+
+The pre-rendered `AURORA TICKET` title tiles are replaced with the project's own `MYSTERY GIFT` tile asset. Nintendo's original palette, tilemaps, background and Wireless Adapter sender behavior remain untouched.
+
+This is a transport transformation, not a WC3 compatibility detector. A WC3 may contain version/language-specific RamScript addresses, so payload compatibility remains the payload author's responsibility.

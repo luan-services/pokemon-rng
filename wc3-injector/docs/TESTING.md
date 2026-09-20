@@ -68,6 +68,15 @@ The tests also verify:
 - extraction output artifact metadata;
 - structured error codes for missing commands, unknown commands, missing files, and invalid WC3 size.
 
+
+## Distribution ROM validation
+
+FR/LG Wireless Adapter distribution-ROM generation is **validated and functional** using a user-supplied untouched US Aurora Ticket distribution ROM as the base and custom toolkit-generated WC3 files as payloads.
+
+The current dependency-free `PASS: 45 tests` suite does **not** contain Nintendo ROM data and therefore does not perform a successful end-to-end distribution-ROM build. Keep this distinction explicit: the feature has real functional validation, while automated regression coverage currently verifies the surrounding injector/API contracts rather than bundling the required copyrighted base ROM.
+
+The API/CLI wiring should still be smoke-tested by confirming `build-distribution` is discoverable and that invalid size/SHA-1 bases are rejected rather than patched speculatively.
+
 ## Recommended manual checks
 
 Before publishing a release, also test with copies of real FR/LG saves:
@@ -78,5 +87,6 @@ Before publishing a release, also test with copies of real FR/LG saves:
 4. boot in emulator and confirm the save loads normally.
 5. inject a known official/custom WC3 and verify the deliveryman flow.
 6. invoke the executable JAR through `api` and confirm the desktop process wrapper parses the response correctly.
+7. with a user-supplied untouched US Aurora Ticket distribution ROM, build a custom distribution ROM and verify the Wireless Adapter distribution flow on the validated setup before release.
 
 Never use the only copy of a real save during testing.
