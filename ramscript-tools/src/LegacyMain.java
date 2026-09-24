@@ -79,6 +79,7 @@ final class LegacyMain {
                 case "build-trade-evolution-wc3" -> buildTradeEvolutionWc3(args);
                 case "build-trade-evolution-lavender-npc-wc3" -> buildTradeEvolutionLavenderNpcWc3(args);
                 case "build-trade-evolution-object-wc3" -> buildTradeEvolutionObjectWc3(args);
+                case "build-mew-boss-probe-wc3" -> buildMewBossProbeWc3(args);
                 case "build-trainer-battle-return-probe-wc3" -> buildTrainerBattleReturnProbeWc3(args);
                 case "build-ereader-trainer-battle-probe-wc3" -> buildEReaderTrainerBattleProbeWc3(args);
                 case "build-brock-identity-battle-probe-wc3" -> buildBrockIdentityBattleProbeWc3(args);
@@ -1084,6 +1085,22 @@ final class LegacyMain {
         System.out.println("  opponent: vanilla Youngster Ben (trainer 89)");
         System.out.println("  payload bytes: " + result.payloadBytes());
         System.out.println("  markers: VAR_0x8005 5101 before battle, 5102 after relocation-safe return");
+    }
+
+    private static void buildMewBossProbeWc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-mew-boss-probe-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = MewBossProbePreset.buildLavenderWorker(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        ObjectEventTarget target = ObjectEventCatalog.LAVENDER_TOWN_WORKER_M;
+        System.out.println("Mew Boss Probe 22 (validated continuation + stock field givemon):");
+        System.out.println("  ROM: " + rom.displayName());
+        System.out.println("  target: " + target.displayName() + " [" + target.id() + "]");
+        System.out.println("  boss: MEW Lv100 / stock moves (custom boss moves temporarily removed for space)");
+        System.out.println("  capture blocking: Ball pocket transaction (Probe 19 validated)");
+        System.out.println("  reward: stock field-script Mew Lv10 on WIN (diagnostic control)");
+        System.out.println("  payload bytes: " + result.payloadBytes());
     }
 
     private static void buildTradeEvolutionObjectWc3(String[] args) throws Exception {

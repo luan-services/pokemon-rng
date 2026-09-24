@@ -22,6 +22,7 @@ public final class Main {
             case "presets" -> printPresets();
             case "api" -> { int code = ToolkitIntegrationApi.run(args); if (code != 0) System.exit(code); }
             case "legacy" -> runLegacy(args);
+            case "build-mew-boss-probe-wc3" -> LegacyMain.main(args);
 
             // Inspection / import-export.
             case "inspect", "inspect-bin", "extract-bin", "inject-bin" -> LegacyMain.main(args);

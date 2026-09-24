@@ -88,8 +88,9 @@ public final class TestRunner {
         testLeadViewerCompactSizes();
         ObjectEventBindingTest.run();
         TradeEvolutionPresetProductionTest.run();
+        MewBossProbeTest.run();
 
-        System.out.println("All tests passed: " + tests + " (+ TradeEvolutionPresetProductionTest)");
+        System.out.println("All tests passed: " + tests + " (+ TradeEvolutionPresetProductionTest + MewBossProbeTest)");
     }
 
     private static void testValidatedBaselineRuntimeSize() {

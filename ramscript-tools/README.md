@@ -99,3 +99,6 @@ EXCLUSIVE `mobility-ewram-sidecar`, so the conflict is generic and reported as
 `RESOURCE_CONFLICT`. Seed Modifier advertises a required `HEX_U32` `seed`; the
 BOX14 variant advertises no build parameter. See `docs/INTEGRATION_API.md` and
 `docs/reference/internals/FIXED_RUNTIME_RESOURCES.md`.
+
+### Mew Boss Probe 15 (research)
+Probe 15 resets the boss branch to the game-validated Probe-4 encounter and adds only transactional Poke Ball hiding. It stores all 13 Ball-pocket slots as plaintext `{itemId, logicalQuantity}` pairs in SaveBlock2 filler at `+0xEC0`, clears the live pocket, uses stock `dowildbattle`, refreshes RamScript virtual addressing after the battle transition, reacquires current SaveBlock pointers, and restores quantities with the current encryption key. It does not use `gLoadedSaveData`, Ghost flags, battle callbacks, or battle-engine hooks. FR1.0 only; build-tested pending in-game validation.
