@@ -83,6 +83,12 @@ final class RamScriptBuilder {
         return this;
     }
 
+    RamScriptBuilder vGotoAddress(long virtualAddress) {
+        opcode(0xB9);
+        u32(virtualAddress);
+        return this;
+    }
+
     RamScriptBuilder vCallAddress(long virtualAddress) {
         opcode(0xBA);
         u32(virtualAddress);

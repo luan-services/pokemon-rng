@@ -80,6 +80,8 @@ final class LegacyMain {
                 case "build-trade-evolution-lavender-npc-wc3" -> buildTradeEvolutionLavenderNpcWc3(args);
                 case "build-trade-evolution-object-wc3" -> buildTradeEvolutionObjectWc3(args);
                 case "build-mew-boss-probe-wc3" -> buildMewBossProbeWc3(args);
+                case "build-persistent-event-probe1-wc3" -> buildPersistentEventProbe1Wc3(args);
+                case "build-persistent-event-probe2-wc3" -> buildPersistentEventProbe2Wc3(args);
                 case "build-trainer-battle-return-probe-wc3" -> buildTrainerBattleReturnProbeWc3(args);
                 case "build-ereader-trainer-battle-probe-wc3" -> buildEReaderTrainerBattleProbeWc3(args);
                 case "build-brock-identity-battle-probe-wc3" -> buildBrockIdentityBattleProbeWc3(args);
@@ -1085,6 +1087,35 @@ final class LegacyMain {
         System.out.println("  opponent: vanilla Youngster Ben (trainer 89)");
         System.out.println("  payload bytes: " + result.payloadBytes());
         System.out.println("  markers: VAR_0x8005 5101 before battle, 5102 after relocation-safe return");
+    }
+
+    private static void buildPersistentEventProbe1Wc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-persistent-event-probe1-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = PersistentEventPackageProbePreset.buildLavenderWorker(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Persistent Event Framework Probe 1 (BUILD-TESTED only):");
+        System.out.println("  target: " + ObjectEventCatalog.LAVENDER_TOWN_WORKER_M.displayName());
+        System.out.printf("  package: SB2+0x%04X (%d bytes)%n", PersistentEventPackageProbePreset.PACKAGE_SB2_OFFSET, PersistentEventPackageProbePreset.buildPackage().length);
+        System.out.printf("  test flag: 0x%03X (unused FR/LG flag)%n", PersistentEventPackageProbePreset.TEST_FLAG);
+        System.out.println("  object RamScript bytes: " + result.payloadBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  no Hotkey Runtime / scheduler / resident IWRAM listener");
+    }
+
+    private static void buildPersistentEventProbe2Wc3(String[] args) throws Exception {
+        if (args.length != 4)
+            throw new IllegalArgumentException("Usage: build-persistent-event-probe2-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = PersistentEventRebindingProbePreset.build(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Persistent Event Framework Probe 2 (BUILD-TESTED only):");
+        System.out.println("  Stage A: " + PersistentEventRebindingProbePreset.STAGE_A.displayName());
+        System.out.println("  Stage B: " + PersistentEventRebindingProbePreset.STAGE_B.displayName());
+        System.out.printf("  package: SB2+0x%04X (%d bytes)%n", PersistentEventRebindingProbePreset.PACKAGE_SB2_OFFSET, PersistentEventRebindingProbePreset.buildPackage().length);
+        System.out.println("  progress flags: NONE (RamScript binding is the stage cursor)");
+        System.out.println("  object RamScript bytes: " + result.payloadBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  no Hotkey Runtime / scheduler / resident IWRAM listener");
     }
 
     private static void buildMewBossProbeWc3(String[] args) throws Exception {

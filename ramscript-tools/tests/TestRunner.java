@@ -89,8 +89,10 @@ public final class TestRunner {
         ObjectEventBindingTest.run();
         TradeEvolutionPresetProductionTest.run();
         MewBossProbeTest.run();
+        PersistentEventPackageProbeTest.run();
+        PersistentEventRebindingProbeTest.run();
 
-        System.out.println("All tests passed: " + tests + " (+ TradeEvolutionPresetProductionTest + MewBossProbeTest)");
+        System.out.println("All tests passed: " + tests + " (+ TradeEvolutionPresetProductionTest + MewBossProbeTest + PersistentEventPackageProbeTest + PersistentEventRebindingProbeTest)");
     }
 
     private static void testValidatedBaselineRuntimeSize() {
