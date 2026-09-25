@@ -82,6 +82,10 @@ final class LegacyMain {
                 case "build-mew-boss-probe-wc3" -> buildMewBossProbeWc3(args);
                 case "build-persistent-event-probe1-wc3" -> buildPersistentEventProbe1Wc3(args);
                 case "build-persistent-event-probe2-wc3" -> buildPersistentEventProbe2Wc3(args);
+                case "build-persistent-event-probe3-wc3" -> buildPersistentEventProbe3Wc3(args);
+                case "build-persistent-event-probe4-wc3" -> buildPersistentEventProbe4Wc3(args);
+                case "build-persistent-event-probe5-wc3" -> buildPersistentEventProbe5Wc3(args);
+                case "build-persistent-event-probe6-wc3" -> buildPersistentEventProbe6Wc3(args);
                 case "build-trainer-battle-return-probe-wc3" -> buildTrainerBattleReturnProbeWc3(args);
                 case "build-ereader-trainer-battle-probe-wc3" -> buildEReaderTrainerBattleProbeWc3(args);
                 case "build-brock-identity-battle-probe-wc3" -> buildBrockIdentityBattleProbeWc3(args);
@@ -1116,6 +1120,60 @@ final class LegacyMain {
         System.out.println("  progress flags: NONE (RamScript binding is the stage cursor)");
         System.out.println("  object RamScript bytes: " + result.payloadBytes() + " / " + RamScript.SCRIPT_SIZE);
         System.out.println("  no Hotkey Runtime / scheduler / resident IWRAM listener");
+    }
+
+    private static void buildPersistentEventProbe3Wc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-persistent-event-probe3-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = PersistentEventMewHostProbePreset.build(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Persistent Event Framework Probe 3 (BUILD-TESTED only):");
+        System.out.println("  Stage A: " + PersistentEventMewHostProbePreset.JULIA.displayName());
+        System.out.println("  Stage B: " + PersistentEventMewHostProbePreset.MEW_HOST.displayName());
+        System.out.println("  transformation: Cut Tree B graphics -> Mew (same coordinates)");
+        System.out.println("  progress flags: NONE (RamScript binding is the stage cursor)");
+        System.out.println("  object RamScript bytes: " + result.payloadBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  no battle / reward / map listener / resident runtime");
+    }
+
+    private static void buildPersistentEventProbe4Wc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-persistent-event-probe4-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = PersistentEventMewMoveProbePreset.build(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Persistent Event Framework Probe 4 (BUILD-TESTED only):");
+        System.out.println("  Stage A: " + PersistentEventMewMoveProbePreset.JULIA.displayName());
+        System.out.println("  Stage B: " + PersistentEventMewMoveProbePreset.MEW_HOST.displayName());
+        System.out.println("  movement: Cut Tree B (47,12) -> (47,8), then graphics -> Mew");
+        System.out.println("  faceplayer: Julia + Mew stage");
+        System.out.println("  progress flags: NONE (RamScript binding is the stage cursor)");
+        System.out.println("  object RamScript bytes: " + result.payloadBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  no battle / reward / map listener / resident runtime");
+    }
+
+    private static void buildPersistentEventProbe5Wc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-persistent-event-probe5-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = PersistentEventMewRecoveryProbePreset.build(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Persistent Event Framework Probe 5 (BUILD-TESTED only):");
+        System.out.println("  Julia -> moved Mew host, as Probe 4");
+        System.out.println("  bound host interaction: ! -> ensure graphics=Mew -> Miuu!");
+        System.out.println("  recovery target: reloaded vanilla Cut Tree reveals Mew in-place");
+        System.out.println("  object RamScript bytes: " + result.payloadBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  no battle / reward / map listener / resident runtime");
+    }
+
+    private static void buildPersistentEventProbe6Wc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-persistent-event-probe6-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        TriggerBuildResult result = PersistentEventStanTeleportProbePreset.build(rom);
+        buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Persistent Event Framework Probe 6M (BUILD-TESTED only):");
+        System.out.println("  host: Route 8 Stan (localId 8)");
+        System.out.println("  Stan: ! -> Myuu! -> teleport host -> temporary Mew -> rebind Shane (Route 24, corrected mapNum 43)\n  Shane: ! -> Myuu! -> teleport host -> temporary Mew -> disappear");
+        System.out.println("  object RamScript bytes: " + result.payloadBytes() + " / " + RamScript.SCRIPT_SIZE);
+        System.out.println("  no host graphics mutation / host removal / battle / reward / resident runtime");
     }
 
     private static void buildMewBossProbeWc3(String[] args) throws Exception {

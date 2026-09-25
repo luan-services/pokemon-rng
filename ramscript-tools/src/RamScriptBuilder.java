@@ -443,6 +443,28 @@ final class RamScriptBuilder {
         return this;
     }
 
+    RamScriptBuilder removeObject(int localId) {
+        opcode(0x53);
+        u16(localId);
+        return this;
+    }
+
+    RamScriptBuilder setObjectXY(int localId, int x, int y) {
+        opcode(0x57);
+        u16(localId);
+        u16(x);
+        u16(y);
+        return this;
+    }
+
+    RamScriptBuilder setObjectXYPermanent(int localId, int x, int y) {
+        opcode(0x63);
+        u16(localId);
+        u16(x);
+        u16(y);
+        return this;
+    }
+
     RamScriptBuilder facePlayer() {
         opcode(0x5A);
         return this;
