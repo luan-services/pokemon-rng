@@ -1169,11 +1169,13 @@ final class LegacyMain {
         RomProfile rom = RomProfile.fromId(args[1]);
         TriggerBuildResult result = PersistentEventStanTeleportProbePreset.build(rom);
         buildIntoWc3(result.ramScript(), Path.of(args[2]), Path.of(args[3]));
-        System.out.println("Persistent Event Framework Probe 6M (BUILD-TESTED only):");
-        System.out.println("  host: Route 8 Stan (localId 8)");
-        System.out.println("  Stan: ! -> Myuu! -> teleport host -> temporary Mew -> rebind Shane (Route 24, corrected mapNum 43)\n  Shane: ! -> Myuu! -> teleport host -> temporary Mew -> disappear");
+        System.out.println("Persistent Event Framework Probe 6P full-chain integration (BUILD-TESTED only):");
+        System.out.println("  Stan Route 8 -> temporary Mew -> Shane Route 24");
+        System.out.println("  Shane Route 24 -> temporary Mew -> Julia Route 8");
+        System.out.println("  Julia -> final Mew host at (40,13) -> binding transferred to Mew");
+        System.out.println("  final Mew interaction: ! -> Myuu! (same-session integration probe)");
         System.out.println("  object RamScript bytes: " + result.payloadBytes() + " / " + RamScript.SCRIPT_SIZE);
-        System.out.println("  no host graphics mutation / host removal / battle / reward / resident runtime");
+        System.out.println("  Probe 5 remains the GAME-VALIDATED reload/self-healing baseline; no battle/reward yet");
     }
 
     private static void buildMewBossProbeWc3(String[] args) throws Exception {

@@ -30,8 +30,8 @@ final class PersistentEventMewRecoveryProbePreset {
     private static final int OBJECT_TEMPLATE_SIZE = 0x18;
     private static final int OBJECT_TEMPLATE_COUNT = 64;
     private static final int OBJ_EVENT_GFX_MEW = 140;
-    static final int MEW_TARGET_X = 47;
-    static final int MEW_TARGET_Y = 8;
+    static final int MEW_TARGET_X = 41;
+    static final int MEW_TARGET_Y = 13;
 
     static final int PACKAGE_SB2_OFFSET = PayloadStorageArea.SAVE_BLOCK2.offset();
 
@@ -172,7 +172,7 @@ final class PersistentEventMewRecoveryProbePreset {
         return (VIRTUAL_BASE + (targetStatic - scriptStatic)) & 0xFFFF_FFFFL;
     }
 
-    private static NativeHelper buildTransformAndRebindHelper(RomProfile rom, long address) {
+    static NativeHelper buildTransformAndRebindHelper(RomProfile rom, long address) {
         // r4 = live SB1. Scan its current ObjectEventTemplate array for localId 11,
         // change graphicsId to Mew, then ask the stock live-object helper to update
         // an already-loaded instance. Finally perform the exact Probe-2A rebind.
@@ -234,7 +234,7 @@ final class PersistentEventMewRecoveryProbePreset {
         };
     }
 
-    private static NativeHelper buildPackageInstaller(RomProfile rom, long address, byte[] data) {
+    static NativeHelper buildPackageInstaller(RomProfile rom, long address, byte[] data) {
         if (data.length == 0 || data.length > PayloadStorageArea.SAVE_BLOCK2.capacity())
             throw new IllegalArgumentException("Probe package exceeds SB2 persistent area");
         final int literalOffset = 28, dataOffset = 44;
