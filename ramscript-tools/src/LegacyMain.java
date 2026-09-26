@@ -142,6 +142,15 @@ final class LegacyMain {
                 case "build-persistence-400-check-wc3" -> buildPersistence400CheckWc3(args);
                 case "build-persistence-1024-install-wc3" -> buildPersistence1024InstallWc3(args);
                 case "build-persistence-1024-check-wc3" -> buildPersistence1024CheckWc3(args);
+                case "build-mew-core-v1-install-wc3" -> buildMewCoreV1InstallWc3(args);
+                case "build-mew-core-v1-launch-probe-wc3" -> buildMewCoreV1LaunchProbeWc3(args);
+                case "build-mew-battle-core-install-wc3" -> buildMewBattleCoreInstallWc3(args);
+                case "build-mew-event-data-core-install-wc3" -> buildMewEventDataCoreInstallWc3(args);
+                case "build-mew-final-event-wc3" -> buildMewFinalEventWc3(args);
+                case "build-mew-core-extension-wc3" -> buildMewCoreExtensionWc3(args);
+                case "build-mew-composition-install-a-wc3" -> buildMewCompositionInstallAWc3(args);
+                case "build-mew-composition-install-b-wc3" -> buildMewCompositionInstallBWc3(args);
+                case "build-mew-composition-launch-wc3" -> buildMewCompositionLaunchWc3(args);
                 case "build-persistent-storage-v1-install-wc3" -> buildPersistentStorageV1InstallWc3(args);
                 case "build-persistent-storage-v1-launch-wc3" -> buildPersistentStorageV1LaunchWc3(args);
                 case "build-persistent-storage-v2-install-wc3" -> buildPersistentStorageV2InstallWc3(args);
@@ -2171,6 +2180,60 @@ final class LegacyMain {
     }
 
 
+
+
+
+    private static void buildMewEventDataCoreInstallWc3(String[] args) throws Exception {
+        if(args.length!=4) throw new IllegalArgumentException("Usage: build-mew-event-data-core-install-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom=RomProfile.fromId(args[1]);
+        MewEventDataCore.Image image=MewEventDataCore.build(rom);
+        System.out.println("Mew Event/Data Core: image="+image.bytes().length+" B; reward="+image.rewardNativeSize()+" B @+0x"+Integer.toHexString(image.rewardOffset())+"; ensure="+image.ensureSize()+" B @+0x"+Integer.toHexString(image.ensureMewOffset())+"; transform="+image.transformSize()+" B @+0x"+Integer.toHexString(image.transformRebindOffset())+"; SB1 capacity="+MewEventDataCore.CAPACITY+" B");
+        buildIntoWc3(MewEventDataCoreInstallerPreset.build(rom),Path.of(args[2]),Path.of(args[3]));
+    }
+
+    private static void buildMewCoreExtensionWc3(String[] args) throws Exception { if(args.length!=4)throw new IllegalArgumentException("Usage"); buildIntoWc3(MewBattleCoreExtensionInstallerPreset.build(RomProfile.fromId(args[1])),Path.of(args[2]),Path.of(args[3])); }
+
+    private static void buildMewFinalEventWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-mew-final-event-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom=RomProfile.fromId(args[1]); TriggerBuildResult r=MewFinalEventPreset.build(rom);
+        System.out.println("Mew final event payload: "+r.payloadBytes()+" / "+RamScript.SCRIPT_SIZE+" bytes; free="+r.freeScriptBytes());
+        buildIntoWc3(r.ramScript(),Path.of(args[2]),Path.of(args[3]));
+    }
+
+    private static void buildMewBattleCoreInstallWc3(String[] args) throws Exception {
+        if(args.length!=4) throw new IllegalArgumentException("Usage: build-mew-battle-core-install-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom=RomProfile.fromId(args[1]);
+        MewBattleCore.Image image=MewBattleCore.build(rom);
+        System.out.println("Mew Battle Core: image="+image.bytes().length+" B; native="+image.nativeSize()+" B; prepare=+0x"+Integer.toHexString(image.prepareOffset())+"; restore=+0x"+Integer.toHexString(image.restoreOffset())+"; launch=+0x"+Integer.toHexString(image.launchOffset())+"; scenes=+0x"+Integer.toHexString(image.sceneStanOffset())+",+0x"+Integer.toHexString(image.sceneShaneOffset())+"; dispatcher=+0x"+Integer.toHexString(image.dispatcherOffset())+"; SB2 capacity before scratch="+MewBattleCore.SCRATCH_RELATIVE+" B");
+        buildIntoWc3(MewBattleCoreInstallerPreset.build(rom),Path.of(args[2]),Path.of(args[3]));
+    }
+
+    private static void buildMewCompositionInstallAWc3(String[] args) throws Exception {
+        if(args.length!=4) throw new IllegalArgumentException("Usage: build-mew-composition-install-a-wc3 <rom> <input.wc3> <output.wc3>");
+        buildIntoWc3(MewCompositionProbePreset.installerA(RomProfile.fromId(args[1])),Path.of(args[2]),Path.of(args[3]));
+    }
+    private static void buildMewCompositionInstallBWc3(String[] args) throws Exception {
+        if(args.length!=4) throw new IllegalArgumentException("Usage: build-mew-composition-install-b-wc3 <rom> <input.wc3> <output.wc3>");
+        buildIntoWc3(MewCompositionProbePreset.installerB(RomProfile.fromId(args[1])),Path.of(args[2]),Path.of(args[3]));
+    }
+    private static void buildMewCompositionLaunchWc3(String[] args) throws Exception {
+        if(args.length!=4) throw new IllegalArgumentException("Usage: build-mew-composition-launch-wc3 <rom> <input.wc3> <output.wc3>");
+        buildIntoWc3(MewCompositionProbePreset.launcher(RomProfile.fromId(args[1])),Path.of(args[2]),Path.of(args[3]));
+    }
+    private static void buildMewCoreV1LaunchProbeWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-mew-core-v1-launch-probe-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        buildIntoWc3(MewCoreLaunchProbePreset.build(rom), Path.of(args[2]), Path.of(args[3]));
+        System.out.println("Mew Core V1 launch probe built: resolves live SB2 and dispatches prepare/launch entries.");
+    }
+
+    private static void buildMewCoreV1InstallWc3(String[] args) throws Exception {
+        if (args.length != 4) throw new IllegalArgumentException("Usage: build-mew-core-v1-install-wc3 <rom> <input.wc3> <output.wc3>");
+        RomProfile rom = RomProfile.fromId(args[1]);
+        buildIntoWc3(MewCoreInstallerPreset.build(rom), Path.of(args[2]), Path.of(args[3]));
+        MewCoreV1.Image image = MewCoreV1.build(rom);
+        System.out.println("Mew Core V1 installed image: " + image.bytes().length + "/" + MewCoreV1.CAPACITY + " B; native=" + image.nativeSize() + " B; launch=+0x" + Integer.toHexString(image.launchOffset()) + "; reward=+0x" + Integer.toHexString(image.rewardOffset()));
+    }
 
     private static void buildPersistentStorageV1InstallWc3(String[] args) throws Exception {
         if (args.length != 4) throw new IllegalArgumentException("Usage: build-persistent-storage-v1-install-wc3 <rom> <input.wc3> <output.wc3>");

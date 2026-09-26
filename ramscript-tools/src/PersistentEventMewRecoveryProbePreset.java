@@ -120,7 +120,7 @@ final class PersistentEventMewRecoveryProbePreset {
         return p.buildScript();
     }
 
-    private static NativeHelper buildEnsureMewHelper(RomProfile rom, long address) {
+    static NativeHelper buildEnsureMewHelper(RomProfile rom, long address) {
         // Re-materialize the CURRENT bound host as Mew. This intentionally does
         // not move it: after a map reload the tree may be back at (47,12), and
         // interaction should reveal Mew in-place before the dialogue/battle.

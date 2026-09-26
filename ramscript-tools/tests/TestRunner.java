@@ -95,6 +95,8 @@ public final class TestRunner {
         PersistentEventMewMoveProbeTest.run();
         PersistentEventMewRecoveryProbeTest.run();
 
+        MewEventDataCoreTest.run();
+        MewV2CompositionTest.run();
         System.out.println("All tests passed: " + tests + " (+ TradeEvolutionPresetProductionTest + MewBossProbeTest + PersistentEventPackageProbeTest + PersistentEventRebindingProbeTest)");
     }
 
