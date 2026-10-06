@@ -545,6 +545,24 @@ final class RamScriptBuilder {
         return this;
     }
 
+    RamScriptBuilder playMonCry(int species, int mode) {
+        opcode(0xA1);
+        u16(species);
+        u16(mode);
+        return this;
+    }
+
+    RamScriptBuilder waitMonCry() {
+        opcode(0xC5);
+        return this;
+    }
+
+    RamScriptBuilder fadeInBgm(int speed) {
+        opcode(0x38);
+        u8(speed);
+        return this;
+    }
+
     RamScriptBuilder playBgm(int songId, boolean saveSong) {
         opcode(0x33);
         u16(songId);
